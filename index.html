@@ -37,6 +37,11 @@ label{display:grid;gap:2px;font-size:12px;color:var(--mu)}
 h4{margin:16px 0 6px}
 body.sd .dinero{display:none}
 .mu{color:var(--mu);font-size:12px}
+#tl{padding:12px;display:grid;gap:12px;max-width:560px;margin:0 auto}
+.tk{background:var(--pn);border:1px solid var(--bd);border-left:6px solid;border-radius:10px;padding:14px}
+.tk h3{margin:0 0 6px;font-size:20px}
+.tk .bt{display:flex;gap:8px;margin-top:10px}.tk .bt button{flex:1;padding:14px;font-size:16px}
+.tg{display:inline-block;padding:2px 8px;border-radius:99px;background:#fef3c7;color:#78350f;font-size:12px;font-weight:600;margin-left:6px}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
@@ -78,7 +83,7 @@ async function iniciar(){
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
  document.body.classList.toggle('sd',p.rol==='administracion'); // Administración no ve montos
- if(p.rol==='limpieza'){$('#gw').innerHTML='<p style="padding:20px">La vista móvil de limpieza llega en el siguiente paso.</p>';return}
+ if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar();
  let t;const d=()=>{clearTimeout(t);t=setTimeout(cargar,400)};
@@ -109,10 +114,10 @@ function dibujar(){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=a>=0?(a+.5)*W:0,right=Math.min((z+.5)*W,ND*W);
    const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`${esc(r.huesped_nombre_copia)}<small>${esc(r.uid_reserva)} · ${esc(r.huespedes?.uid_huesped||'')} · ${fm(r.fecha_entrada)}–${fm(r.fecha_salida)}</small>`;
    b+=`<div class="blq ${r.estado}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}</div>`}
-  h+=`<div class="fila"><div class="et"><b>${esc(u.codigo)}</b>${li?`<span class="lim" style="color:${li[2]}" title="${li[3]}">${li[0]}${li[1]}</span>`:''}</div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}</div></div>`}
+  h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><b>${esc(u.codigo)}</b>${li?`<span class="lim" style="color:${li[2]}" title="${li[3]}">${li[0]}${li[1]}</span>`:''}</div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}</div></div>`}
  $('#gw').innerHTML=h;
 }
-$('#gw').onclick=e=>{const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
+$('#gw').onclick=e=>{const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
  const d=e.target.closest('.dias[data-u]');if(d)abrirNueva({unidad:d.dataset.u,entrada:addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W))})};
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
 const cerrar=()=>{$('#mo').style.display='none'},cerrarDr=()=>{$('#dr').style.display='none'};
@@ -216,5 +221,37 @@ async function addPago(){
  if(!(mo>0))return msg('Monto inválido',1);if(usd&&!(tc>0))return msg('Indica el tipo de cambio',1);if(usd&&$('#pk').value!=='efectivo')return msg('USD solo en efectivo',1);
  const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:$('#pk').value,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:Math.round(usd?mo*tc:mo),anticipado:$('#pn').checked});
  er(error,'Pago registrado');if(!error)refrescar()}
+// ---------- Limpieza: vista móvil (rol limpieza) ----------
+async function vistaLimpieza(){
+ $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><button onclick="salir()">Salir</button></header><div id="tl"></div>`;
+ await tareasLimp();let t;const d=()=>{clearTimeout(t);t=setTimeout(tareasLimp,400)};
+ sb.channel('mov').on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).subscribe();
+ setInterval(tareasLimp,60000);
+}
+async function tareasLimp(){
+ const {data,error}=await sb.rpc('mis_tareas_limpieza');if(error)return msg(error.message,1);
+ $('#tl').innerHTML=data.length?data.map(t=>{const L=LIM[t.estado],id=t.limpieza_id;
+  const bt={sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
+  return `<div class="tk" style="border-left-color:${L[2]}"><h3>${esc(t.edificio)} · ${esc(t.unidad_codigo)}</h3><b style="color:${L[2]}">${L[0]} ${L[3]}</b>${t.llega_hoy?`<span class="tg">Llega hoy${t.hora_llegada?' · '+t.hora_llegada.slice(0,5):''}</span>`:''}
+  ${t.observacion_recepcion?`<p>📝 Recepción: ${esc(t.observacion_recepcion)}</p>`:''}${t.observacion_limpieza?`<p class="mu">Tu observación: ${esc(t.observacion_limpieza)}</p>`:''}
+  <div class="bt">${bt.map(b=>`<button class="${b[2]}" onclick="cambiarLimp('${id}','${b[0]}')">${b[1]}</button>`).join('')}</div></div>`}).join(''):'<p class="mu" style="padding:20px;text-align:center">No hay unidades por limpiar.</p>';
+}
+async function cambiarLimp(id,estado){
+ let o=null;
+ if(estado==='defectuosa'){o=prompt('¿Qué problema encontraste?');if(!o||!o.trim())return}
+ if(estado==='limpia'){o=prompt('Observación (déjala vacía si no hay):');if(o===null)return}
+ const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:id,p_estado:estado,p_observacion:o||null});
+ if(error)return msg(error.message,1);tareasLimp();
+}
+// ---------- Limpieza: recepción (clic en el código de unidad) ----------
+function abrirLimp(uid){
+ const u=S.unidades.find(x=>x.id===uid),l=S.lim[uid],L=l&&LIM[l.estado];
+ $('#mo').innerHTML=`<div><h3>Limpieza · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</h3><p>${L?`<b style="color:${L[2]}">${L[0]} ${L[3]}</b>`:'<span class="mu">Sin registros</span>'}${l?.observacion_limpieza?`<br><span class="mu">Limpieza dice: ${esc(l.observacion_limpieza)}</span>`:''}</p>
+ <label>Mensaje para limpieza (opcional)<textarea id="lo" rows="2" placeholder="Ej.: salió a las 10:30, llega huésped a las 15:00"></textarea></label>
+ <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cerrar</button>${l&&l.estado!=='limpia'?`<button onclick="marcarLimpia('${l.limpieza_id}')">Marcar limpia</button>`:''}<button class="p" onclick="pedirLimp('${uid}')">Pedir limpieza</button></div></div>`;
+ $('#mo').style.display='grid';
+}
+async function pedirLimp(uid){const {error}=await sb.rpc('pedir_limpieza',{p_unidad_id:uid,p_observacion:$('#lo').value||null});if(error)return msg(error.message,1);cerrar();msg('Limpieza solicitada');cargar()}
+async function marcarLimpia(id){const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:id,p_estado:'limpia',p_observacion:null});if(error)return msg(error.message,1);cerrar();cargar()}
 iniciar();
 </script></body></html>
