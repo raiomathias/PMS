@@ -41,19 +41,43 @@ body.sd .dinero{display:none}
 .tk{background:var(--pn);border:1px solid var(--bd);border-left:6px solid;border-radius:10px;padding:14px}
 .tk h3{margin:0 0 6px;font-size:20px}
 .tk .bt{display:flex;gap:8px;margin-top:10px}.tk .bt button{flex:1;padding:14px;font-size:16px}
+.rw{display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd)}.rw input,.rw select{min-width:0;flex:1}.rw input[type=checkbox],.rw button{flex:none}
 .tg{display:inline-block;padding:2px 8px;border-radius:99px;background:#fef3c7;color:#78350f;font-size:12px;font-weight:600;margin-left:6px}
+
+:root{--w:56px}
+body{line-height:1.4}
+button,input,select,textarea{border-radius:8px;padding:7px 11px}
+button{font-weight:500}button:hover{filter:brightness(.96)}
+header{padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}header b{font-size:16px}
+#bar{height:44px;display:flex;gap:8px;align-items:center;padding:0 20px;background:var(--pn);border-bottom:1px solid var(--bd)}
+#gw{height:calc(100vh - 160px);user-select:none;margin:12px 20px;border:1px solid var(--bd);border-radius:12px;background:var(--pn)}
+.et{flex:0 0 160px;padding:6px 12px}.et b{font-size:15px}
+.tp{display:block;font-size:11px;color:var(--mu);font-weight:500}
+#bar .tp{display:inline;background:var(--bg);padding:2px 8px;border-radius:99px}
+.ed .et{font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.dias{height:56px;cursor:cell}
+.blq{top:6px;bottom:6px;border-radius:8px;padding:5px 9px;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.blq b{display:block;overflow:hidden;text-overflow:ellipsis}.blq small{font-size:11px}
+.sl{position:absolute;top:0;bottom:0;background:rgba(37,99,235,.16);border:2px solid var(--ac);border-radius:4px;box-sizing:border-box;pointer-events:none;z-index:1}
+.d b{font-size:15px;color:var(--tx)}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:10px}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.cat{border:1px solid var(--bd);border-radius:12px;padding:12px;background:var(--pn)}
+.ph{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px}
+.ph img{width:100%;height:60px;object-fit:cover;border-radius:8px;cursor:pointer}.ph img:first-child{grid-column:1/-1;height:150px}
+.ph.vacio{height:80px;place-items:center;display:grid;background:var(--bg);border-radius:8px;color:var(--mu)}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p" onclick="abrirNueva()">＋ Reserva / bloqueo</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p" onclick="abrirNueva()">＋ Nueva reserva</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo &nbsp;|&nbsp; Limpieza: 🧹S sucia · 🔄P en proceso · ✅L limpia · ⚠️D defectuosa</div>
-<div id="gw"></div></div>
+<div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="ms"></div>
 <script>
 // ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
 const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
 // ====================================================================================
-const sb=supabase.createClient(SB_URL,SB_KEY),$=s=>document.querySelector(s),W=46,ND=30;
+const sb=supabase.createClient(SB_URL,SB_KEY),$=s=>document.querySelector(s),W=56,ND=30;
 const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,cur:null,g:null};
 const LIM={sucia:['🧹','S','#d97706','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#dc2626','Defectuosa']};
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -82,7 +106,7 @@ async function iniciar(){
  S.perfil=p;S.ini=addD(hoyStr(),-2);
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
- document.body.classList.toggle('sd',p.rol==='administracion'); // Administración no ve montos
+ document.body.classList.toggle('sd',p.rol==='administracion');$('#bad').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none'; // Administración no ve montos
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar();
@@ -95,12 +119,12 @@ function mover(n){S.ini=n===0?addD(hoyStr(),-2):addD(S.ini,n);cargar()}
 async function cargar(){
  const fin=addD(S.ini,ND);$('#hf').value=S.ini;
  const [u,r,l]=await Promise.all([
-  sb.from('unidades').select('id,codigo,orden,edificio_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true),
+  sb.from('unidades').select('id,codigo,orden,edificio_id,tipo_unidad_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true),
   sb.from('reservas').select('*,huespedes(uid_huesped)').lt('fecha_entrada',fin).gt('fecha_salida',S.ini).not('estado','in','(cancelada,no_show)'),
   sb.from('estado_limpieza_actual').select('*')]);
  if(u.error||r.error)return msg((u.error||r.error).message,1);
  S.unidades=u.data.sort((a,b)=>(a.edificios.orden-b.edificios.orden)||(a.orden-b.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
- S.res=r.data;S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));dibujar();
+ S.tipos={};S.unidades.forEach(u=>S.tipos[u.tipo_unidad_id||'']=u.tipos_unidad||{nombre:'Sin categoría',tarifa_base:0});S.res=r.data;S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));dibujar();
 }
 function dibujar(){
  const hoy=hoyStr(),hi=diff(S.ini,hoy);let h='<div class="fila cab"><div class="et"></div><div class="dias" style="width:'+ND*W+'px">';
@@ -111,32 +135,53 @@ function dibujar(){
   if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div></div>`}
   const l=S.lim[u.id],li=l&&LIM[l.estado];let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
-   const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=a>=0?(a+.5)*W:0,right=Math.min((z+.5)*W,ND*W);
-   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`${esc(r.huesped_nombre_copia)}<small>${esc(r.uid_reserva)} · ${esc(r.huespedes?.uid_huesped||'')} · ${fm(r.fecha_entrada)}–${fm(r.fecha_salida)}</small>`;
+   const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
+   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
    b+=`<div class="blq ${r.estado}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}</div>`}
-  h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><b>${esc(u.codigo)}</b>${li?`<span class="lim" style="color:${li[2]}" title="${li[3]}">${li[0]}${li[1]}</span>`:''}</div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}</div></div>`}
- $('#gw').innerHTML=h;
+  h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div>${li?`<span class="lim" style="color:${li[2]}" title="${li[3]}">${li[0]}${li[1]}</span>`:''}</div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
+ $('#gw').innerHTML=h;barra();
 }
 $('#gw').onclick=e=>{const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
- const d=e.target.closest('.dias[data-u]');if(d)abrirNueva({unidad:d.dataset.u,entrada:addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W))})};
+ const d=e.target.closest('.dias[data-u]');if(d){const f=addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W)),q=S.sel;S.sel=e.shiftKey&&q&&q.u===d.dataset.u?{u:q.u,a:q.a,b:f}:{u:d.dataset.u,a:f,b:f};dibujar()}};
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
-const cerrar=()=>{$('#mo').style.display='none'},cerrarDr=()=>{$('#dr').style.display='none'};
+const cerrar=()=>{$('#mo').style.display='none';if(A.open){A.open=false;cargar()}},cerrarDr=()=>{$('#dr').style.display='none'};
 
 // ---------- Nueva reserva / bloqueo ----------
 let N={h:null,c:[],lista:false};
 function abrirNueva(p={}){
- N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr();
- const uo=S.unidades.map(u=>`<option value="${u.id}" ${u.id===p.unidad?'selected':''}>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</option>`).join('');
+ N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
+ const pu=S.unidades.find(u=>u.id===p.unidad),pt=pu?(pu.tipo_unidad_id||''):tk[0]?.[0];
  $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
- <div class="g2"><label>Unidad<select id="nu" onchange="$('#nta').value=S.unidades.find(u=>u.id===this.value).tipos_unidad?.tarifa_base||0">${uo}</select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',addD(ent,1),'date')}</div>
+ <div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pu&&pu.edificio_id===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+ <label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',p.salida||addD(ent,1),'date')}</div>
  <div id="nb" style="display:none">${F('nm','Motivo del bloqueo')}</div>
  <div id="nr"><h4>Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
  <div id="nf"><div class="g2">${F('hn','Nombre completo')}${SEL('hd','Tipo doc.',['rut','pasaporte','dni','otro'],'rut')}${F('hx','N° documento')}${F('ht','Teléfono')}${F('hna','Nacionalidad')}${F('hc','Ciudad de origen')}</div></div>
- <h4>Reserva</h4><div class="g2">${F('nx','Código externo del canal')}${F('nta','Tarifa por noche',S.unidades.find(u=>u.id===(p.unidad||S.unidades[0]?.id))?.tipos_unidad?.tarifa_base||0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
+ <h4>Reserva</h4><div class="g2">${F('nx','Código externo del canal')}${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
  <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk"> Usa estacionamiento</label><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div>
  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarNueva()">Guardar</button></div></div>`;
- $('#mo').style.display='grid';
+ $('#mo').style.display='grid';filU(p.unidad);
+ if(p.bloqueo){$('#nt').value='b';$('#nt').dispatchEvent(new Event('change'))}
 }
+function filU(sel){const t=$('#nca').value,e=$('#ned').value,cur=sel||$('#nu').value;
+ $('#nu').innerHTML='<option value="">Asignar automáticamente</option>'+S.unidades.filter(u=>(u.tipo_unidad_id||'')===t&&(!e||u.edificio_id===e)).map(u=>`<option value="${u.id}" ${u.id===cur?'selected':''}>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</option>`).join('');tarU()}
+function tarU(){$('#nta').value=S.tipos[$('#nca').value]?.tarifa_base||0}
+const nomU=id=>{const u=S.unidades.find(x=>x.id===id);return u?u.edificios.nombre+' · '+u.codigo:''};
+async function elegirUnidad(fe,fs){
+ const v=$('#nu').value;if(v)return v;
+ if($('#nt').value==='b'){msg('Elige la unidad a bloquear',1);return null}
+ const {data,error}=await sb.from('reservas').select('unidad_id').lt('fecha_entrada',fs).gt('fecha_salida',fe).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
+ if(error){msg(error.message,1);return null}
+ const oc=new Set(data.map(x=>x.unidad_id)),u=[...$('#nu').options].map(o=>o.value).find(x=>x&&!oc.has(x));
+ if(!u)msg('No hay unidades libres de esa categoría en esas fechas',1);return u||null}
+const ord=q=>q.a<q.b?[q.a,q.b]:[q.b,q.a];
+function barra(){const q=S.sel,B=$('#bar');
+ if(!q){B.innerHTML='<span class="mu">Haz clic en una celda para seleccionar una noche · Shift+clic amplía el rango en la misma unidad</span>';return}
+ const [a,z]=ord(q),n=diff(a,z)+1,u=S.unidades.find(x=>x.id===q.u);
+ B.innerHTML=`<b>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span> ${fm(a)} → ${fm(addD(z,1))} · ${n} noche${n>1?'s':''} <button class="p" onclick="desdeSel(0)">＋ Crear reserva</button><button onclick="desdeSel(1)">🔒 Bloquear</button><button onclick="S.sel=null;dibujar()">✕</button>`}
+function desdeSel(b){const [a,z]=ord(S.sel);abrirNueva({unidad:S.sel.u,entrada:a,salida:addD(z,1),bloqueo:b})}
+function selHtml(id){const q=S.sel;if(!q||q.u!==id)return'';const [a,z]=ord(q),i=Math.max(diff(S.ini,a),0),j=Math.min(diff(S.ini,z)+1,ND);return j>i?`<div class="sl" style="left:${i*W}px;width:${(j-i)*W}px"></div>`:''}
+
 let bt;function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
  const q=$('#nq').value.trim();if(q.length<2){$('#nl').innerHTML='';return}
  const qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();let f='nombre_completo.ilike.%'+q.replace(/[,()%]/g,' ')+'%';if(qd.length>=4)f+=',documento_normalizado.ilike.%'+qd+'%';
@@ -152,7 +197,7 @@ async function elegirH(id){
  $('#na').innerHTML=(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
 }
 async function guardarNueva(){
- const fe=$('#ne').value,fs=$('#ns').value,unidad=$('#nu').value;if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);
+ const fe=$('#ne').value,fs=$('#ns').value;if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;
  if($('#nt').value==='b'){const {error}=await sb.from('reservas').insert({unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'bloqueado',observaciones:$('#nm').value||'Bloqueo'});if(error)return msg(errTxt(error),1);cerrar();return cargar()}
  if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
  let hid=N.h;
@@ -163,7 +208,7 @@ async function guardarNueva(){
   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
  const {error}=await sb.from('reservas').insert({huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,canal:$('#nc').value,referencia_externa:$('#nx').value||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null});
- if(error)return msg(errTxt(error),1);cerrar();msg('Reserva creada');cargar();
+ if(error)return msg(errTxt(error),1);cerrar();msg('Reserva creada en '+nomU(unidad));cargar();
 }
 
 // ---------- Detalle de reserva ----------
@@ -253,5 +298,86 @@ function abrirLimp(uid){
 }
 async function pedirLimp(uid){const {error}=await sb.rpc('pedir_limpieza',{p_unidad_id:uid,p_observacion:$('#lo').value||null});if(error)return msg(error.message,1);cerrar();msg('Limpieza solicitada');cargar()}
 async function marcarLimpia(id){const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:id,p_estado:'limpia',p_observacion:null});if(error)return msg(error.message,1);cerrar();cargar()}
+// ---------- Panel de administración ----------
+const GER=['gerencia','sysadmin'],ROLES=['recepcion','administracion','gerencia','sysadmin','limpieza'];
+let A={t:'unidades',open:false};
+const V=i=>i.type==='checkbox'?i.checked:i.type==='number'?(i.value===''?null:+i.value):(i.value||null);
+const datos=el=>{const o={};el.querySelectorAll('[data-c]').forEach(i=>o[i.dataset.c]=V(i));return o};
+const dup=e=>e&&(e.code==='23505'?{message:'Ya existe un registro con ese nombre o código'}:e);
+const NI=(c,v,ph='',t='text')=>`<input data-c="${c}" type="${t}" value="${esc(v)}" placeholder="${ph}" title="${ph}">`;
+const CK=(c,v,l)=>`<label style="flex-direction:row;display:flex;gap:4px;align-items:center;flex:none"><input data-c="${c}" type="checkbox" ${v?'checked':''}>${l}</label>`;
+const SO=(c,o,v,vacio)=>`<select data-c="${c}">${vacio?'<option value="">—</option>':''}${o.map(x=>`<option value="${x[0]}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('')}</select>`;
+async function gd(t,id,b){const {error}=await sb.from(t).update(datos(b.closest('.rw'))).eq('id',id);er(dup(error),'Guardado')}
+async function nw(t,b,req){const o=datos(b.closest('.rw'));if(req.split(',').some(k=>o[k]===null||o[k]===''))return msg('Faltan datos',1);const {error}=await sb.from(t).insert(o);if(error)return msg(dup(error).message,1);msg('Creado');panel()}
+function abrirAdmin(){A.open=true;panel('unidades')}
+async function panel(t){
+ if(t)A.t=t;const T=[['unidades','Unidades'],['tipos','Categorías y tarifas'],['edificios','Edificios y estacionamiento'],['config','Horarios, cargos y cancelación']];
+ if(GER.includes(S.perfil.rol))T.push(['usuarios','Usuarios']);
+ $('#mo').innerHTML=`<div style="width:940px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⚙ Administración</h3><button onclick="cerrar()">✕</button></div><div class="tabs">${T.map(x=>`<button class="${x[0]===A.t?'p':''}" onclick="panel('${x[0]}')">${x[1]}</button>`).join('')}</div><div id="pc">Cargando…</div></div>`;
+ $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,edificios:pEdi,config:pCfg,usuarios:pUsu}[A.t])();
+}
+async function pUni(){
+ const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre').order('nombre')]);
+ const E=(e.data||[]).map(x=>[x.id,x.nombre]),T=(t.data||[]).map(x=>[x.id,x.nombre]);
+ const L=(u.data||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
+ $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'')}${NI('codigo','','Código (ej. 101)')}${SO('tipo_unidad_id',T,'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo')">Crear</button></div>
+ <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',T,x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Crea primero las categorías de Raíces en la pestaña Categorías.</p>`;
+}
+async function pTip(){
+ const {data}=await sb.from('tipos_unidad').select('*').order('nombre');
+ const f=x=>`${NI('nombre',x.nombre,'Categoría (ej. Completo)')}${NI('max_adultos',x.max_adultos,'Máx. adultos','number')}${NI('max_menores',x.max_menores,'Máx. menores','number')}${NI('tarifa_base',x.tarifa_base,'Tarifa por noche (CLP)','number')}`;
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Categoría · máx. adultos · máx. menores · tarifa por noche. Los cambios de tarifa valen para reservas nuevas; las existentes conservan la suya.</p><h4>Nueva categoría</h4><div class="rw">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0})}<button class="p" onclick="nw('tipos_unidad',this,'nombre')">Crear</button></div><h4>Categorías</h4>${(data||[]).map(x=>`<div class="rw">${f(x)}<button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div>`).join('')}`;
+}
+async function pEdi(){
+ const {data}=await sb.from('edificios').select('*').order('orden');
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Nombre · dirección · cupos de estacionamiento · orden en la grilla.</p><h4>Nuevo edificio</h4><div class="rw">${NI('nombre','','Nombre')}${NI('orden',(data||[]).length+1,'Orden','number')}<button class="p" onclick="nw('edificios',this,'nombre')">Crear</button></div><h4>Edificios</h4>${(data||[]).map(x=>`<div class="rw">${NI('nombre',x.nombre,'Nombre')}${NI('direccion',x.direccion,'Dirección')}${NI('cupos_estacionamiento',x.cupos_estacionamiento,'Cupos de estacionamiento','number')}${NI('orden',x.orden,'Orden','number')}${CK('acceso_remoto',x.acceso_remoto,'Remoto')}${CK('requiere_documento',x.requiere_documento,'Pide doc.')}${CK('activo',x.activo,'Activo')}<button onclick="gd('edificios','${x.id}',this)">Guardar</button></div>`).join('')}`;
+}
+async function pCfg(){
+ const {data}=await sb.from('configuracion').select('*').order('clave');
+ $('#pc').innerHTML=(data||[]).map(x=>`<div class="rw"><span style="flex:1 1 60%">${esc(x.descripcion||x.clave)}</span><input value="${esc(x.valor)}" style="flex:0 0 110px"><button onclick="gCfg('${x.clave}',this)">Guardar</button></div>`).join('')+'<p class="mu">Horas en formato HH:MM; montos y horas de cancelación en números enteros.</p>';
+}
+async function gCfg(k,b){
+ const v=b.closest('.rw').querySelector('input').value.trim(),h=/^(hora_|limite_)/.test(k);
+ if(!(h?/^([01]\d|2[0-3]):[0-5]\d$/:/^\d+$/).test(v))return msg(h?'Usa el formato HH:MM':'Escribe un número entero',1);
+ const {data:{session}}=await sb.auth.getSession();
+ const {error}=await sb.from('configuracion').update({valor:v,actualizado_por:session.user.id,actualizado_en:new Date().toISOString()}).eq('clave',k);
+ if(!error)S.cfg[k]=v;er(error,'Guardado');
+}
+async function pUsu(){
+ const {data:{session}}=await sb.auth.getSession(),yo=session.user.id,sy=S.perfil.rol==='sysadmin',R=ROLES.filter(r=>sy||r!=='sysadmin');
+ const {data}=await sb.from('perfiles').select('id,nombre_completo,usuario,rol,activo').order('nombre_completo');
+ $('#pc').innerHTML=`<h4 style="margin-top:0">Nuevo usuario</h4><div class="rw"><input id="un" placeholder="Nombre Apellido"><select id="ur">${R.map(r=>`<option>${r}</option>`).join('')}</select><input id="uc" type="password" placeholder="Clave (mín. 6)"><button class="p" onclick="crearU()">Crear</button></div><h4>Usuarios</h4>${(data||[]).map(x=>{const bl=x.id===yo||(x.rol==='sysadmin'&&!sy);return`<div class="rw"><span style="flex:1 1 40%">${esc(x.nombre_completo)}<br><span class="mu">${esc(x.usuario)}</span></span>${bl?`<span class="mu">${x.rol}${x.id===yo?' (tú)':''}</span>`:`${SO('rol',R.map(r=>[r,r]),x.rol)}${CK('activo',x.activo,'Activo')}<button onclick="gd('perfiles','${x.id}',this)">Guardar</button><button onclick="claveU('${x.id}')">Clave</button>`}</div>`}).join('')}`;
+}
+async function fn(body){const {data,error}=await sb.functions.invoke('crear_usuario',{body});if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch(e){}throw new Error(m)}return data}
+async function crearU(){const n=$('#un').value.trim();if(!n||$('#uc').value.length<6)return msg('Falta el nombre o la clave es muy corta',1);try{await fn({accion:'crear',nombre_completo:n,rol:$('#ur').value,clave:$('#uc').value});msg('Usuario creado');pUsu()}catch(e){msg(e.message,1)}}
+async function claveU(id){const c=prompt('Nueva clave (mínimo 6 caracteres):');if(!c)return;try{await fn({accion:'cambiar_clave',usuario_id:id,clave:c});msg('Clave cambiada')}catch(e){msg(e.message,1)}}
+// ---------- Catálogo de unidades ----------
+const FU=p=>sb.storage.from('fotos_unidades').getPublicUrl(p).data.publicUrl;
+async function abrirCatalogo(){
+ const {data,error}=await sb.from('catalogo_unidades').select('*').order('edificio_orden').order('tipo');
+ if(error)return msg(error.message,1);let ed=null,h='';
+ for(const c of data){
+  if(c.edificio!==ed){ed=c.edificio;h+=`<h4 style="grid-column:1/-1;margin:8px 0 0">${esc(ed)}</h4>`}
+  const f=c.fotos||[],im=x=>`<img src="${FU(x)}" onclick="window.open('${FU(x)}')">`;
+  h+=`<div class="cat">${f.length?`<div class="ph">${f.slice(0,4).map(im).join('')}</div>`:'<div class="ph vacio">Sin fotos</div>'}<b>${esc(c.tipo)}</b> <span class="mu">${c.cantidad} unidad${c.cantidad>1?'es':''}</span>
+  <div class="mu">${[c.camas?c.camas+' cama'+(c.camas>1?'s':''):'',c.detalle_camas,'hasta '+c.max_adultos+' adultos'+(c.max_menores?' + '+c.max_menores+' menores':'')].filter(Boolean).map(esc).join(' · ')}</div>
+  ${c.descripcion?`<p>${esc(c.descripcion)}</p>`:''}<div class="mu">Unidades: ${c.unidades.map(esc).join(', ')}</div><div class="dinero"><b>${clp(c.tarifa_base)}</b> <span class="mu">por noche</span></div></div>`}
+ $('#mo').innerHTML=`<div style="width:1000px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">🏨 Catálogo de unidades</h3><button onclick="cerrar()">✕</button></div><div class="cg">${h||'<p class="mu">Aún no hay unidades con categoría.</p>'}</div></div>`;
+ $('#mo').style.display='grid';
+}
+async function pDet(id){
+ const {data:t}=await sb.from('tipos_unidad').select('*').eq('id',id).single(),f=t.fotos||[];
+ $('#pc').innerHTML=`<button onclick="panel('tipos')">← Categorías</button><h4>${esc(t.nombre)}</h4><div class="rw" id="dt">${NI('camas',t.camas,'N° de camas','number')}${NI('detalle_camas',t.detalle_camas,'Detalle (ej. 1 matrimonial + 1 sofá cama)')}</div><label style="margin-top:8px">Descripción<textarea id="dd" rows="3">${esc(t.descripcion)}</textarea></label><button class="p" style="margin-top:6px" onclick="gDet('${id}')">Guardar detalle</button>
+ <h4>Fotos (${f.length})</h4><div class="ph" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">${f.map((x,i)=>`<div style="position:relative"><img src="${FU(x)}" style="height:90px"><button style="position:absolute;top:2px;right:2px;padding:0 6px" onclick="delFoto('${id}',${i})">✕</button></div>`).join('')}</div><input type="file" id="ff" accept="image/*" multiple> <button onclick="subirFotos('${id}')">Subir fotos</button><p class="mu">Máximo 5 MB por foto. Se ven en el catálogo de recepción.</p>`;
+}
+async function gDet(id){const o=datos($('#dt'));o.descripcion=$('#dd').value||null;const {error}=await sb.from('tipos_unidad').update(o).eq('id',id);er(error,'Detalle guardado')}
+async function subirFotos(id){
+ const fs=[...$('#ff').files];if(!fs.length)return msg('Elige una o más fotos',1);
+ const {data:t}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single(),n=t.fotos||[];
+ for(const f of fs){if(f.size>5e6){msg(f.name+' pesa más de 5 MB',1);continue}const p=id+'/'+Date.now()+'-'+f.name.replace(/[^\w.]+/g,'_'),{error}=await sb.storage.from('fotos_unidades').upload(p,f,{contentType:f.type});if(error){msg(error.message,1);continue}n.push(p)}
+ const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);er(error,'Fotos subidas');pDet(id)}
+async function delFoto(id,i){
+ if(!confirm('¿Quitar esta foto?'))return;const {data:t}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single(),n=t.fotos||[],[p]=n.splice(i,1);
+ await sb.storage.from('fotos_unidades').remove([p]);const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);er(error,'Foto eliminada');pDet(id)}
 iniciar();
 </script></body></html>
