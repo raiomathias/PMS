@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PMS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f4f5f7;--pn:#fff;--tx:#1c2430;--mu:#6b7686;--bd:#dfe3ea;--ac:#2563eb;--w:46px}
+[data-theme=dark]{--bg:#12161c;--pn:#1b212a;--tx:#e6eaf0;--mu:#8b96a5;--bd:#2c3542}
+body{margin:0;font:14px system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+button,input,select,textarea{font:inherit;color:inherit;background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:6px 8px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.r{background:#dc2626;color:#fff;border-color:#dc2626}
+#login{max-width:320px;margin:15vh auto;padding:24px;background:var(--pn);border:1px solid var(--bd);border-radius:12px;display:grid;gap:10px}
+header{display:flex;gap:8px;align-items:center;padding:10px 16px;background:var(--pn);border-bottom:1px solid var(--bd)}
+header b{margin-right:auto}
+#gw{overflow:auto;height:calc(100vh - 92px)}
+.fila{display:flex;border-bottom:1px solid var(--bd)}
+.et{position:sticky;left:0;z-index:3;flex:0 0 130px;box-sizing:border-box;background:var(--pn);padding:6px 8px;border-right:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.ed .et{background:var(--bg);font-weight:600;color:var(--mu);width:100%}
+.dias{position:relative;height:44px;flex:0 0 auto;background-image:repeating-linear-gradient(90deg,transparent 0 calc(var(--w) - 1px),var(--bd) calc(var(--w) - 1px) var(--w))}
+.cab{position:sticky;top:0;z-index:4;background:var(--pn)}
+.cab .dias{height:48px;display:flex;background:none}
+.d{flex:0 0 var(--w);text-align:center;font-size:11px;color:var(--mu);border-right:1px solid var(--bd);box-sizing:border-box}
+.hoy{position:absolute;top:0;bottom:0;width:var(--w);background:rgba(37,99,235,.09)}
+.blq{position:absolute;top:5px;bottom:5px;border-radius:6px;padding:2px 6px;font-size:11px;overflow:hidden;white-space:nowrap;cursor:pointer;color:#fff;box-sizing:border-box;line-height:1.25}
+.blq small{display:block;opacity:.85}
+.confirmada{background:#2563eb}.en_casa{background:#16a34a}.check_out{background:#6b7280}
+.tentativa{background:repeating-linear-gradient(45deg,#d97706,#d97706 6px,#f59e0b 6px,#f59e0b 12px)}
+.bloqueado{background:repeating-linear-gradient(45deg,#374151,#374151 6px,#4b5563 6px,#4b5563 12px)}
+#dr{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--pn);border-left:1px solid var(--bd);box-shadow:-8px 0 24px rgba(0,0,0,.2);padding:16px;overflow:auto;z-index:10;display:none}
+#mo{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;place-items:center;z-index:11}
+#mo>div{background:var(--pn);border-radius:12px;padding:20px;width:560px;max-width:95vw;max-height:92vh;overflow:auto}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:grid;gap:2px;font-size:12px;color:var(--mu)}
+.al{padding:8px;border-radius:6px;margin:6px 0;background:#fef3c7;color:#78350f}.al.r{background:#fee2e2;color:#7f1d1d}
+.cand{padding:6px;border:1px solid var(--bd);border-radius:6px;margin:4px 0;cursor:pointer}.cand.sel{border-color:var(--ac);background:rgba(37,99,235,.1)}
+#ms{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:8px;color:#fff;z-index:20;display:none}
+.lim{font-size:12px;font-weight:700}
+h4{margin:16px 0 6px}
+body.sd .dinero{display:none}
+.mu{color:var(--mu);font-size:12px}
+</style></head><body>
+<div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
+<div id="app" style="display:none">
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p" onclick="abrirNueva()">＋ Reserva / bloqueo</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo &nbsp;|&nbsp; Limpieza: 🧹S sucia · 🔄P en proceso · ✅L limpia · ⚠️D defectuosa</div>
+<div id="gw"></div></div>
+<div id="dr"></div><div id="mo"></div><div id="ms"></div>
+<script>
+// ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
+const SB_URL='PEGA_AQUI_TU_URL', SB_KEY='PEGA_AQUI_TU_ANON_KEY';
+// ====================================================================================
+const sb=supabase.createClient(SB_URL,SB_KEY),$=s=>document.querySelector(s),W=46,ND=30;
+const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,cur:null,g:null};
+const LIM={sucia:['🧹','S','#d97706','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#dc2626','Defectuosa']};
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n||0);
+const addD=(s,n)=>{const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const diff=(a,b)=>Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/864e5);
+const hoyStr=()=>new Date().toLocaleDateString('sv',{timeZone:'America/Santiago'});
+const fm=s=>s.slice(8)+'/'+s.slice(5,7), hh=k=>parseInt(String(k).slice(0,2));
+const errTxt=e=>e.code==='23P01'?'La unidad ya está ocupada en esas fechas':e.message;
+const er=(e,ok)=>e?msg(errTxt(e),1):msg(ok);
+const F=(id,l,v='',t='text')=>`<label>${l}<input id="${id}" type="${t}" value="${esc(v)}"></label>`;
+const SEL=(id,l,o,v)=>`<label>${l}<select id="${id}">${o.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select></label>`;
+function msg(t,err){const m=$('#ms');m.textContent=t;m.style.background=err?'#b91c1c':'#111';m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',4500)}
+function tema(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.t=t}catch(e){}}
+try{document.documentElement.dataset.theme=localStorage.t||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch(e){}
+
+// ---------- Sesión ----------
+const emailDe=n=>n.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.')+'@pms.local';
+async function entrar(){const {error}=await sb.auth.signInWithPassword({email:emailDe($('#lu').value),password:$('#lp').value});if(error)return msg('Usuario o clave incorrectos',1);iniciar()}
+async function salir(){await sb.auth.signOut();location.reload()}
+async function iniciar(){
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session){$('#login').style.display='grid';$('#app').style.display='none';return}
+ const {data:p}=await sb.from('perfiles').select('nombre_completo,rol,activo').eq('id',session.user.id).maybeSingle();
+ if(!p||!p.activo){await sb.auth.signOut();$('#login').style.display='grid';return msg('Usuario sin perfil activo',1)}
+ S.perfil=p;S.ini=addD(hoyStr(),-2);
+ $('#login').style.display='none';$('#app').style.display='block';
+ $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
+ document.body.classList.toggle('sd',p.rol==='administracion'); // Administración no ve montos
+ if(p.rol==='limpieza'){$('#gw').innerHTML='<p style="padding:20px">La vista móvil de limpieza llega en el siguiente paso.</p>';return}
+ const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
+ await cargar();
+ let t;const d=()=>{clearTimeout(t);t=setTimeout(cargar,400)};
+ sb.channel('pms').on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).subscribe();
+}
+
+// ---------- Planificador ----------
+function mover(n){S.ini=n===0?addD(hoyStr(),-2):addD(S.ini,n);cargar()}
+async function cargar(){
+ const fin=addD(S.ini,ND);$('#hf').value=S.ini;
+ const [u,r,l]=await Promise.all([
+  sb.from('unidades').select('id,codigo,orden,edificio_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true),
+  sb.from('reservas').select('*,huespedes(uid_huesped)').lt('fecha_entrada',fin).gt('fecha_salida',S.ini).not('estado','in','(cancelada,no_show)'),
+  sb.from('estado_limpieza_actual').select('*')]);
+ if(u.error||r.error)return msg((u.error||r.error).message,1);
+ S.unidades=u.data.sort((a,b)=>(a.edificios.orden-b.edificios.orden)||(a.orden-b.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
+ S.res=r.data;S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));dibujar();
+}
+function dibujar(){
+ const hoy=hoyStr(),hi=diff(S.ini,hoy);let h='<div class="fila cab"><div class="et"></div><div class="dias" style="width:'+ND*W+'px">';
+ for(let i=0;i<ND;i++){const d=addD(S.ini,i),t=new Date(d+'T00:00:00Z'),n=t.getUTCDate();
+  h+=`<div class="d" ${d===hoy?'style="background:rgba(37,99,235,.18)"':''}>${'DLMMJVS'[t.getUTCDay()]}<br><b>${n}</b>${n===1?'<br>'+t.toLocaleDateString('es',{month:'short',timeZone:'UTC'}):''}</div>`}
+ h+='</div></div>';let ed=null;
+ for(const u of S.unidades){
+  if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div></div>`}
+  const l=S.lim[u.id],li=l&&LIM[l.estado];let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';
+  for(const r of S.res.filter(x=>x.unidad_id===u.id)){
+   const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=a>=0?(a+.5)*W:0,right=Math.min((z+.5)*W,ND*W);
+   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`${esc(r.huesped_nombre_copia)}<small>${esc(r.uid_reserva)} · ${esc(r.huespedes?.uid_huesped||'')} · ${fm(r.fecha_entrada)}–${fm(r.fecha_salida)}</small>`;
+   b+=`<div class="blq ${r.estado}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}</div>`}
+  h+=`<div class="fila"><div class="et"><b>${esc(u.codigo)}</b>${li?`<span class="lim" style="color:${li[2]}" title="${li[3]}">${li[0]}${li[1]}</span>`:''}</div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}</div></div>`}
+ $('#gw').innerHTML=h;
+}
+$('#gw').onclick=e=>{const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
+ const d=e.target.closest('.dias[data-u]');if(d)abrirNueva({unidad:d.dataset.u,entrada:addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W))})};
+$('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
+const cerrar=()=>{$('#mo').style.display='none'},cerrarDr=()=>{$('#dr').style.display='none'};
+
+// ---------- Nueva reserva / bloqueo ----------
+let N={h:null,c:[],lista:false};
+function abrirNueva(p={}){
+ N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr();
+ const uo=S.unidades.map(u=>`<option value="${u.id}" ${u.id===p.unidad?'selected':''}>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</option>`).join('');
+ $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
+ <div class="g2"><label>Unidad<select id="nu" onchange="$('#nta').value=S.unidades.find(u=>u.id===this.value).tipos_unidad?.tarifa_base||0">${uo}</select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',addD(ent,1),'date')}</div>
+ <div id="nb" style="display:none">${F('nm','Motivo del bloqueo')}</div>
+ <div id="nr"><h4>Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
+ <div id="nf"><div class="g2">${F('hn','Nombre completo')}${SEL('hd','Tipo doc.',['rut','pasaporte','dni','otro'],'rut')}${F('hx','N° documento')}${F('ht','Teléfono')}${F('hna','Nacionalidad')}${F('hc','Ciudad de origen')}</div></div>
+ <h4>Reserva</h4><div class="g2">${F('nx','Código externo del canal')}${F('nta','Tarifa por noche',S.unidades.find(u=>u.id===(p.unidad||S.unidades[0]?.id))?.tipos_unidad?.tarifa_base||0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
+ <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk"> Usa estacionamiento</label><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div>
+ <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarNueva()">Guardar</button></div></div>`;
+ $('#mo').style.display='grid';
+}
+let bt;function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
+ const q=$('#nq').value.trim();if(q.length<2){$('#nl').innerHTML='';return}
+ const qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();let f='nombre_completo.ilike.%'+q.replace(/[,()%]/g,' ')+'%';if(qd.length>=4)f+=',documento_normalizado.ilike.%'+qd+'%';
+ const {data}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,ciudad_origen').or(f).limit(6);N.c=data||[];
+ const {data:rs}=N.c.length?await sb.from('resumen_huesped').select('*').in('huesped_id',N.c.map(x=>x.id)):{data:[]};
+ $('#nl').innerHTML=N.c.map(g=>{const s=(rs||[]).find(x=>x.huesped_id===g.id)||{};return`<div class="cand" data-h="${g.id}" onclick="elegirH('${g.id}')"><b>${esc(g.nombre_completo)}</b> <span class="mu">${esc(g.uid_huesped)}</span><br><span class="mu">${esc(g.ciudad_origen||'sin ciudad')} · ${esc(g.telefono||'sin teléfono')} · doc …${esc((g.numero_documento||'').slice(-4)||'—')} · ${s.estadias||0} estadías, ${s.cancelaciones||0} cancel.</span></div>`}).join('')+`<div class="cand" onclick="nuevoH()">＋ Es otra persona: crear huésped nuevo</div>`},300)}
+function nuevoH(){N.h=null;N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));$('#hn').value=$('#nq').value}
+async function elegirH(id){
+ N.h=id;$('#nf').style.display='none';document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
+ const g=N.c.find(x=>x.id===id);
+ const [n,l]=await Promise.all([sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),sb.rpc('revisar_lista_negra',{p_documento:g.numero_documento,p_nombre:g.nombre_completo})]);
+ N.lista=!!l.data?.length;
+ $('#na').innerHTML=(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
+}
+async function guardarNueva(){
+ const fe=$('#ne').value,fs=$('#ns').value,unidad=$('#nu').value;if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);
+ if($('#nt').value==='b'){const {error}=await sb.from('reservas').insert({unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'bloqueado',observaciones:$('#nm').value||'Bloqueo'});if(error)return msg(errTxt(error),1);cerrar();return cargar()}
+ if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
+ let hid=N.h;
+ if(hid){if(N.lista&&!confirm('⛔ Este huésped está en la lista negra. ¿Continuar igualmente?'))return}
+ else{const nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
+  const {data:lg}=await sb.rpc('revisar_lista_negra',{p_documento:$('#hx').value,p_nombre:nom});
+  if(lg?.length&&!confirm('⛔ Coincide con la lista negra: '+lg[0].motivo+'\n¿Continuar igualmente?'))return;
+  const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
+  if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
+ const {error}=await sb.from('reservas').insert({huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,canal:$('#nc').value,referencia_externa:$('#nx').value||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null});
+ if(error)return msg(errTxt(error),1);cerrar();msg('Reserva creada');cargar();
+}
+
+// ---------- Detalle de reserva ----------
+async function abrirDr(id){
+ const r=S.res.find(x=>x.id===id);if(!r)return;S.cur=r;const u=S.unidades.find(x=>x.id===r.unidad_id),D=$('#dr');D.style.display='block';
+ const top=`<div style="display:flex;justify-content:space-between"><b>${esc(r.uid_reserva)} · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</b><button onclick="cerrarDr()">✕</button></div>`;
+ if(r.estado==='bloqueado'){D.innerHTML=top+`<p>🔒 ${esc(r.observaciones)}</p><p>${r.fecha_entrada} → ${r.fecha_salida}</p><button class="r" onclick="accion('del')">Quitar bloqueo</button>`;return}
+ D.innerHTML=top+'<p>Cargando…</p>';
+ const q=(t,c,v)=>sb.from(t).select('*').eq(c,v);
+ const [c,p,a,n,s,g]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single()]);
+ const G=g.data||{},sa=s.data||{},pend=Math.max(0,(sa.total_a_pagar||0)-(sa.total_pagado||0));
+ const B={confirmada:[['in','Check-in','p'],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[];
+ D.innerHTML=top+`<p><b>${esc(r.huesped_nombre_copia)}</b> <span class="mu">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></p>
+ <div style="display:flex;gap:8px">${B.map(b=>`<button class="${b[2]}" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}</div>
+ ${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}<button onclick="notaNueva()" style="margin-top:4px">＋ Nota al perfil</button>
+ <h4>Huésped ${u.edificios.requiere_documento?'':'<span class="mu">(acceso remoto: documento no requerido)</span>'}</h4><div class="g2">${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div><button onclick="guardarG()" style="margin-top:6px">Guardar huésped</button>
+ <h4>Acompañantes</h4>${(a.data||[]).map(x=>`<div>${esc(x.nombre_completo)} <span class="mu">${esc(x.numero_documento||(x.es_menor?'menor':'sin doc.'))}</span> <a href="#" onclick="delAc('${x.id}');return false">✕</a></div>`).join('')}
+ <div class="g2">${F('an','Nombre')}${F('ad','N° documento')}</div><label style="flex-direction:row;display:flex;gap:6px"><input type="checkbox" id="am"> Menor</label><button onclick="addAc()">Agregar acompañante</button>
+ <h4>Reserva</h4><div class="g2">${F('rh1','Llegada aprox.',r.hora_llegada_aprox,'time')}${F('rh2','Salida aprox.',r.hora_salida_aprox,'time')}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}</div>
+ <label style="flex-direction:row;display:flex;gap:6px;margin:6px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:6px">Guardar reserva</button>
+ <div class="dinero"><h4>Cuenta · ${r.estado_pago}</h4><div>Total ${clp(sa.total_a_pagar)} · Pagado ${clp(sa.total_pagado)} · <b>Pendiente ${clp(pend)}</b></div>
+ ${(c.data||[]).map(x=>`<div class="mu">${esc(x.tipo)} ${x.cantidad}× ${clp(x.monto_unitario)} = ${clp(x.total)} ${esc(x.descripcion||'')}</div>`).join('')}
+ <div class="g2">${SEL('ct','Cargo',['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'],'otro').replace('<select ','<select onchange="defCargo()" ')}${F('cd','Descripción')}${F('cq','Cantidad (horas / noches)',1,'number')}${F('cm','Monto unitario',0,'number')}</div><button onclick="addCargo()">Agregar cargo</button>
+ ${(p.data||[]).map(x=>`<div class="mu">💵 ${x.metodo} ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)} ${x.anticipado?'(anticipado)':''}</div>`).join('')}
+ <div class="g2">${SEL('pk','Método',['efectivo','transferencia','webpay','tarjeta_debito','tarjeta_credito'],'efectivo')}${SEL('pm','Moneda',['CLP','USD'],'CLP')}${F('pa','Monto',pend||'','number')}${F('pt','Tipo de cambio (solo USD)','','number')}</div><label style="flex-direction:row;display:flex;gap:6px"><input type="checkbox" id="pn"> Pago anticipado</label><button onclick="addPago()">Registrar pago</button></div>`;
+}
+const refrescar=async()=>{await cargar();S.res.find(x=>x.id===S.cur.id)?abrirDr(S.cur.id):cerrarDr()};
+async function accion(k){
+ const r=S.cur;let e;
+ if(k==='in')({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
+ if(k==='out'){const n=prompt('Nota para el perfil del huésped (opcional):');if(n===null)return;({error:e}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n}))}
+ if(k==='can'){const m=prompt('Motivo de la cancelación:');if(!m)return;const x=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:m});e=x.error;if(!e&&x.data)msg('Cancelada. Cargo aplicado: '+clp(x.data))}
+ if(k==='conf')({error:e}=await sb.from('reservas').update({estado:'confirmada'}).eq('id',r.id));
+ if(k==='del')({error:e}=await sb.from('reservas').delete().eq('id',r.id));
+ if(e)return msg(errTxt(e),1);refrescar();
+}
+async function guardarR(){const v=i=>$('#'+i).value||null;
+ const {error}=await sb.from('reservas').update({hora_llegada_aprox:v('rh1'),hora_salida_aprox:v('rh2'),canal:v('rc'),referencia_externa:v('rx'),adultos:+$('#ra').value||1,menores:+$('#rm').value||0,tarifa_noche:+$('#rt').value||0,numero_boleta:v('rb'),usa_estacionamiento:$('#re').checked,modelo_vehiculo:v('rv'),patente_vehiculo:v('rp'),observaciones:v('ro')}).eq('id',S.cur.id);
+ er(error,'Reserva guardada');if(!error)refrescar()}
+async function guardarG(){const v=i=>$('#'+i).value||null;
+ const {error}=await sb.from('huespedes').update({tipo_documento:v('gd'),numero_documento:v('gn'),telefono:v('gt'),nacionalidad:v('gna'),ciudad_origen:v('gc')}).eq('id',S.cur.huesped_id);
+ er(error&&(error.code==='23505'?{message:'Ya existe otro huésped con ese documento'}:error),'Huésped guardado')}
+async function notaNueva(){const n=prompt('Nota para el perfil del huésped:');if(!n)return;const {error}=await sb.from('notas_huesped').insert({huesped_id:S.cur.huesped_id,reserva_id:S.cur.id,nota:n});er(error,'Nota guardada');if(!error)abrirDr(S.cur.id)}
+async function addAc(){const n=$('#an').value.trim();if(!n)return msg('Falta el nombre',1);const {error}=await sb.from('acompanantes').insert({reserva_id:S.cur.id,nombre_completo:n,numero_documento:$('#ad').value||null,es_menor:$('#am').checked});er(error,'Acompañante agregado');if(!error)abrirDr(S.cur.id)}
+async function delAc(id){await sb.from('acompanantes').delete().eq('id',id);abrirDr(S.cur.id)}
+function defCargo(){const t=$('#ct').value,c=S.cfg,m={check_in_temprano:[c.tarifa_hora_extra,1],check_out_tardio:[c.tarifa_hora_extra,1],estacionamiento:[c.tarifa_estacionamiento_noche,S.cur.noches]}[t]||[0,1];$('#cm').value=m[0];$('#cq').value=m[1]}
+async function addCargo(){
+ const t=$('#ct').value,q=+$('#cq').value,m=+$('#cm').value,c=S.cfg;
+ const mx={check_in_temprano:hh(c.hora_check_in)-hh(c.limite_check_in_temprano),check_out_tardio:hh(c.limite_check_out_tardio)-hh(c.hora_check_out)}[t];
+ if(mx!==undefined&&(q<1||q>mx))return msg(`Máximo ${mx} h: el sistema no permite más allá del límite de las ${t==='check_in_temprano'?c.limite_check_in_temprano:c.limite_check_out_tardio}`,1);
+ const {error}=await sb.from('cargos').insert({reserva_id:S.cur.id,tipo:t,descripcion:$('#cd').value||null,cantidad:q,monto_unitario:t==='descuento'?-Math.abs(m):m});
+ er(error,'Cargo agregado');if(!error)refrescar()}
+async function addPago(){
+ const usd=$('#pm').value==='USD',mo=+$('#pa').value,tc=+$('#pt').value;
+ if(!(mo>0))return msg('Monto inválido',1);if(usd&&!(tc>0))return msg('Indica el tipo de cambio',1);if(usd&&$('#pk').value!=='efectivo')return msg('USD solo en efectivo',1);
+ const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:$('#pk').value,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:Math.round(usd?mo*tc:mo),anticipado:$('#pn').checked});
+ er(error,'Pago registrado');if(!error)refrescar()}
+iniciar();
+</script></body></html>
