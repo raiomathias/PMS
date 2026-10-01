@@ -92,6 +92,8 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 #gal .fl{position:absolute;top:50%;transform:translateY(-50%);font-size:28px;padding:12px 18px;background:rgba(255,255,255,.18);color:#fff;border:0}
 #gal .th{display:flex;gap:6px;justify-content:center;padding:10px;overflow:auto}
 #gal .th img{height:60px;width:90px;flex:none;object-fit:cover;border-radius:6px;opacity:.5;cursor:pointer}#gal .th img.on{opacity:1;outline:2px solid #fff}
+.lc{position:absolute;top:0;bottom:0;width:var(--w);pointer-events:none;box-sizing:border-box}
+.lc.limpia{background:rgba(22,163,74,.30)}.lc.en_proceso{background:rgba(37,99,235,.30)}.lc.sucia,.lc.defectuosa{background:rgba(220,38,38,.34)}
 /* ---- Garantía / arrastre / cancelaciones ---- */
 .blq.gar{background:#dc2626!important}
 .rz{position:absolute;right:0;top:0;bottom:0;width:10px;cursor:ew-resize;border-radius:0 8px 8px 0;touch-action:none}
@@ -117,7 +119,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza: 🧹S sucia · 🔄P en proceso · ✅L limpia · ⚠️D defectuosa</div>
+<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="gal"></div><div id="ms"></div>
 <script>
@@ -166,14 +168,17 @@ async function iniciar(){
 function mover(n){S.ini=n===0?addD(hoyStr(),-2):addD(S.ini,n);cargar()}
 async function cargar(){
  const fin=addD(S.ini,ND);$('#hf').value=S.ini;
- const [u,r,l,gp]=await Promise.all([
+ const [u,r,l,gp,lh]=await Promise.all([
   sb.from('unidades').select('id,codigo,orden,edificio_id,tipo_unidad_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true),
   sb.from('reservas').select('*,huespedes(uid_huesped)').lt('fecha_entrada',fin).gt('fecha_salida',S.ini).not('estado','in','(cancelada,no_show)'),
   sb.from('estado_limpieza_actual').select('*'),
-  sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).lt('fecha_entrada',fin).gt('fecha_salida',S.ini)]);
+  sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).lt('fecha_entrada',fin).gt('fecha_salida',S.ini),
+  sb.rpc('limpieza_grilla',{p_desde:addD(hoyStr(),-2)})]);
  if(u.error||r.error)return msg((u.error||r.error).message,1);
  S.unidades=u.data.sort((a,b)=>(a.edificios.orden-b.edificios.orden)||(a.orden-b.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
- S.tipos={};S.unidades.forEach(u=>S.tipos[u.tipo_unidad_id||'']=u.tipos_unidad||{nombre:'Sin categoría',tarifa_base:0});S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));S.res=r.data;S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));dibujar();
+ S.tipos={};S.unidades.forEach(u=>S.tipos[u.tipo_unidad_id||'']=Object.assign({},u.tipos_unidad||{nombre:'Sin categoría',tarifa_base:0},{ed:u.edificios.nombre}));S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));S.res=r.data;S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));
+ S.lh={};if(lh.error){if(!S.lhMsg){S.lhMsg=1;msg('Falta correr el SQL de limpieza: '+lh.error.message,1)}}else(lh.data||[]).forEach(x=>(S.lh[x.unidad_id]=S.lh[x.unidad_id]||[]).push(x));
+ Object.values(S.lh).forEach(a=>a.sort((p,q)=>Date.parse(p.creado_en)-Date.parse(q.creado_en)));dibujar();
 }
 function dibujar(){
  const hoy=hoyStr(),hi=diff(S.ini,hoy);let h='<div class="fila cab"><div class="et"></div><div class="dias" style="width:'+ND*W+'px">';
@@ -182,17 +187,17 @@ function dibujar(){
  h+='</div></div>';let ed=null;
  for(const u of S.unidades){
   if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div></div>`}
-  const l=S.lim[u.id],li=l&&LIM[l.estado];let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';
+  let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';b+=celdasLimp(u.id,hi);
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
    const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
    b+=`<div class="blq ${r.estado}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
-  h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div>${li?`<span class="lim" style="color:${li[2]}" title="${li[3]}">${li[0]}${li[1]}</span>`:''}</div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
+  h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div></div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
  $('#gw').innerHTML=h;barra();
 }
 $('#gw').onclick=e=>{if(DRGsup)return;const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
  const d=e.target.closest('.dias[data-u]');if(d){const f=addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W)),q=S.sel;S.sel=e.shiftKey&&q&&q.u===d.dataset.u?{u:q.u,a:q.a,b:f}:{u:d.dataset.u,a:f,b:f};dibujar()}};
-$('#gw').addEventListener('wheel',e=>{if(!e.shiftKey)return;e.preventDefault();$('#gw').scrollLeft+=e.deltaY||e.deltaX},{passive:false});
+document.addEventListener('wheel',e=>{if(!e.shiftKey||$('#cat').style.display==='flex')return;const g=$('#gw');if(!g||!g.offsetParent)return;e.preventDefault();g.scrollLeft+=e.deltaY||e.deltaX},{passive:false});
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
 const cerrar=()=>{$('#mo').style.display='none';if(PT){const f=PT;PT=null;f(null)}if(A.open){A.open=false;cargar()}},cerrarDr=()=>{$('#dr').style.display='none'};
 
@@ -202,7 +207,7 @@ function abrirNueva(p={}){
  N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
  const pu=S.unidades.find(u=>u.id===p.unidad),pt=p.tipo!==undefined?p.tipo:pu?(pu.tipo_unidad_id||''):tk[0]?.[0],pe=p.edificio||(pu?pu.edificio_id:'');
  $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
- <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pe===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+ <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}${t.ed?' · '+esc(t.ed):''}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pe===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
  <label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',p.salida||addD(ent,1),'date')}</div></div>
  <div id="nb" class="sec c5" style="display:none"><h4 class="st">🔒 Bloqueo</h4>${F('nm','Motivo del bloqueo')}</div>
  <div id="nr"><div class="sec c1"><h4 class="st">👤 Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
@@ -224,6 +229,21 @@ async function elegirUnidad(fe,fs){
  if(error){msg(error.message,1);return null}
  const oc=new Set(data.map(x=>x.unidad_id)),u=[...$('#nu').options].map(o=>o.value).find(x=>x&&!oc.has(x));
  if(!u)msg('No hay unidades libres de esa categoría en esas fechas',1);return u||null}
+// ---------- Color de limpieza en la grilla (solo ayer y hoy) ----------
+function medianoche(d){const o=Date.parse(d+'T00:00:00Z');let t=o;for(let i=0;i<2;i++){const l=Date.parse(new Date(t).toLocaleString('sv',{timeZone:'America/Santiago'}).replace(' ','T')+'Z');t+=o-l}return t}
+function estLimp(uid,ts){
+ const a=S.lh?.[uid]||[];let r=null;for(const x of a){if(Date.parse(x.creado_en)<=ts)r=x;else break}if(!r)return null;
+ const ini=r.iniciado_en?Date.parse(r.iniciado_en):null,fin=r.terminado_en?Date.parse(r.terminado_en):null;let st;
+ if(r.estado==='sucia')st='sucia';
+ else if(r.estado==='en_proceso')st=ini&&ts>=ini?'en_proceso':'sucia';
+ else st=(fin===null||ts>=fin)?r.estado:(ini&&ts>=ini)?'en_proceso':'sucia';
+ if(st==='limpia'){const desde=fin??Date.parse(r.creado_en);
+  if(S.res.some(x=>x.unidad_id===uid&&x.entrada_real&&Date.parse(x.entrada_real)>=desde&&Date.parse(x.entrada_real)<=ts))return null}
+ return st}
+function celdasLimp(uid,hi){
+ const fin=[medianoche(hoyStr())-1,Date.now()];let h='';
+ [hi-1,hi].forEach((i,k)=>{if(i<0||i>=ND)return;const st=estLimp(uid,fin[k]);if(st)h+=`<div class="lc ${st}" style="left:${i*W}px" title="${LIM[st][3]} · ${k?'hoy':'ayer'}"></div>`});
+ return h}
 const ord=q=>q.a<q.b?[q.a,q.b]:[q.b,q.a];
 function barra(){const q=S.sel,B=$('#bar');
  if(!q){B.innerHTML='<span class="mu">Haz clic en una celda para seleccionar una noche · Shift+clic amplía el rango en la misma unidad</span>';return}
@@ -235,14 +255,15 @@ function selHtml(id){const q=S.sel;if(!q||q.u!==id)return'';const [a,z]=ord(q),i
 let bt;function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
  const q=$('#nq').value.trim();if(q.length<2){$('#nl').innerHTML='';return}
  const qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();let f='nombre_completo.ilike.%'+q.replace(/[,()%]/g,' ')+'%';if(qd.length>=4)f+=',documento_normalizado.ilike.%'+qd+'%';
- const {data}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,ciudad_origen').or(f).limit(6);N.c=data||[];
+ const {data}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,nacionalidad,ciudad_origen').or(f).limit(6);N.c=data||[];
  const {data:rs}=N.c.length?await sb.from('resumen_huesped').select('*').in('huesped_id',N.c.map(x=>x.id)):{data:[]};
  const {data:hs}=N.c.length?await sb.from('reservas').select('huesped_id,estado').in('huesped_id',N.c.map(x=>x.id)).in('estado',['cancelada','no_show']):{data:[]};
  $('#nl').innerHTML=N.c.map(g=>{const s=(rs||[]).find(x=>x.huesped_id===g.id)||{},hc=(hs||[]).filter(x=>x.huesped_id===g.id),nc=hc.filter(x=>x.estado==='cancelada').length,nn=hc.length-nc;return`<div class="cand" data-h="${g.id}" onclick="elegirH('${g.id}')"><b>${esc(g.nombre_completo)}</b> <span class="mu">${esc(g.uid_huesped)}</span><br><span class="mu">${esc(g.ciudad_origen||'sin ciudad')} · ${esc(g.telefono||'sin teléfono')} · doc …${esc((g.numero_documento||'').slice(-4)||'—')} · ${s.estadias||0} estadías, ${nc} cancel., ${nn} no-show</span>${nc||nn?' <span class="tg">⚠ antecedentes</span>':''}</div>`}).join('')+`<div class="cand" onclick="nuevoH()">＋ Es otra persona: crear huésped nuevo</div>`},300)}
-function nuevoH(){N.h=null;N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));$('#hn').value=$('#nq').value}
+function llenarH(g){$('#hn').value=g.nombre_completo||'';$('#hd').value=g.tipo_documento||'rut';$('#hx').value=g.numero_documento||'';$('#ht').value=g.telefono||'';$('#hna').value=g.nacionalidad||'';$('#hc').value=g.ciudad_origen||''}
+function nuevoH(){N.h=null;N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));llenarH({});$('#hn').value=$('#nq').value}
 async function elegirH(id){
- N.h=id;$('#nf').style.display='none';document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
- const g=N.c.find(x=>x.id===id);
+ N.h=id;document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
+ const g=N.c.find(x=>x.id===id);$('#nf').style.display='block';llenarH(g);
  const [n,l,hh]=await Promise.all([sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),sb.rpc('revisar_lista_negra',{p_documento:g.numero_documento,p_nombre:g.nombre_completo}),sb.from('reservas').select('estado').eq('huesped_id',id).in('estado',['cancelada','no_show'])]);
  N.lista=!!l.data?.length;
  $('#na').innerHTML=antec(hh.data||[])+(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
@@ -252,7 +273,14 @@ async function guardarNueva(){
  if($('#nt').value==='b'){const {error}=await sb.from('reservas').insert({unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'bloqueado',observaciones:$('#nm').value||'Bloqueo'});if(error)return msg(errTxt(error),1);cerrar();return cargar()}
  if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
  let hid=N.h;
- if(hid){if(N.lista&&!confirm('⛔ Este huésped está en la lista negra. ¿Continuar igualmente?'))return}
+ if(hid){if(N.lista&&!confirm('⛔ Este huésped está en la lista negra. ¿Continuar igualmente?'))return;
+  const g0=N.c.find(x=>x.id===hid)||{},nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
+  const nuevo={nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value.trim()||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null};
+  const cambio=Object.keys(nuevo).some(k=>(nuevo[k]||null)!==(g0[k]||null));
+  if(cambio){
+   if(nuevo.numero_documento&&nuevo.numero_documento!==(g0.numero_documento||null)){const {data:lg2}=await sb.rpc('revisar_lista_negra',{p_documento:nuevo.numero_documento,p_nombre:nom});if(lg2?.length&&!confirm('⛔ El nuevo documento coincide con la lista negra: '+lg2[0].motivo+'\n¿Continuar igualmente?'))return}
+   const {error:eg}=await sb.from('huespedes').update(nuevo).eq('id',hid);
+   if(eg)return msg(eg.code==='23505'?'Ese documento ya pertenece a otro huésped: búscalo arriba':errTxt(eg),1)}}
  else{const nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
   const {data:lg}=await sb.rpc('revisar_lista_negra',{p_documento:$('#hx').value,p_nombre:nom});
   if(lg?.length&&!confirm('⛔ Coincide con la lista negra: '+lg[0].motivo+'\n¿Continuar igualmente?'))return;
@@ -296,13 +324,22 @@ const refrescar=async()=>{await cargar();abrirDr(S.cur.id)};
 async function accion(k){
  const r=S.cur;let e;
  if(k==='in')({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
- if(k==='out'){const n=prompt('Nota para el perfil del huésped (opcional):');if(n===null)return;({error:e}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n}))}
+ if(k==='out')return abrirCheckOut();
  if(k==='can'){const m=prompt('Motivo de la cancelación:');if(!m)return;const x=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:m});e=x.error;if(!e&&x.data)msg('Cancelada. Cargo aplicado: '+clp(x.data))}
  if(k==='conf')({error:e}=await sb.from('reservas').update({estado:'confirmada'}).eq('id',r.id));
  if(k==='ns'){const n=prompt('Nota del no-show (opcional):');if(n===null)return;const x=await sb.rpc('marcar_no_show',{p_reserva_id:r.id,p_nota:n});e=x.error;if(!e)msg('No-show registrado. Cargo aplicado: '+clp(x.data)+'. Se recomienda cobrarlo, pero no es obligatorio.')}
  if(k==='del')({error:e}=await sb.from('reservas').delete().eq('id',r.id));
  if(e)return msg(errTxt(e),1);refrescar();
 }
+function abrirCheckOut(){const r=S.cur;
+ $('#mo').innerHTML=`<div style="width:520px"><h3 style="margin:0 0 4px">Check-out · ${esc(r.huesped_nombre_copia||'')}</h3><p class="mu" style="margin-top:0">${esc(nomU(r.unidad_id))}</p>
+ <label>Observaciones para el personal de limpieza (opcional)<textarea id="co1" rows="3" placeholder="Ej.: dejó la ventana abierta, cama extra sin desarmar, mancha en la alfombra"></textarea></label>
+ <label style="margin-top:8px">Nota para el perfil del huésped (opcional)<textarea id="co2" rows="2" placeholder="Ej.: cliente ruidoso, dejó olvidado un objeto, VIP"></textarea></label>
+ <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="hacerCheckOut()">Confirmar check-out</button></div></div>`;
+ $('#mo').style.display='grid';$('#co1').focus()}
+async function hacerCheckOut(){const r=S.cur,o=$('#co1').value.trim(),n=$('#co2').value.trim();
+ const {error}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n||null,p_obs_limpieza:o||null});
+ if(error)return msg(errTxt(error),1);cerrar();msg('Check-out realizado'+(o?' · observación enviada a limpieza':''));refrescar()}
 async function guardarR(){const v=i=>$('#'+i).value||null;
  const {error}=await sb.from('reservas').update({hora_llegada_aprox:v('rh1'),hora_salida_aprox:v('rh2'),canal:v('rc'),referencia_externa:v('rx'),adultos:+$('#ra').value||1,menores:+$('#rm').value||0,tarifa_noche:+$('#rt').value||0,numero_boleta:v('rb'),usa_estacionamiento:$('#re').checked,modelo_vehiculo:v('rv'),patente_vehiculo:v('rp'),observaciones:v('ro')}).eq('id',S.cur.id);
  er(error,'Reserva guardada');if(!error)refrescar()}
@@ -327,19 +364,37 @@ async function addPago(){
  const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:mt,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:Math.round(usd?mo*tc:mo),anticipado:$('#pn').checked,motivo:$('#pmo').value,id_transaccion:tx||null});
  er(error,'Pago registrado');if(!error)refrescar()}
 // ---------- Limpieza: vista móvil (rol limpieza) ----------
+let LB={e:''};const hm=t=>t?String(t).slice(0,5):'';
 async function vistaLimpieza(){
- $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><button onclick="salir()">Salir</button></header><div id="tl"></div>`;
+ $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><button onclick="salir()">Salir</button></header><div style="padding:10px 12px;max-width:560px;margin:0 auto"><select id="le" style="width:100%;font-size:16px;padding:10px" onchange="LB.e=this.value;try{localStorage.le=this.value}catch(e){};tareasLimp()"></select><div id="lr" class="mu" style="margin-top:8px"></div></div><div id="tl"></div>`;
+ const {data:eds}=await sb.rpc('edificios_limpieza'),E=eds||[];let sv;try{sv=localStorage.le}catch(e){}
+ LB.e=sv===undefined?(E[0]?.id||''):sv;if(LB.e&&!E.some(x=>x.id===LB.e))LB.e='';
+ $('#le').innerHTML='<option value="">Todos los edificios</option>'+E.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');$('#le').value=LB.e;
  await tareasLimp();let t;const d=()=>{clearTimeout(t);t=setTimeout(tareasLimp,400)};
- sb.channel('mov').on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).subscribe();
+ sb.channel('mov').on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).subscribe();
  setInterval(tareasLimp,60000);
 }
 async function tareasLimp(){
- const {data,error}=await sb.rpc('mis_tareas_limpieza');if(error)return msg(error.message,1);
- $('#tl').innerHTML=data.length?data.map(t=>{const L=LIM[t.estado],id=t.limpieza_id;
-  const bt={sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
-  return `<div class="tk" style="border-left-color:${L[2]}"><h3>${esc(t.edificio)} · ${esc(t.unidad_codigo)}</h3><b style="color:${L[2]}">${L[0]} ${L[3]}</b>${t.llega_hoy?`<span class="tg">Llega hoy${t.hora_llegada?' · '+t.hora_llegada.slice(0,5):''}</span>`:''}
-  ${t.observacion_recepcion?`<p>📝 Recepción: ${esc(t.observacion_recepcion)}</p>`:''}${t.observacion_limpieza?`<p class="mu">Tu observación: ${esc(t.observacion_limpieza)}</p>`:''}
-  <div class="bt">${bt.map(b=>`<button class="${b[2]}" onclick="cambiarLimp('${id}','${b[0]}')">${b[1]}</button>`).join('')}</div></div>`}).join(''):'<p class="mu" style="padding:20px;text-align:center">No hay unidades por limpiar.</p>';
+ const {data,error}=await sb.rpc('tablero_limpieza',{p_edificio:LB.e||null});if(error)return msg(error.message,1);
+ // 0 = por limpiar (ya liberada) · 1 = aún ocupada · 2 = limpia
+ const g=t=>t.reserva_estado==='en_casa'?1:t.estado==='limpia'?2:0;
+ const L=(data||[]).slice().sort((a,b)=>g(a)-g(b)||(b.hay_ingreso-a.hay_ingreso)||String(a.hora_llegada||'99').localeCompare(String(b.hora_llegada||'99'))||a.edificio.localeCompare(b.edificio)||a.unidad_codigo.localeCompare(b.unidad_codigo,'es',{numeric:true}));
+ const n0=L.filter(t=>g(t)===0).length,n1=L.filter(t=>g(t)===1).length,n2=L.length-n0-n1;
+ $('#lr').textContent=L.length?`Por limpiar: ${n0} · Aún ocupadas: ${n1} · Limpias: ${n2}`:'';
+ $('#tl').innerHTML=L.length?L.map(t=>{
+  const oc=t.reserva_estado==='en_casa',lim=t.estado==='limpia',Lm=LIM[t.estado],id=t.limpieza_id;
+  const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#eab308':t.estado==='en_proceso'?'#2563eb':'#dc2626';
+  const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
+  const etq=oc?'Sin iniciar':Lm[0]+' '+Lm[3];
+  const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'}));
+  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
+  const bt=oc||!id?[]:{sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
+  const K=(l,v,x='')=>`<div class="mu">${l}<br><b style="color:var(--tx);font-size:15px;${x}">${v}</b></div>`;
+  return `<div class="tk" style="border-left-color:${col};background:${bg}${oc?';border-style:dashed':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h3 style="margin:0">${esc(t.unidad_codigo)} <span class="mu" style="font-size:13px;font-weight:500">${esc(t.categoria)}</span></h3><span class="bd" style="background:${col};color:${t.estado==='sucia'&&!oc?'#422006':'#fff'};white-space:nowrap">${etq}</span></div>
+  <div class="mu">${esc(t.edificio)}</div>
+  <div class="g2" style="margin-top:10px">${K('Check-out',fch)}${K('Salida aprox.',hm(t.hora_salida_aprox)||'—')}${K('Ingresan hoy',ing,t.hay_ingreso?'color:#dc2626':'')}${K('Ocupación',t.fecha_salida?(oc?'Aún ocupada':'Check-out hecho'):'Desocupada')}</div>
+  ${t.observacion_recepcion?`<p style="margin:10px 0 0">📝 Recepción: ${esc(t.observacion_recepcion)}</p>`:''}${t.observacion_limpieza?`<p class="mu" style="margin:6px 0 0">Tu observación: ${esc(t.observacion_limpieza)}</p>`:''}
+  <div class="bt">${bt.map(b=>`<button class="${b[2]}" onclick="cambiarLimp('${id}','${b[0]}')">${b[1]}</button>`).join('')}</div></div>`}).join(''):'<p class="mu" style="padding:20px;text-align:center">No hay unidades con check-out hoy ni pendientes de limpieza.</p>';
 }
 async function cambiarLimp(id,estado){
  let o=null;
@@ -377,16 +432,19 @@ async function panel(t){
  $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,usuarios:pUsu}[A.t])();
 }
 async function pUni(){
- const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre').order('nombre')]);
- const E=(e.data||[]).map(x=>[x.id,x.nombre]),T=(t.data||[]).map(x=>[x.id,x.nombre]);
+ const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
+ const E=(e.data||[]).map(x=>[x.id,x.nombre]),T=(t.data||[]).map(x=>[x.id,x.nombre,x.edificio_id]);window._T=T;const TT=ed=>T.filter(x=>x[2]===ed);
  const L=(u.data||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
- $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'')}${NI('codigo','','Código (ej. 101)')}${SO('tipo_unidad_id',T,'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo')">Crear</button></div>
- <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',T,x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Crea primero las categorías de Raíces en la pestaña Categorías.</p>`;
+ $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Código (ej. 101)')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo')">Crear</button></div>
+ <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',TT(x.edificio_id),x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Cada categoría pertenece a un edificio: aquí solo aparecen las del edificio elegido.</p>`;
 }
+function fT(s){const r=s.closest('.rw').querySelector('[data-c=tipo_unidad_id]');r.innerHTML='<option value="">—</option>'+_T.filter(t=>t[2]===s.value).map(t=>`<option value="${t[0]}">${esc(t[1])}</option>`).join('')}
 async function pTip(){
- const {data}=await sb.from('tipos_unidad').select('*').order('nombre');
- const f=x=>`${NI('nombre',x.nombre,'Categoría (ej. Completo)')}${NI('max_adultos',x.max_adultos,'Máx. adultos','number')}${NI('max_menores',x.max_menores,'Máx. menores','number')}${NI('tarifa_base',x.tarifa_base,'Tarifa por noche (CLP)','number')}`;
- $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Categoría · máx. adultos · máx. menores · tarifa por noche. Los cambios de tarifa valen para reservas nuevas; las existentes conservan la suya.</p><h4>Nueva categoría</h4><div class="rw">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0})}<button class="p" onclick="nw('tipos_unidad',this,'nombre')">Crear</button></div><h4>Categorías</h4>${(data||[]).map(x=>`<div class="rw">${f(x)}<button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div>`).join('')}`;
+ const [t,e]=await Promise.all([sb.from('tipos_unidad').select('*').order('nombre'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden')]);
+ const E=(e.data||[]).map(x=>[x.id,x.nombre]),eo=Object.fromEntries(E.map((x,k)=>[x[0],k]));
+ const f=(x,v)=>`${SO('edificio_id',E,x.edificio_id,v)}${NI('nombre',x.nombre,'Categoría (ej. Completo)')}${NI('max_adultos',x.max_adultos,'Máx. adultos','number')}${NI('max_menores',x.max_menores,'Máx. menores','number')}${NI('tarifa_base',x.tarifa_base,'Tarifa por noche (CLP)','number')}`;
+ const L=(t.data||[]).sort((a,b)=>((eo[a.edificio_id]??99)-(eo[b.edificio_id]??99))||a.nombre.localeCompare(b.nombre,'es'));
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Edificio · categoría · máx. adultos · máx. menores · tarifa por noche. Cada categoría pertenece a un edificio. Los cambios de tarifa valen para reservas nuevas; las existentes conservan la suya.</p><h4>Nueva categoría</h4><div class="rw">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0},0)}<button class="p" onclick="nw('tipos_unidad',this,'nombre,edificio_id')">Crear</button></div><h4>Categorías</h4>${L.map(x=>`<div class="rw">${f(x,1)}<button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div>`).join('')}`;
 }
 async function pEdi(){
  const {data}=await sb.from('edificios').select('*').order('orden');
@@ -439,12 +497,12 @@ async function reactivarGarantia(){
 $('#gw').addEventListener('pointerdown',e=>{
  if(e.button||e.target.closest('.et'))return;const b=e.target.closest('.blq');if(!b)return;
  const r=S.res.find(x=>x.id===b.dataset.r);if(!r||!MOV.includes(r.estado))return;
- const rz=!!e.target.closest('.rz');if(r.estado==='en_casa'&&!rz)return;
+ const rz=!!e.target.closest('.rz');
  DRG={r,b,rz,x0:e.clientX,y0:e.clientY,mov:false,dd:0,u:r.unidad_id,w0:b.offsetWidth}});
 window.addEventListener('pointermove',e=>{
  const d=DRG;if(!d)return;const dx=e.clientX-d.x0,dy=e.clientY-d.y0;
  if(!d.mov){if(Math.abs(dx)<5&&Math.abs(dy)<5)return;d.mov=true;d.b.classList.add('arr');document.body.style.cursor=d.rz?'ew-resize':'grabbing'}
- d.dd=Math.round(dx/W);
+ d.dd=Math.round(dx/W);if(d.r.estado==='en_casa'&&!d.rz)d.dd=0;
  if(d.rz){const min=1-diff(d.r.fecha_entrada,d.r.fecha_salida);if(d.dd<min)d.dd=min;d.b.style.width=(d.w0+d.dd*W)+'px';return}
  d.b.style.transform=`translate(${d.dd*W}px,${dy}px)`;
  const f=document.elementsFromPoint(e.clientX,e.clientY).find(x=>x.matches&&x.matches('.dias[data-u]'));
@@ -470,10 +528,11 @@ async function moverReserva(r,uid,ent,sal){
   if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}}
  const {error}=await sb.rpc('mover_reserva',{p_reserva_id:r.id,p_unidad_id:uid,p_entrada:ent,p_salida:sal,p_tarifa:tar});
  if(error){msg(errTxt(error),1);dibujar();return}
+ if(r.estado==='en_casa'&&uid!==r.unidad_id)await sb.rpc('pedir_limpieza',{p_unidad_id:r.unidad_id,p_observacion:'El huésped se cambió de unidad'});
  msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo:'')+' · '+fm(ent)+' → '+fm(sal));
  await cargar();if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)abrirDr(r.id)}
 async function abrirCambioUnidad(){
- const r=S.cur,{data,error}=await sb.from('reservas').select('unidad_id').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']).neq('id',r.id);
+ const r=S.cur,{data,error}=await sb.from('reservas').select('unidad_id').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.estado==='en_casa'&&r.fecha_entrada<hoyStr()?hoyStr():r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']).neq('id',r.id);
  if(error)return msg(error.message,1);const oc=new Set((data||[]).map(x=>x.unidad_id));let ed=null,h='';
  for(const u of S.unidades){if(u.id===r.unidad_id)continue;const libre=!oc.has(u.id);
   if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<h4 style="grid-column:1/-1;margin:8px 0 0">${esc(u.edificios.nombre)}</h4>`}
@@ -594,7 +653,7 @@ document.addEventListener('keydown',e=>{
 async function pDet(id){
  const {data:t}=await sb.from('tipos_unidad').select('*').eq('id',id).single(),f=t.fotos||[];
  $('#pc').innerHTML=`<button onclick="panel('tipos')">← Categorías</button><h4>${esc(t.nombre)}</h4><div class="rw" id="dt">${NI('camas',t.camas,'N° de camas','number')}${NI('detalle_camas',t.detalle_camas,'Detalle (ej. 1 matrimonial + 1 sofá cama)')}</div><label style="margin-top:8px">Descripción<textarea id="dd" rows="3">${esc(t.descripcion)}</textarea></label><button class="p" style="margin-top:6px" onclick="gDet('${id}')">Guardar detalle</button>
- <h4>Fotos (${f.length})</h4><div class="ph" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">${f.map((x,i)=>`<div style="position:relative"><img src="${FU(x)}" style="height:90px"><button style="position:absolute;top:2px;right:2px;padding:0 6px" onclick="delFoto('${id}',${i})">✕</button></div>`).join('')}</div><input type="file" id="ff" accept="image/*" multiple> <button onclick="subirFotos('${id}')">Subir fotos</button><p class="mu">Máximo 5 MB por foto. Se ven en el catálogo de recepción.</p>`;
+ <h4>Fotos (${f.length})</h4><div class="ph" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">${f.map((x,i)=>`<div><span class="tg" style="margin:0 0 3px">${i===0?'⭐ Portada':i<4?'Miniatura '+i:'Solo galería'}</span><img src="${FU(x)}" style="height:90px;width:100%;object-fit:cover;border-radius:8px"><div style="display:flex;gap:2px;margin-top:3px"><button ${i?'':'disabled'} onclick="movFoto('${id}',${i},-1)">◀</button><button ${i<f.length-1?'':'disabled'} onclick="movFoto('${id}',${i},1)">▶</button>${i?`<button title="Hacer portada" onclick="movFoto('${id}',${i},${-i})">⭐</button>`:''}<button onclick="delFoto('${id}',${i})">✕</button></div></div>`).join('')}</div><input type="file" id="ff" accept="image/*" multiple> <button onclick="subirFotos('${id}')">Subir fotos</button><p class="mu">Máximo 5 MB por foto. La primera es la portada del catálogo y las 3 siguientes son las miniaturas de abajo, en ese orden; el resto solo se ve al abrir la galería.</p>`;
 }
 async function gDet(id){const o=datos($('#dt'));o.descripcion=$('#dd').value||null;const {error}=await sb.from('tipos_unidad').update(o).eq('id',id);er(error,'Detalle guardado')}
 async function subirFotos(id){
@@ -604,7 +663,8 @@ async function subirFotos(id){
  const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);er(error,'Fotos subidas');pDet(id)}
 async function delFoto(id,i){
  if(!confirm('¿Quitar esta foto?'))return;const {data:t}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single(),n=t.fotos||[],[p]=n.splice(i,1);
- await sb.storage.from('fotos_unidades').remove([p]);const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);er(error,'Foto eliminada');pDet(id)}
+ const {data:otros}=await sb.from('tipos_unidad').select('id').contains('fotos',[p]).neq('id',id).limit(1);if(!otros?.length)await sb.storage.from('fotos_unidades').remove([p]);const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);er(error,'Foto eliminada');pDet(id)}
+async function movFoto(id,i,d){const {data:t}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single(),n=t.fotos||[],j=Math.max(0,Math.min(n.length-1,i+d));if(j===i)return;const [p]=n.splice(i,1);n.splice(j,0,p);const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);if(error)return msg(error.message,1);pDet(id)}
 // ---------- Buscador ----------
 function abrirBuscar(){
  $('#mo').innerHTML=`<div style="width:780px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">🔍 Buscar reserva</h3><button onclick="cerrar()">✕</button></div><div class="sec c1"><h4 class="st">Búsqueda en todos los edificios</h4><input id="bq" style="width:100%;box-sizing:border-box" placeholder="Nombre o apellido, UID (R-… / H-…), teléfono o documento" oninput="buscarR()"></div><div id="br"></div></div>`;
