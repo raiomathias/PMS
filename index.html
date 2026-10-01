@@ -414,7 +414,7 @@ async function tareasLimp(){
   const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
   const etq=oc?'Sin iniciar':Lm[0]+' '+Lm[3];
   const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'}));
-  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
+  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Entrada hoy, sin hora especificada'):'Nadie hoy';
   const bt=oc||!id?[]:{sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
   const K=(l,v,x='')=>`<div class="mu">${l}<br><b style="color:var(--tx);font-size:15px;${x}">${v}</b></div>`;
   return `<div class="tk" style="border-left-color:${col};background:${bg}${oc?';border-style:dashed':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h3 style="margin:0">${esc(t.unidad_codigo)} <span class="mu" style="font-size:13px;font-weight:500">${esc(t.categoria)}</span></h3><span class="bd" style="background:${col};color:${t.estado==='sucia'&&!oc?'#422006':'#fff'};white-space:nowrap">${etq}</span></div>
