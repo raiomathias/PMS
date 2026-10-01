@@ -209,7 +209,7 @@ async function cargarPermisosEdificios(){
 }
 
 // ---------- Planificador ----------
-function mover(n){S.ini=n===0?addD(hoyStr(),-2):addD(S.ini,n);cargar()}
+function mover(n){S.ini=n===0?addD(hoyStr(),-2):addD(S.ini,n);S.sel=null;cargar()}
 async function cargar(){
  const fin=addD(S.ini,ND);$('#hf').value=S.ini;
  const edIds=S.edificiosPermitidos.map(e=>e.id);
@@ -254,7 +254,37 @@ function dibujar(){
 }
 $('#gw').onclick=e=>{if(DRGsup)return;const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
  const d=e.target.closest('.dias[data-u]');if(d){const f=addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W)),q=S.sel;S.sel=e.shiftKey&&q&&q.u===d.dataset.u?{u:q.u,a:q.a,b:f}:{u:d.dataset.u,a:f,b:f};dibujar()}};
-document.addEventListener('wheel',e=>{if(!e.shiftKey||$('#cat').style.display==='flex')return;const g=$('#gw');if(!g||!g.offsetParent)return;e.preventDefault();g.scrollLeft+=e.deltaY||e.deltaX},{passive:false});
+let WD={acc:0,last:0,tm:null};
+function programarCargaCalendario(){
+ clearTimeout(WD.tm);
+ WD.tm=setTimeout(()=>cargar(),80);
+}
+function desplazarDias(pasos){
+ if(!Number.isFinite(pasos)||!pasos)return;
+ S.ini=addD(S.ini,pasos);
+ S.sel=null;
+ programarCargaCalendario();
+}
+function ruedaCalendario(e){
+ if($('#cat').style.display==='flex')return;
+ const horizontal=e.shiftKey||Math.abs(e.deltaX)>0;
+ if(!horizontal)return;
+ const g=$('#gw');if(!g||!g.offsetParent)return;
+ e.preventDefault();
+ let d=e.deltaX!==0?e.deltaX:e.deltaY;
+ if(e.deltaMode===1)d*=16;
+ if(e.deltaMode===2)d*=g.clientHeight||600;
+ if(!Number.isFinite(d)||d===0)return;
+ WD.acc+=d;
+ const umbral=70,ahora=performance.now();
+ if(Math.abs(WD.acc)<umbral||(ahora-WD.last)<60)return;
+ const dir=Math.sign(WD.acc);
+ WD.acc-=dir*umbral;
+ WD.last=ahora;
+ // Cada paso equivale a 2 columnas/días, sin usar el salto grande de los botones.
+ desplazarDias(dir*2);
+}
+$('#gw').addEventListener('wheel',ruedaCalendario,{passive:false});
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
 const cerrar=()=>{$('#mo').style.display='none';if(PT){const f=PT;PT=null;f(null)}if(A.open){A.open=false;cargar()}},cerrarDr=()=>{$('#dr').style.display='none';if($('#est').style.display==='flex')estCargar()};
 
@@ -429,13 +459,15 @@ async function addPago(){
 // ---------- Limpieza: vista móvil (rol limpieza) ----------
 let LB={e:''};const hm=t=>t?String(t).slice(0,5):'';
 async function vistaLimpieza(){
- $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><button onclick="salir()">Salir</button></header><div style="padding:10px 12px;max-width:560px;margin:0 auto"><select id="le" style="width:100%;font-size:16px;padding:10px" onchange="LB.e=this.value;try{localStorage.le=this.value}catch(e){};tareasLimp()"></select><div id="lr" class="mu" style="margin-top:8px"></div></div><div id="tl"></div>`;
- const {data:eds}=await sb.rpc('edificios_limpieza'),E=(eds||[]).filter(x=>puedeVerEdificio(x.id));
+ const lk='le_limpieza_'+S.perfil.id;
+ $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><button onclick="salir()">Salir</button></header><div style="padding:10px 12px;max-width:560px;margin:0 auto"><select id="le" style="width:100%;font-size:16px;padding:10px" onchange="LB.e=this.value;try{localStorage.setItem('${lk}',this.value)}catch(e){};tareasLimp()"></select><div id="lr" class="mu" style="margin-top:8px"></div></div><div id="tl"></div>`;
+ const E=S.edificiosPermitidos||[];
  if(!E.length){$('#le').innerHTML='<option value="">Sin edificios autorizados</option>';$('#tl').innerHTML='<p class="mu" style="padding:20px;text-align:center">No tienes edificios asignados para limpieza.</p>';return}
- let sv;try{sv=localStorage.le}catch(e){}
- LB.e=sv!==undefined&&E.some(x=>x.id===sv)?sv:'';
+ let sv='';try{sv=localStorage.getItem(lk)||''}catch(e){}
+ LB.e=sv&&E.some(x=>x.id===sv)?sv:'';
  $('#le').innerHTML='<option value="">Todos mis edificios</option>'+E.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');$('#le').value=LB.e;
- await tareasLimp();let t;const d=()=>{clearTimeout(t);t=setTimeout(tareasLimp,400)};
+ await tareasLimp();
+ let t;const d=()=>{clearTimeout(t);t=setTimeout(tareasLimp,400)};
  sb.channel('mov').on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).subscribe();
  setInterval(tareasLimp,60000);
 }
@@ -444,10 +476,29 @@ async function tareasLimp(){
  if(LB.e){
   const r=await sb.rpc('tablero_limpieza',{p_edificio:LB.e});data=r.data||[];error=r.error;
  }else{
-  const rr=await Promise.all(S.edificiosPermitidos.map(e=>sb.rpc('tablero_limpieza',{p_edificio:e.id})));
+  const rr=await Promise.all((S.edificiosPermitidos||[]).map(e=>sb.rpc('tablero_limpieza',{p_edificio:e.id})));
   error=rr.find(x=>x.error)?.error;data=rr.flatMap(x=>x.data||[]);
  }
- if(error)return msg(error.message,1);tareasLimp();
+ if(error)return msg(error.message,1);
+ data=data.filter(t=>puedeVerEdificio(t.edificio_id));
+ const g=t=>t.reserva_estado==='en_casa'?1:t.estado==='limpia'?2:0;
+ const L=data.slice().sort((a,b)=>g(a)-g(b)||(b.hay_ingreso-a.hay_ingreso)||String(a.hora_llegada||'99').localeCompare(String(b.hora_llegada||'99'))||a.edificio.localeCompare(b.edificio)||a.unidad_codigo.localeCompare(b.unidad_codigo,'es',{numeric:true}));
+ const n0=L.filter(t=>g(t)===0).length,n1=L.filter(t=>g(t)===1).length,n2=L.length-n0-n1;
+ $('#lr').textContent=L.length?`Por limpiar: ${n0} · Aún ocupadas: ${n1} · Limpias: ${n2}`:'Sin tareas pendientes';
+ $('#tl').innerHTML=L.length?L.map(t=>{
+  const oc=t.reserva_estado==='en_casa',lim=t.estado==='limpia',Lm=LIM[t.estado],id=t.limpieza_id;
+  const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#eab308':t.estado==='en_proceso'?'#2563eb':'#dc2626';
+  const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
+  const etq=oc?'Sin iniciar':Lm[0]+' '+Lm[3];
+  const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'}));
+  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
+  const bt=oc||!id?[]:{sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
+  const K=(l,v,x='')=>`<div class="mu">${l}<br><b style="color:var(--tx);font-size:15px;${x}">${v}</b></div>`;
+  return `<div class="tk" style="border-left-color:${col};background:${bg}${oc?';border-style:dashed':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h3 style="margin:0">${esc(t.unidad_codigo)} <span class="mu" style="font-size:13px;font-weight:500">${esc(t.categoria)}</span></h3><span class="bd" style="background:${col};color:${t.estado==='sucia'&&!oc?'#422006':'#fff'};white-space:nowrap">${etq}</span></div>
+  <div class="mu">${esc(t.edificio)}</div>
+  <div class="g2" style="margin-top:10px">${K('Check-out',fch)}${K('Salida aprox.',hm(t.hora_salida_aprox)||'—')}${K('Ingresan hoy',ing,t.hay_ingreso?'color:#dc2626':'')}${K('Ocupación',t.fecha_salida?(oc?'Aún ocupada':'Check-out hecho'):'Desocupada')}</div>
+  ${t.observacion_recepcion?`<p style="margin:10px 0 0">📝 ${esc(t.observacion_recepcion)}</p>`:''}${t.observacion_limpieza?`<p class="mu" style="margin:6px 0 0">Tu observación: ${esc(t.observacion_limpieza)}</p>`:''}
+  <div class="bt">${bt.map(b=>`<button class="${b[2]}" onclick="cambiarLimp('${id}','${b[0]}')">${b[1]}</button>`).join('')}</div></div>`}).join(''):'<p class="mu" style="padding:20px;text-align:center">No hay unidades con check-out hoy ni pendientes de limpieza.</p>';
 }
 // ---------- Limpieza: recepción (clic en el código de unidad) ----------
 function abrirLimp(uid){
@@ -855,6 +906,6 @@ let bt2;function buscarR(){clearTimeout(bt2);bt2=setTimeout(async()=>{
  const L=(data||[]).filter(x=>puedeVerEdificioNombre(x.edificio));
  $('#br').innerHTML=L.map(x=>`<div class="cand" onclick="irReserva('${x.reserva_id}')"><b>${esc(x.huesped)}</b> <span class="mu">${esc(x.uid_huesped)} · ${esc(x.uid_reserva)}</span><br><span class="mu">${esc(x.edificio)} ${esc(x.unidad)} · ${x.fecha_entrada} → ${x.fecha_salida} · ${x.estado.replace('_',' ')}${x.telefono?' · '+esc(x.telefono):''}</span></div>`).join('')||'<p class="mu">Sin resultados</p>'},300)}
 
-function irReserva(id){cerrar();abrirDr(id)}
+async function irReserva(id){cerrar();await abrirDr(id)}
 iniciar();
 </script></body></html>
