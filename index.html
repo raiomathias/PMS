@@ -35,7 +35,6 @@ label{display:grid;gap:2px;font-size:12px;color:var(--mu)}
 #ms{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:8px;color:#fff;z-index:20;display:none}
 .lim{font-size:12px;font-weight:700}
 h4{margin:16px 0 6px}
-body.sd .dinero{display:none}
 .mu{color:var(--mu);font-size:12px}
 #tl{padding:12px;display:grid;gap:12px;max-width:560px;margin:0 auto}
 .tk{background:var(--pn);border:1px solid var(--bd);border-left:6px solid;border-radius:10px;padding:14px}
@@ -71,18 +70,35 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .sec h4.st{margin:0 0 12px;font-size:18px;color:var(--c);border-bottom:2px solid var(--c)}
 .c1{--c:#2563eb}.c2{--c:#7c3aed}.c3{--c:#16a34a}.c4{--c:#ea580c}.c5{--c:#dc2626}
 #dr{width:min(1120px,96vw)}
-.dg{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px}.sd .dg{grid-template-columns:1fr}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px}
 .tot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
 .tot>div{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mu)}.tot b{display:block;font-size:20px;color:var(--tx)}
 .pg{padding:6px 0;border-bottom:1px dashed var(--bd);font-size:13px}
 .big{padding:9px 18px;font-size:15px}
+
+/* ---- Catálogo pantalla completa ---- */
+#cat{position:fixed;inset:0;z-index:12;background:var(--bg);display:none;flex-direction:column}
+#cat .ch{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:12px 20px;background:var(--pn);border-bottom:1px solid var(--bd);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#cat .ch h3{margin:0 auto 0 0;align-self:center;font-size:18px}
+#cat .cb{flex:1;overflow:auto;padding:16px 20px}
+#cat .cg{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+#cat .ph img{height:80px}#cat .ph img:first-child{height:220px}
+.dis{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;margin:6px 0}
+.dis.ok{background:#dcfce7;color:#166534}.dis.no{background:#fef3c7;color:#78350f}.dis.nd{background:var(--bg);color:var(--mu)}
+#gal{position:fixed;inset:0;z-index:14;background:rgba(0,0,0,.93);display:none;flex-direction:column;color:#fff}
+#gal .gt{display:flex;justify-content:space-between;align-items:center;padding:12px 20px}
+#gal .gm{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+#gal .gm img{max-width:92vw;max-height:100%;object-fit:contain}
+#gal .fl{position:absolute;top:50%;transform:translateY(-50%);font-size:28px;padding:12px 18px;background:rgba(255,255,255,.18);color:#fff;border:0}
+#gal .th{display:flex;gap:6px;justify-content:center;padding:10px;overflow:auto}
+#gal .th img{height:60px;width:90px;flex:none;object-fit:cover;border-radius:6px;opacity:.5;cursor:pointer}#gal .th img.on{opacity:1;outline:2px solid #fff}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo &nbsp;|&nbsp; Limpieza: 🧹S sucia · 🔄P en proceso · ✅L limpia · ⚠️D defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
-<div id="dr"></div><div id="mo"></div><div id="ms"></div>
+<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="gal"></div><div id="ms"></div>
 <script>
 // ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
 const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
@@ -116,7 +132,7 @@ async function iniciar(){
  S.perfil=p;S.ini=addD(hoyStr(),-2);
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
- document.body.classList.toggle('sd',p.rol==='administracion');$('#bad').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none'; // Administración no ve montos
+ $('#bad').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none';
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar();
@@ -161,9 +177,9 @@ const cerrar=()=>{$('#mo').style.display='none';if(A.open){A.open=false;cargar()
 let N={h:null,c:[],lista:false};
 function abrirNueva(p={}){
  N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
- const pu=S.unidades.find(u=>u.id===p.unidad),pt=pu?(pu.tipo_unidad_id||''):tk[0]?.[0];
+ const pu=S.unidades.find(u=>u.id===p.unidad),pt=p.tipo!==undefined?p.tipo:pu?(pu.tipo_unidad_id||''):tk[0]?.[0],pe=p.edificio||(pu?pu.edificio_id:'');
  $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
- <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pu&&pu.edificio_id===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+ <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pe===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
  <label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',p.salida||addD(ent,1),'date')}</div></div>
  <div id="nb" class="sec c5" style="display:none"><h4 class="st">🔒 Bloqueo</h4>${F('nm','Motivo del bloqueo')}</div>
  <div id="nr"><div class="sec c1"><h4 class="st">👤 Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
@@ -370,18 +386,50 @@ async function crearU(){const n=$('#un').value.trim();if(!n||$('#uc').value.leng
 async function claveU(id){const c=prompt('Nueva clave (mínimo 6 caracteres):');if(!c)return;try{await fn({accion:'cambiar_clave',usuario_id:id,clave:c});msg('Clave cambiada')}catch(e){msg(e.message,1)}}
 // ---------- Catálogo de unidades ----------
 const FU=p=>sb.storage.from('fotos_unidades').getPublicUrl(p).data.publicUrl;
+let CAT=[],CF={e:'',s:''},G=null,catTk=0;
 async function abrirCatalogo(){
  const {data,error}=await sb.from('catalogo_unidades').select('*').order('edificio_orden').order('tipo');
- if(error)return msg(error.message,1);let ed=null,h='';
- for(const c of data){
+ if(error)return msg(error.message,1);
+ CAT=data||[];CF.e=hoyStr();CF.s=addD(CF.e,1);
+ $('#cat').innerHTML=`<div class="ch"><h3>🏨 Catálogo de unidades</h3><label>Llegada<input type="date" id="cle" value="${CF.e}" onchange="catFechas('e')"></label><label>Salida<input type="date" id="cls" value="${CF.s}" onchange="catFechas('s')"></label><button onclick="cerrarCatalogo()">✕ Cerrar</button></div><div class="cb"><div id="cgr"></div></div>`;
+ $('#cat').style.display='flex';catDibujar();
+}
+function cerrarCatalogo(){galCerrar();$('#cat').style.display='none'}
+function catFechas(w){
+ let e=$('#cle').value,s=$('#cls').value;
+ if(!e||!s){$('#cle').value=CF.e;$('#cls').value=CF.s;return}
+ if(s<=e){if(w==='e')s=addD(e,1);else e=addD(s,-1)}
+ CF.e=e;CF.s=s;$('#cle').value=e;$('#cls').value=s;catDibujar();
+}
+async function catDibujar(){
+ const tk=++catTk,{data,error}=await sb.from('reservas').select('unidad_id').lt('fecha_entrada',CF.s).gt('fecha_salida',CF.e).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
+ if(tk!==catTk)return;if(error)return msg(error.message,1);
+ const oc=new Set((data||[]).map(x=>x.unidad_id));let ed=null,h='';
+ CAT.forEach((c,k)=>{
   if(c.edificio!==ed){ed=c.edificio;h+=`<h4 style="grid-column:1/-1;margin:8px 0 0">${esc(ed)}</h4>`}
-  const f=c.fotos||[],im=x=>`<img src="${FU(x)}" onclick="window.open('${FU(x)}')">`;
+  const us=S.unidades.filter(u=>u.edificios.nombre===c.edificio&&(u.tipos_unidad?.nombre||'')===c.tipo),lib=us.filter(u=>!oc.has(u.id));
+  c._ids=us[0]?{t:us[0].tipo_unidad_id||'',e:us[0].edificio_id}:null;
+  const f=c.fotos||[],im=(x,i)=>`<img src="${FU(x)}" onclick="abrirGal(${k},${i})">`;
+  const tag=!us.length?'<span class="dis nd">Sin datos de disponibilidad</span>':lib.length?`<span class="dis ok">${lib.length} de ${us.length} disponibles</span>`:'<span class="dis no">No disponible</span>';
   h+=`<div class="cat">${f.length?`<div class="ph">${f.slice(0,4).map(im).join('')}</div>`:'<div class="ph vacio">Sin fotos</div>'}<b>${esc(c.tipo)}</b> <span class="mu">${c.cantidad} unidad${c.cantidad>1?'es':''}</span>
   <div class="mu">${[c.camas?c.camas+' cama'+(c.camas>1?'s':''):'',c.detalle_camas,'hasta '+c.max_adultos+' adultos'+(c.max_menores?' + '+c.max_menores+' menores':'')].filter(Boolean).map(esc).join(' · ')}</div>
-  ${c.descripcion?`<p>${esc(c.descripcion)}</p>`:''}<div class="mu">Unidades: ${c.unidades.map(esc).join(', ')}</div><div class="dinero"><b>${clp(c.tarifa_base)}</b> <span class="mu">por noche</span></div></div>`}
- $('#mo').innerHTML=`<div style="width:1000px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">🏨 Catálogo de unidades</h3><button onclick="cerrar()">✕</button></div><div class="cg">${h||'<p class="mu">Aún no hay unidades con categoría.</p>'}</div></div>`;
- $('#mo').style.display='grid';
+  ${c.descripcion?`<p>${esc(c.descripcion)}</p>`:''}<div>${tag}</div>${lib.length?`<div class="mu">Libres: ${lib.map(u=>esc(u.codigo)).join(', ')}</div>`:''}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><div class="dinero"><b>${clp(c.tarifa_base)}</b> <span class="mu">por noche</span></div><button class="p" ${c._ids?'':'disabled'} onclick="catReservar(${k})">＋ Reservar</button></div></div>`});
+ $('#cgr').innerHTML=`<div class="cg">${h||'<p class="mu">Aún no hay unidades con categoría.</p>'}</div>`;
 }
+function catReservar(k){const i=CAT[k]._ids;if(!i)return;const e=CF.e,s=CF.s;cerrarCatalogo();abrirNueva({tipo:i.t,edificio:i.e,entrada:e,salida:s})}
+// Galería a pantalla completa
+function abrirGal(k,i){G={f:CAT[k].fotos||[],i,n:CAT[k].tipo};galDibujar();$('#gal').style.display='flex'}
+function galDibujar(){
+ $('#gal').innerHTML=`<div class="gt"><b>${esc(G.n)} · ${G.i+1}/${G.f.length}</b><button onclick="galCerrar()">✕ Cerrar</button></div><div class="gm">${G.f.length>1?'<button class="fl" style="left:12px" onclick="galMover(-1)">‹</button>':''}<img src="${FU(G.f[G.i])}">${G.f.length>1?'<button class="fl" style="right:12px" onclick="galMover(1)">›</button>':''}</div><div class="th">${G.f.map((x,j)=>`<img class="${j===G.i?'on':''}" src="${FU(x)}" onclick="G.i=${j};galDibujar()">`).join('')}</div>`;
+ $('#gal .th img.on')?.scrollIntoView({inline:'center',block:'nearest'});
+}
+function galMover(d){if(!G||G.f.length<2)return;G.i=(G.i+d+G.f.length)%G.f.length;galDibujar()}
+function galCerrar(){G=null;$('#gal').style.display='none'}
+document.addEventListener('keydown',e=>{
+ if(G){if(e.key==='Escape'){galCerrar();e.stopPropagation()}else if(e.key==='ArrowLeft')galMover(-1);else if(e.key==='ArrowRight')galMover(1);return}
+ if(e.key==='Escape'&&$('#cat').style.display==='flex')cerrarCatalogo();
+});
 async function pDet(id){
  const {data:t}=await sb.from('tipos_unidad').select('*').eq('id',id).single(),f=t.fotos||[];
  $('#pc').innerHTML=`<button onclick="panel('tipos')">← Categorías</button><h4>${esc(t.nombre)}</h4><div class="rw" id="dt">${NI('camas',t.camas,'N° de camas','number')}${NI('detalle_camas',t.detalle_camas,'Detalle (ej. 1 matrimonial + 1 sofá cama)')}</div><label style="margin-top:8px">Descripción<textarea id="dd" rows="3">${esc(t.descripcion)}</textarea></label><button class="p" style="margin-top:6px" onclick="gDet('${id}')">Guardar detalle</button>
