@@ -329,7 +329,7 @@ async function abrirDr(id){
  dead=['cancelada','no_show'].includes(r.estado),gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
  D.innerHTML=top+`<div style="margin:10px 0 4px"><b style="font-size:20px">${esc(r.huesped_nombre_copia)}</b> <span class="tp" style="display:inline">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado.replace('_',' ')} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></div>
- <div style="display:flex;gap:8px;margin:8px 0">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button>${['tentativa','confirmada','en_casa'].includes(r.estado)?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}</div>
+ <div style="display:flex;gap:8px;margin:8px 0">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button>${['tentativa','confirmada','en_casa'].includes(r.estado)?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
  ${aviso}${cobro}${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}
  <div class="dg"><div>
  <div class="sec c1"><h4 class="st">👤 Huésped</h4>${u.edificios.requiere_documento?'':'<p class="mu" style="margin-top:0">Acceso remoto: documento no requerido</p>'}<div class="g2">${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div><button onclick="guardarG()" style="margin-top:8px">Guardar huésped</button></div>
@@ -414,7 +414,7 @@ async function tareasLimp(){
   const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
   const etq=oc?'Sin iniciar':Lm[0]+' '+Lm[3];
   const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'}));
-  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Entrada hoy, sin hora especificada'):'Nadie hoy';
+  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
   const bt=oc||!id?[]:{sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
   const K=(l,v,x='')=>`<div class="mu">${l}<br><b style="color:var(--tx);font-size:15px;${x}">${v}</b></div>`;
   return `<div class="tk" style="border-left-color:${col};background:${bg}${oc?';border-style:dashed':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h3 style="margin:0">${esc(t.unidad_codigo)} <span class="mu" style="font-size:13px;font-weight:500">${esc(t.categoria)}</span></h3><span class="bd" style="background:${col};color:${t.estado==='sucia'&&!oc?'#422006':'#fff'};white-space:nowrap">${etq}</span></div>
@@ -453,10 +453,10 @@ async function gd(t,id,b){const {error}=await sb.from(t).update(datos(b.closest(
 async function nw(t,b,req){const o=datos(b.closest('.rw'));if(req.split(',').some(k=>o[k]===null||o[k]===''))return msg('Faltan datos',1);const {error}=await sb.from(t).insert(o);if(error)return msg(dup(error).message,1);msg('Creado');panel()}
 function abrirAdmin(){A.open=true;panel('unidades')}
 async function panel(t){
- if(t)A.t=t;const T=[['unidades','Unidades'],['tipos','Categorías y tarifas'],['edificios','Edificios y estacionamiento'],['config','Horarios, cargos y cancelación'],['garantias','Garantías'],['cancelaciones','Cancelaciones y no-shows']];
+ if(t)A.t=t;const T=[['unidades','Unidades'],['tipos','Categorías y tarifas'],['edificios','Edificios y estacionamiento'],['config','Horarios, cargos y cancelación'],['garantias','Garantías'],['cancelaciones','Cancelaciones y no-shows'],['borrar','🗑 Borrar datos']];
  if(GER.includes(S.perfil.rol))T.push(['usuarios','Usuarios']);
  $('#mo').innerHTML=`<div style="width:940px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⚙ Administración</h3><button onclick="cerrar()">✕</button></div><div class="tabs">${T.map(x=>`<button class="${x[0]===A.t?'p':''}" onclick="panel('${x[0]}')">${x[1]}</button>`).join('')}</div><div id="pc">Cargando…</div></div>`;
- $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,usuarios:pUsu}[A.t])();
+ $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,borrar:pBor,usuarios:pUsu}[A.t])();
 }
 async function pUni(){
  const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
@@ -769,6 +769,33 @@ const avisoCupo=async(ed,fe,fs,excl)=>{const l=await estLleno(ed,fe,fs,excl);
  return true};
 function abrirCanc(){if(!ADM.includes(S.perfil.rol))return msg('Solo Administración puede ver las cancelaciones',1);A.open=true;panel('cancelaciones')}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#est').style.display==='flex'&&$('#dr').style.display!=='block'&&$('#mo').style.display!=='grid')cerrarEst()});
+// ---------- Borrado completo (solo administración) ----------
+function abrirBorrar(){const r=S.cur;
+ $('#mo').innerHTML=`<div style="width:480px"><h3 style="margin:0 0 8px;color:#dc2626">🗑 Borrar reserva por completo</h3><p><b>${esc(r.huesped_nombre_copia||'')}</b><br><span class="mu">${esc(r.uid_reserva)} · ${esc(nomU(r.unidad_id))} · ${fm(r.fecha_entrada)} → ${fm(r.fecha_salida)}</span></p><div class="al r">Se eliminan también sus pagos, cargos, acompañantes y notas. No se puede deshacer.</div><label style="flex-direction:row;display:flex;gap:6px;margin:10px 0"><input type="checkbox" id="bg"> Borrar también el perfil del huésped (solo si no tiene otras reservas)</label><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="r" onclick="borrarReserva()">Borrar definitivamente</button></div></div>`;
+ $('#mo').style.display='grid'}
+async function borrarReserva(){const r=S.cur,bg=$('#bg').checked;
+ const {data,error}=await sb.rpc('borrar_reserva',{p_reserva_id:r.id,p_borrar_huesped:bg});if(error)return msg(error.message,1);
+ cerrar();cerrarDr();msg('Reserva borrada'+(bg?(data?' y huésped borrado':' · el huésped se conservó porque tiene otras reservas'):''));cargar()}
+let BQ={ids:[]},bt3;
+async function pBor(){
+ $('#pc').innerHTML=`<div class="al r">⚠ Zona de borrado: elimina para siempre huéspedes y reservas con sus pagos, cargos, acompañantes y notas. Úsalo para limpiar datos de prueba.</div><input id="bbq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre, documento o UID (mín. 2 letras)" oninput="bBuscar()"><div id="bbr"></div>`}
+function bBuscar(){clearTimeout(bt3);bt3=setTimeout(bRun,300)}
+async function bRun(){
+ const q=$('#bbq')?.value.trim()||'';if(q.length<2){BQ.ids=[];if($('#bbr'))$('#bbr').innerHTML='';return}
+ const t=q.replace(/[,()%]/g,' '),qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();let f='nombre_completo.ilike.%'+t+'%,uid_huesped.ilike.%'+t+'%';if(qd.length>=4)f+=',documento_normalizado.ilike.%'+qd+'%';
+ const {data:hs,error}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,numero_documento').or(f).order('nombre_completo').limit(30);if(error)return msg(error.message,1);
+ BQ.ids=(hs||[]).map(x=>x.id);
+ const {data:rs}=BQ.ids.length?await sb.from('reservas').select('id,uid_reserva,huesped_id,unidad_id,fecha_entrada,fecha_salida,estado').in('huesped_id',BQ.ids).order('fecha_entrada',{ascending:false}):{data:[]};
+ $('#bbr').innerHTML=BQ.ids.length?`<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0"><span class="mu">${BQ.ids.length} huésped(es)</span><button class="r" onclick="bDelTodos()">🗑 Borrar los ${BQ.ids.length} resultados</button></div>`+hs.map(h=>{const L=(rs||[]).filter(x=>x.huesped_id===h.id);
+  return `<div class="sec c5"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div><b>${esc(h.nombre_completo)}</b> <span class="mu">${esc(h.uid_huesped)}${h.numero_documento?' · '+esc(h.numero_documento):''}</span></div><button class="r" onclick="bDelH('${h.id}',${L.length})">🗑 Huésped</button></div>${L.map(x=>`<div class="rw"><span style="flex:1">${esc(x.uid_reserva)} · ${esc(nomU(x.unidad_id))} · ${fm(x.fecha_entrada)} → ${fm(x.fecha_salida)} · ${x.estado.replace('_',' ')}</span><button onclick="bDelR('${x.id}')">🗑</button></div>`).join('')||'<p class="mu" style="margin:6px 0 0">Sin reservas</p>'}</div>`}).join(''):'<p class="mu">Sin resultados</p>'}
+async function bDelR(id){if(!confirm('¿Borrar esta reserva por completo? No se puede deshacer.'))return;
+ const {error}=await sb.rpc('borrar_reserva',{p_reserva_id:id,p_borrar_huesped:false});if(error)return msg(error.message,1);msg('Reserva borrada');bRun();cargar()}
+async function bDelH(id,n){if(!confirm(`¿Borrar al huésped y sus ${n} reserva(s)? No se puede deshacer.`))return;
+ const {error}=await sb.rpc('borrar_huesped',{p_huesped_id:id});if(error)return msg(error.message,1);msg('Huésped borrado');bRun();cargar()}
+async function bDelTodos(){const ids=[...BQ.ids];
+ if(prompt(`Vas a borrar ${ids.length} huésped(es) con todas sus reservas. Escribe BORRAR para confirmar:`)!=='BORRAR')return;
+ let ok=0,mal=null;for(const id of ids){const {error}=await sb.rpc('borrar_huesped',{p_huesped_id:id});if(error){mal=error.message;break}ok++}
+ msg(mal?`Se borraron ${ok}; se detuvo con un error: ${mal}`:`Se borraron ${ok} huésped(es) y sus reservas`,!!mal);bRun();cargar()}
 // ---------- Buscador ----------
 function abrirBuscar(){
  $('#mo').innerHTML=`<div style="width:780px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">🔍 Buscar reserva</h3><button onclick="cerrar()">✕</button></div><div class="sec c1"><h4 class="st">Búsqueda en todos los edificios</h4><input id="bq" style="width:100%;box-sizing:border-box" placeholder="Nombre o apellido, UID (R-… / H-…), teléfono o documento" oninput="buscarR()"></div><div id="br"></div></div>`;
