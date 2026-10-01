@@ -248,7 +248,9 @@ const ord=q=>q.a<q.b?[q.a,q.b]:[q.b,q.a];
 function barra(){const q=S.sel,B=$('#bar');
  if(!q){B.innerHTML='<span class="mu">Haz clic en una celda para seleccionar una noche · Shift+clic amplía el rango en la misma unidad</span>';return}
  const [a,z]=ord(q),n=diff(a,z)+1,u=S.unidades.find(x=>x.id===q.u);
- B.innerHTML=`<b>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span> ${fm(a)} → ${fm(addD(z,1))} · ${n} noche${n>1?'s':''} <button class="p" onclick="desdeSel(0)">＋ Crear reserva</button><button onclick="desdeSel(1)">🔒 Bloquear</button><button onclick="S.sel=null;dibujar()">✕</button>`}
+ B.innerHTML=`<b>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span> ${fm(a)} → ${fm(addD(z,1))} · ${n} noche${n>1?'s':''} <button class="p" onclick="desdeSel(0)">＋ Crear reserva</button><button onclick="desdeSel(1)">🔒 Bloquear</button><button ${a<=hoyStr()&&hoyStr()<=z?'':'disabled title="Solo se puede marcar sucia una unidad con la casilla de hoy seleccionada"'} onclick="marcarSucia()">🧹 Marcar sucia</button><button onclick="S.sel=null;dibujar()">✕</button>`}
+async function marcarSucia(){const q=S.sel;if(!q)return;const o=prompt('Mensaje para limpieza (opcional):');if(o===null)return;
+ const {error}=await sb.rpc('pedir_limpieza',{p_unidad_id:q.u,p_observacion:o.trim()||null});if(error)return msg(error.message,1);msg('Marcada como sucia: '+nomU(q.u));cargar()}
 function desdeSel(b){const [a,z]=ord(S.sel);abrirNueva({unidad:S.sel.u,entrada:a,salida:addD(z,1),bloqueo:b})}
 function selHtml(id){const q=S.sel;if(!q||q.u!==id)return'';const [a,z]=ord(q),i=Math.max(diff(S.ini,a),0),j=Math.min(diff(S.ini,z)+1,ND);return j>i?`<div class="sl" style="left:${i*W}px;width:${(j-i)*W}px"></div>`:''}
 
@@ -387,7 +389,7 @@ async function tareasLimp(){
   const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
   const etq=oc?'Sin iniciar':Lm[0]+' '+Lm[3];
   const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'}));
-  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
+  const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Ingreso hoy, sin hora especificada'):'Nadie hoy';
   const bt=oc||!id?[]:{sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
   const K=(l,v,x='')=>`<div class="mu">${l}<br><b style="color:var(--tx);font-size:15px;${x}">${v}</b></div>`;
   return `<div class="tk" style="border-left-color:${col};background:${bg}${oc?';border-style:dashed':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h3 style="margin:0">${esc(t.unidad_codigo)} <span class="mu" style="font-size:13px;font-weight:500">${esc(t.categoria)}</span></h3><span class="bd" style="background:${col};color:${t.estado==='sucia'&&!oc?'#422006':'#fff'};white-space:nowrap">${etq}</span></div>
