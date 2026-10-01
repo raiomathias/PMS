@@ -49,7 +49,7 @@ button,input,select,textarea{border-radius:8px;padding:7px 11px}
 button{font-weight:500}button:hover{filter:brightness(.96)}
 header{padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}header b{font-size:16px}
 #bar{height:44px;display:flex;gap:8px;align-items:center;padding:0 20px;background:var(--pn);border-bottom:1px solid var(--bd)}
-#gw{height:calc(100vh - 160px);user-select:none;margin:12px 20px;border:1px solid var(--bd);border-radius:12px;background:var(--pn)}
+#gw{height:calc(100vh - 160px);user-select:none;margin:12px 20px;border:1px solid var(--bd);border-radius:12px;background:var(--pn);overflow-x:auto;overflow-y:auto;overscroll-behavior-x:contain;scroll-behavior:auto;will-change:transform,scroll-position;contain:layout paint;-webkit-overflow-scrolling:touch}#gw .fila{width:max-content;min-width:100%}
 .et{flex:0 0 160px;padding:6px 12px}.et b{font-size:15px}
 .tp{display:block;font-size:11px;color:var(--mu);font-weight:500}
 #bar .tp{display:inline;background:var(--bg);padding:2px 8px;border-radius:99px}
@@ -210,7 +210,7 @@ async function cargarPermisosEdificios(){
 
 // ---------- Planificador ----------
 function mover(n){S.ini=n===0?addD(hoyStr(),-2):addD(S.ini,n);S.sel=null;cargar()}
-async function cargar(){
+async function cargar(op={}){
  const fin=addD(S.ini,ND);$('#hf').value=S.ini;
  const edIds=S.edificiosPermitidos.map(e=>e.id);
  if(!edIds.length){
@@ -236,6 +236,7 @@ async function cargar(){
  S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));S.res=r.data||[];S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));
  S.lh={};if(lh.error){if(!S.lhMsg){S.lhMsg=1;msg('Falta correr el SQL de limpieza: '+lh.error.message,1)}}else(lh.data||[]).filter(x=>uids.includes(x.unidad_id)).forEach(x=>(S.lh[x.unidad_id]=S.lh[x.unidad_id]||[]).push(x));
  Object.values(S.lh).forEach(a=>a.sort((p,q)=>Date.parse(p.creado_en)-Date.parse(q.creado_en)));dibujar();
+ if(Number.isFinite(op.scrollAnchor))$('#gw').scrollLeft=op.scrollAnchor;
 }
 function dibujar(){
  const hoy=hoyStr(),hi=diff(S.ini,hoy);let h='<div class="fila cab"><div class="et"></div><div class="dias" style="width:'+ND*W+'px">';
@@ -254,16 +255,19 @@ function dibujar(){
 }
 $('#gw').onclick=e=>{if(DRGsup)return;const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
  const d=e.target.closest('.dias[data-u]');if(d){const f=addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W)),q=S.sel;S.sel=e.shiftKey&&q&&q.u===d.dataset.u?{u:q.u,a:q.a,b:f}:{u:d.dataset.u,a:f,b:f};dibujar()}};
-let WD={acc:0,last:0,tm:null};
-function programarCargaCalendario(){
- clearTimeout(WD.tm);
- WD.tm=setTimeout(()=>cargar(),80);
-}
-function desplazarDias(pasos){
- if(!Number.isFinite(pasos)||!pasos)return;
- S.ini=addD(S.ini,pasos);
- S.sel=null;
- programarCargaCalendario();
+let WHEEL={pending:0,raf:0};
+let EDGE={loading:false,timer:0};
+const EDGE_DAYS=15,EDGE_TRIGGER_DAYS=4,PIXELS_POR_DIA=W;
+function aplicarScrollNativo(){
+ WHEEL.raf=0;
+ const g=$('#gw');if(!g)return;
+ const maxPaso=EDGE_TRIGGER_DAYS*PIXELS_POR_DIA;
+ const paso=Math.max(-maxPaso,Math.min(maxPaso,WHEEL.pending));
+ WHEEL.pending-=paso;
+ if(paso)g.scrollLeft+=paso;
+ // También revisamos el borde cuando el scroll está clamped en 0/max y no genera evento scroll.
+ if(paso)programarRevisionBorde();
+ if(Math.abs(WHEEL.pending)>0.5)WHEEL.raf=requestAnimationFrame(aplicarScrollNativo);
 }
 function ruedaCalendario(e){
  if($('#cat').style.display==='flex')return;
@@ -275,16 +279,34 @@ function ruedaCalendario(e){
  if(e.deltaMode===1)d*=16;
  if(e.deltaMode===2)d*=g.clientHeight||600;
  if(!Number.isFinite(d)||d===0)return;
- WD.acc+=d;
- const umbral=70,ahora=performance.now();
- if(Math.abs(WD.acc)<umbral||(ahora-WD.last)<60)return;
- const dir=Math.sign(WD.acc);
- WD.acc-=dir*umbral;
- WD.last=ahora;
- // Cada paso equivale a 2 columnas/días, sin usar el salto grande de los botones.
- desplazarDias(dir*2);
+ // Mouse wheel de ~100 unidades => ~140 px = 2.5 columnas de 56 px.
+ WHEEL.pending+=d*1.4;
+ if(!WHEEL.raf)WHEEL.raf=requestAnimationFrame(aplicarScrollNativo);
+}
+function programarRevisionBorde(){
+ clearTimeout(EDGE.timer);
+ EDGE.timer=setTimeout(revisarBordeCalendario,120);
+}
+async function ampliarVentanaCalendario(dir){
+ if(EDGE.loading)return;
+ const g=$('#gw');if(!g)return;
+ EDGE.loading=true;
+ const before=g.scrollLeft;
+ const ajuste=-dir*EDGE_DAYS*PIXELS_POR_DIA;
+ S.ini=addD(S.ini,dir*EDGE_DAYS);
+ S.sel=null;
+ try{await cargar({scrollAnchor:before+ajuste});}
+ finally{EDGE.loading=false;}
+}
+function revisarBordeCalendario(){
+ const g=$('#gw');if(!g||EDGE.loading)return;
+ const max=Math.max(0,g.scrollWidth-g.clientWidth);
+ const umbral=EDGE_TRIGGER_DAYS*PIXELS_POR_DIA;
+ if(g.scrollLeft<=umbral)ampliarVentanaCalendario(-1);
+ else if(max-g.scrollLeft<=umbral)ampliarVentanaCalendario(1);
 }
 $('#gw').addEventListener('wheel',ruedaCalendario,{passive:false});
+$('#gw').addEventListener('scroll',programarRevisionBorde,{passive:true});
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
 const cerrar=()=>{$('#mo').style.display='none';if(PT){const f=PT;PT=null;f(null)}if(A.open){A.open=false;cargar()}},cerrarDr=()=>{$('#dr').style.display='none';if($('#est').style.display==='flex')estCargar()};
 
@@ -471,6 +493,14 @@ async function vistaLimpieza(){
  sb.channel('mov').on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).subscribe();
  setInterval(tareasLimp,60000);
 }
+async function cambiarLimp(id,estado){
+ let o=null;
+ if(estado==='defectuosa'){o=prompt('¿Qué problema encontraste?');if(!o||!o.trim())return}
+ if(estado==='limpia'){o=prompt('Observación (déjala vacía si no hay):');if(o===null)return}
+ const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:id,p_estado:estado,p_observacion:o&&o.trim()?o.trim():null});
+ if(error)return msg(error.message,1);
+ await tareasLimp();
+}
 async function tareasLimp(){
  let data=[],error=null;
  if(LB.e){
@@ -489,8 +519,8 @@ async function tareasLimp(){
   const oc=t.reserva_estado==='en_casa',lim=t.estado==='limpia',Lm=LIM[t.estado],id=t.limpieza_id;
   const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#eab308':t.estado==='en_proceso'?'#2563eb':'#dc2626';
   const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
-  const etq=oc?'Sin iniciar':Lm[0]+' '+Lm[3];
-  const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'}));
+  const etq=oc?'Sin iniciar':(Lm?Lm[0]+' '+Lm[3]:'Pendiente');
+  const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+(t.pendiente_desde?fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'})):'hoy');
   const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
   const bt=oc||!id?[]:{sucia:[['en_proceso','Iniciar','p']],defectuosa:[['en_proceso','Iniciar de nuevo','p']],en_proceso:[['limpia','Terminar','p'],['defectuosa','Hay un problema','r']]}[t.estado]||[];
   const K=(l,v,x='')=>`<div class="mu">${l}<br><b style="color:var(--tx);font-size:15px;${x}">${v}</b></div>`;
