@@ -66,10 +66,20 @@ header{padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}header b{font-size
 .ph{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px}
 .ph img{width:100%;height:60px;object-fit:cover;border-radius:8px;cursor:pointer}.ph img:first-child{grid-column:1/-1;height:150px}
 .ph.vacio{height:80px;place-items:center;display:grid;background:var(--bg);border-radius:8px;color:var(--mu)}
+h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--ac)}
+.sec{--c:var(--ac);border-left:6px solid var(--c);background:color-mix(in srgb,var(--c) 7%,transparent);border-radius:10px;padding:12px 16px;margin:0 0 16px}
+.sec h4.st{margin:0 0 12px;font-size:18px;color:var(--c);border-bottom:2px solid var(--c)}
+.c1{--c:#2563eb}.c2{--c:#7c3aed}.c3{--c:#16a34a}.c4{--c:#ea580c}.c5{--c:#dc2626}
+#dr{width:min(1120px,96vw)}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px}.sd .dg{grid-template-columns:1fr}
+.tot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.tot>div{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mu)}.tot b{display:block;font-size:20px;color:var(--tx)}
+.pg{padding:6px 0;border-bottom:1px dashed var(--bd);font-size:13px}
+.big{padding:9px 18px;font-size:15px}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p" onclick="abrirNueva()">＋ Nueva reserva</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.ini=this.value;cargar()"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo &nbsp;|&nbsp; Limpieza: 🧹S sucia · 🔄P en proceso · ✅L limpia · ⚠️D defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="ms"></div>
@@ -143,6 +153,7 @@ function dibujar(){
 }
 $('#gw').onclick=e=>{const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
  const d=e.target.closest('.dias[data-u]');if(d){const f=addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W)),q=S.sel;S.sel=e.shiftKey&&q&&q.u===d.dataset.u?{u:q.u,a:q.a,b:f}:{u:d.dataset.u,a:f,b:f};dibujar()}};
+$('#gw').addEventListener('wheel',e=>{if(!e.shiftKey)return;e.preventDefault();$('#gw').scrollLeft+=e.deltaY||e.deltaX},{passive:false});
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
 const cerrar=()=>{$('#mo').style.display='none';if(A.open){A.open=false;cargar()}},cerrarDr=()=>{$('#dr').style.display='none'};
 
@@ -152,13 +163,13 @@ function abrirNueva(p={}){
  N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
  const pu=S.unidades.find(u=>u.id===p.unidad),pt=pu?(pu.tipo_unidad_id||''):tk[0]?.[0];
  $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
- <div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pu&&pu.edificio_id===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
- <label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',p.salida||addD(ent,1),'date')}</div>
- <div id="nb" style="display:none">${F('nm','Motivo del bloqueo')}</div>
- <div id="nr"><h4>Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
+ <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Categoría<select id="nca" onchange="filU()">${tk.map(([id,t])=>`<option value="${id}" ${id===pt?'selected':''}>${esc(t.nombre)}</option>`).join('')}</select></label><label>Edificio<select id="ned" onchange="filU()"><option value="">Cualquiera</option>${ed.map(([id,n])=>`<option value="${id}" ${pu&&pu.edificio_id===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+ <label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo')}${F('ne','Entrada',ent,'date')}${F('ns','Salida',p.salida||addD(ent,1),'date')}</div></div>
+ <div id="nb" class="sec c5" style="display:none"><h4 class="st">🔒 Bloqueo</h4>${F('nm','Motivo del bloqueo')}</div>
+ <div id="nr"><div class="sec c1"><h4 class="st">👤 Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
  <div id="nf"><div class="g2">${F('hn','Nombre completo')}${SEL('hd','Tipo doc.',['rut','pasaporte','dni','otro'],'rut')}${F('hx','N° documento')}${F('ht','Teléfono')}${F('hna','Nacionalidad')}${F('hc','Ciudad de origen')}</div></div>
- <h4>Reserva</h4><div class="g2">${F('nx','Código externo del canal')}${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
- <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk"> Usa estacionamiento</label><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div>
+ </div><div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('nx','Código externo del canal')}${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
+ <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk"> Usa estacionamiento</label><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div></div>
  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarNueva()">Guardar</button></div></div>`;
  $('#mo').style.display='grid';filU(p.unidad);
  if(p.bloqueo){$('#nt').value='b';$('#nt').dispatchEvent(new Event('change'))}
@@ -213,7 +224,7 @@ async function guardarNueva(){
 
 // ---------- Detalle de reserva ----------
 async function abrirDr(id){
- const r=S.res.find(x=>x.id===id);if(!r)return;S.cur=r;const u=S.unidades.find(x=>x.id===r.unidad_id),D=$('#dr');D.style.display='block';
+ let r=S.res.find(x=>x.id===id);if(!r){const {data:rr}=await sb.from('reservas').select('*').eq('id',id).maybeSingle();r=rr}if(!r)return cerrarDr();S.cur=r;const u=S.unidades.find(x=>x.id===r.unidad_id),D=$('#dr');D.style.display='block';
  const top=`<div style="display:flex;justify-content:space-between"><b>${esc(r.uid_reserva)} · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</b><button onclick="cerrarDr()">✕</button></div>`;
  if(r.estado==='bloqueado'){D.innerHTML=top+`<p>🔒 ${esc(r.observaciones)}</p><p>${r.fecha_entrada} → ${r.fecha_salida}</p><button class="r" onclick="accion('del')">Quitar bloqueo</button>`;return}
  D.innerHTML=top+'<p>Cargando…</p>';
@@ -221,21 +232,25 @@ async function abrirDr(id){
  const [c,p,a,n,s,g]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single()]);
  const G=g.data||{},sa=s.data||{},pend=Math.max(0,(sa.total_a_pagar||0)-(sa.total_pagado||0));
  const B={confirmada:[['in','Check-in','p'],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[];
- D.innerHTML=top+`<p><b>${esc(r.huesped_nombre_copia)}</b> <span class="mu">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></p>
- <div style="display:flex;gap:8px">${B.map(b=>`<button class="${b[2]}" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}</div>
- ${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}<button onclick="notaNueva()" style="margin-top:4px">＋ Nota al perfil</button>
- <h4>Huésped ${u.edificios.requiere_documento?'':'<span class="mu">(acceso remoto: documento no requerido)</span>'}</h4><div class="g2">${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div><button onclick="guardarG()" style="margin-top:6px">Guardar huésped</button>
- <h4>Acompañantes</h4>${(a.data||[]).map(x=>`<div>${esc(x.nombre_completo)} <span class="mu">${esc(x.numero_documento||(x.es_menor?'menor':'sin doc.'))}</span> <a href="#" onclick="delAc('${x.id}');return false">✕</a></div>`).join('')}
- <div class="g2">${F('an','Nombre')}${F('ad','N° documento')}</div><label style="flex-direction:row;display:flex;gap:6px"><input type="checkbox" id="am"> Menor</label><button onclick="addAc()">Agregar acompañante</button>
- <h4>Reserva</h4><div class="g2">${F('rh1','Llegada aprox.',r.hora_llegada_aprox,'time')}${F('rh2','Salida aprox.',r.hora_salida_aprox,'time')}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}</div>
- <label style="flex-direction:row;display:flex;gap:6px;margin:6px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:6px">Guardar reserva</button>
- <div class="dinero"><h4>Cuenta · ${r.estado_pago}</h4><div>Total ${clp(sa.total_a_pagar)} · Pagado ${clp(sa.total_pagado)} · <b>Pendiente ${clp(pend)}</b></div>
- ${(c.data||[]).map(x=>`<div class="mu">${esc(x.tipo)} ${x.cantidad}× ${clp(x.monto_unitario)} = ${clp(x.total)} ${esc(x.descripcion||'')}</div>`).join('')}
- <div class="g2">${SEL('ct','Cargo',['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'],'otro').replace('<select ','<select onchange="defCargo()" ')}${F('cd','Descripción')}${F('cq','Cantidad (horas / noches)',1,'number')}${F('cm','Monto unitario',0,'number')}</div><button onclick="addCargo()">Agregar cargo</button>
- ${(p.data||[]).map(x=>`<div class="mu">💵 ${x.metodo} ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)} ${x.anticipado?'(anticipado)':''}</div>`).join('')}
- <div class="g2">${SEL('pk','Método',['efectivo','transferencia','webpay','tarjeta_debito','tarjeta_credito'],'efectivo')}${SEL('pm','Moneda',['CLP','USD'],'CLP')}${F('pa','Monto',pend||'','number')}${F('pt','Tipo de cambio (solo USD)','','number')}</div><label style="flex-direction:row;display:flex;gap:6px"><input type="checkbox" id="pn"> Pago anticipado</label><button onclick="addPago()">Registrar pago</button></div>`;
+ D.innerHTML=top+`<div style="margin:10px 0 4px"><b style="font-size:20px">${esc(r.huesped_nombre_copia)}</b> <span class="tp" style="display:inline">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado.replace('_',' ')} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></div>
+ <div style="display:flex;gap:8px;margin:8px 0">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button></div>
+ ${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}
+ <div class="dg"><div>
+ <div class="sec c1"><h4 class="st">👤 Huésped</h4>${u.edificios.requiere_documento?'':'<p class="mu" style="margin-top:0">Acceso remoto: documento no requerido</p>'}<div class="g2">${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div><button onclick="guardarG()" style="margin-top:8px">Guardar huésped</button></div>
+ <div class="sec c2"><h4 class="st">👥 Acompañantes</h4>${(a.data||[]).map(x=>`<div class="pg">${esc(x.nombre_completo)} <span class="mu">${esc(x.numero_documento||(x.es_menor?'menor':'sin doc.'))}</span> <a href="#" onclick="delAc('${x.id}');return false">✕</a></div>`).join('')}
+ <div class="g2" style="margin-top:8px">${F('an','Nombre')}${F('ad','N° documento')}</div><label style="flex-direction:row;display:flex;gap:6px;margin:6px 0"><input type="checkbox" id="am"> Menor</label><button onclick="addAc()">Agregar acompañante</button></div>
+ <div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('rh1','Llegada aprox.',r.hora_llegada_aprox,'time')}${F('rh2','Salida aprox.',r.hora_salida_aprox,'time')}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}</div>
+ <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:8px">Guardar reserva</button></div>
+ </div><div class="dinero">
+ <div class="tot"><div>Total<b>${clp(sa.total_a_pagar)}</b></div><div>Pagado<b>${clp(sa.total_pagado)}</b></div><div>Pendiente<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>
+ <div class="sec c4"><h4 class="st">💳 Pagos <span class="mu">· ${r.estado_pago}</span></h4>${(p.data||[]).map(x=>`<div class="pg">💵 <b>${esc(MOTL[x.motivo]||'Pago')}</b> · ${x.metodo.replace('_',' ')} · ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)}${x.anticipado?' · anticipado':''}${x.id_transaccion?`<br><span class="mu">ID: ${esc(x.id_transaccion)}</span>`:''}</div>`).join('')||'<p class="mu" style="margin-top:0">Sin pagos registrados</p>'}
+ <div class="g2" style="margin-top:10px">${SEL('pk','Método',['efectivo','transferencia','webpay','tarjeta_debito','tarjeta_credito'],'efectivo')}${SEL('pm','Moneda',['CLP','USD'],'CLP')}${F('pa','Monto',pend||'','number')}${F('pt','Tipo de cambio (solo USD)','','number')}<label>Motivo del pago<select id="pmo">${MOT.map(m=>`<option value="${m[0]}">${m[1]}</option>`).join('')}</select></label>${F('ptx','ID de transacción (comprobante, transferencia, voucher…)')}</div>
+ <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="pn"> Pago anticipado</label><button class="p" onclick="addPago()">Registrar pago</button></div>
+ <div class="sec c5"><h4 class="st">➕ Cargos extra</h4>${(c.data||[]).map(x=>`<div class="pg">${esc(x.tipo.replace(/_/g,' '))} · ${x.cantidad} × ${clp(x.monto_unitario)} = <b>${clp(x.total)}</b> ${esc(x.descripcion||'')}</div>`).join('')||'<p class="mu" style="margin-top:0">Sin cargos extra</p>'}
+ <div class="g2" style="margin-top:10px"><label>Tipo de cargo<select id="ct" onchange="defCargo()">${['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'].map(x=>`<option value="${x}">${x.replace(/_/g,' ')}</option>`).join('')}</select></label>${F('cd','Descripción del cargo')}${F('cq','Cantidad de horas (o noches)',1,'number')}${F('cm','Monto unitario',0,'number')}</div><button class="p" onclick="addCargo()" style="margin-top:8px">Agregar cargo</button></div>
+ </div></div>`;
 }
-const refrescar=async()=>{await cargar();S.res.find(x=>x.id===S.cur.id)?abrirDr(S.cur.id):cerrarDr()};
+const refrescar=async()=>{await cargar();abrirDr(S.cur.id)};
 async function accion(k){
  const r=S.cur;let e;
  if(k==='in')({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
@@ -261,10 +276,12 @@ async function addCargo(){
  if(mx!==undefined&&(q<1||q>mx))return msg(`Máximo ${mx} h: el sistema no permite más allá del límite de las ${t==='check_in_temprano'?c.limite_check_in_temprano:c.limite_check_out_tardio}`,1);
  const {error}=await sb.from('cargos').insert({reserva_id:S.cur.id,tipo:t,descripcion:$('#cd').value||null,cantidad:q,monto_unitario:t==='descuento'?-Math.abs(m):m});
  er(error,'Cargo agregado');if(!error)refrescar()}
+const MOT=[['estadia','Estadía'],['estacionamiento','Estacionamiento'],['horario_extra','Check-in temprano / check-out tardío'],['penalizacion','Penalización o daños'],['consumos','Consumos (minibar, lavandería, desayuno)'],['garantia','Garantía'],['otro','Otro']],MOTL=Object.fromEntries(MOT);
 async function addPago(){
- const usd=$('#pm').value==='USD',mo=+$('#pa').value,tc=+$('#pt').value;
- if(!(mo>0))return msg('Monto inválido',1);if(usd&&!(tc>0))return msg('Indica el tipo de cambio',1);if(usd&&$('#pk').value!=='efectivo')return msg('USD solo en efectivo',1);
- const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:$('#pk').value,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:Math.round(usd?mo*tc:mo),anticipado:$('#pn').checked});
+ const usd=$('#pm').value==='USD',mo=+$('#pa').value,tc=+$('#pt').value,mt=$('#pk').value,tx=$('#ptx').value.trim();
+ if(!(mo>0))return msg('Monto inválido',1);if(usd&&!(tc>0))return msg('Indica el tipo de cambio',1);if(usd&&mt!=='efectivo')return msg('USD solo en efectivo',1);
+ if(mt!=='efectivo'&&!tx)return msg('Indica el ID de la transacción (comprobante, transferencia, voucher…)',1);
+ const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:mt,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:Math.round(usd?mo*tc:mo),anticipado:$('#pn').checked,motivo:$('#pmo').value,id_transaccion:tx||null});
  er(error,'Pago registrado');if(!error)refrescar()}
 // ---------- Limpieza: vista móvil (rol limpieza) ----------
 async function vistaLimpieza(){
@@ -379,5 +396,15 @@ async function subirFotos(id){
 async function delFoto(id,i){
  if(!confirm('¿Quitar esta foto?'))return;const {data:t}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single(),n=t.fotos||[],[p]=n.splice(i,1);
  await sb.storage.from('fotos_unidades').remove([p]);const {error}=await sb.from('tipos_unidad').update({fotos:n}).eq('id',id);er(error,'Foto eliminada');pDet(id)}
+// ---------- Buscador ----------
+function abrirBuscar(){
+ $('#mo').innerHTML=`<div style="width:780px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">🔍 Buscar reserva</h3><button onclick="cerrar()">✕</button></div><div class="sec c1"><h4 class="st">Búsqueda en todos los edificios</h4><input id="bq" style="width:100%;box-sizing:border-box" placeholder="Nombre o apellido, UID (R-… / H-…), teléfono o documento" oninput="buscarR()"></div><div id="br"></div></div>`;
+ $('#mo').style.display='grid';$('#bq').focus();
+}
+let bt2;function buscarR(){clearTimeout(bt2);bt2=setTimeout(async()=>{
+ const q=$('#bq').value.trim();if(q.length<2){$('#br').innerHTML='';return}
+ const {data,error}=await sb.rpc('buscar_reservas',{p_texto:q});if(error)return msg(error.message,1);
+ $('#br').innerHTML=(data||[]).map(x=>`<div class="cand" onclick="irReserva('${x.reserva_id}')"><b>${esc(x.huesped)}</b> <span class="mu">${esc(x.uid_huesped)} · ${esc(x.uid_reserva)}</span><br><span class="mu">${esc(x.edificio)} ${esc(x.unidad)} · ${x.fecha_entrada} → ${x.fecha_salida} · ${x.estado.replace('_',' ')}${x.telefono?' · '+esc(x.telefono):''}</span></div>`).join('')||'<p class="mu">Sin resultados</p>'},300)}
+function irReserva(id){cerrar();abrirDr(id)}
 iniciar();
 </script></body></html>
