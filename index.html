@@ -153,13 +153,31 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .photo-toolbar button{min-width:150px}
 .photo-help{padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);margin-bottom:14px}
 @media(max-width:720px){.photo-card{grid-template-columns:1fr}.photo-card img{width:100%;height:180px}}
+/* ---- Auditoría ---- */
+#aud{position:fixed;inset:0;z-index:13;background:var(--bg);display:none;flex-direction:column}
+.au-h{padding:12px 20px 8px;background:var(--pn);border-bottom:1px solid var(--bd);box-shadow:0 1px 3px rgba(0,0,0,.06);max-height:62vh;overflow:auto}
+.au-b{flex:1;overflow:auto;padding:14px 20px}
+.au-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.au-chs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.au-chs button{padding:4px 10px;font-size:12px;border-radius:99px}
+.au-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:6px}
+.au-k>div{background:var(--bg);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--mu)}.au-k b{display:block;font-size:19px;color:var(--tx)}
+.au-d{position:sticky;top:-14px;background:var(--bg);padding:10px 0 6px;font-weight:700;text-transform:capitalize;z-index:2}
+.au-r{border:1px solid var(--bd);border-left:5px solid;border-radius:12px;background:var(--pn);margin-bottom:8px;overflow:hidden}
+.au-r.i{border-left-color:#16a34a}.au-r.u{border-left-color:#d97706}.au-r.d{border-left-color:#dc2626}
+.au-rh{display:flex;gap:12px;align-items:center;padding:10px 14px;cursor:pointer}.au-rh:hover{background:rgba(127,127,127,.07)}
+.au-av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:#dbeafe;color:#1e3a8a;flex:none;font-size:13px}
+.au-det{padding:4px 14px 14px;border-top:1px dashed var(--bd)}
+.au-dt{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}.au-dt th,.au-dt td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.au-dt .bf{background:rgba(220,38,38,.09)}.au-dt .nf{background:rgba(22,163,74,.10)}
+.au-pre{background:var(--bg);padding:10px;border-radius:8px;overflow:auto;font-size:12px;max-height:260px}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button onclick="abrirEst()">🅿 Estacionamiento</button><button id="bcn" style="display:none" onclick="abrirCanc()">🚫 Cancelaciones</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button onclick="abrirEst()">🅿 Estacionamiento</button><button id="bcn" style="display:none" onclick="abrirCanc()">🚫 Cancelaciones</button><button id="bau" style="display:none" onclick="abrirAud()">🕵 Auditoría</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
-<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
+<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
 <script>
 // ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
 const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
@@ -201,7 +219,7 @@ async function iniciar(){
  const pe=await cargarPermisosEdificios();if(!pe)return;
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
- $('#bad').style.display=$('#bcn').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none';
+ $('#bad').style.display=$('#bcn').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none';$('#bau').style.display=GER.includes(p.rol)?'':'none';
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar({scrollAnchor:30*W});
@@ -419,9 +437,9 @@ async function abrirDr(id){
  D.innerHTML=top+'<p>Cargando…</p>';
  const q=(t,c,v)=>sb.from(t).select('*').eq(c,v);
  const [c,p,a,n,s,g,gq,hq]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single(),q('garantia_reserva','reserva_id',id).maybeSingle(),sb.from('reservas').select('estado').eq('huesped_id',r.huesped_id).in('estado',['cancelada','no_show']).neq('id',id)]);
- const G=g.data||{},sa=s.data||{},pend=Math.max(0,(sa.total_a_pagar||0)-(sa.total_pagado||0));
+ const G=g.data||{},sa=s.data||{},dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
  const nsOK=r.fecha_entrada<=hoyStr(),B=({confirmada:[['in','Check-in','p'],['ns','No-show',''],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['ns','No-show',''],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[]).filter(b=>b[0]!=='ns'||nsOK),
- dead=['cancelada','no_show'].includes(r.estado),gv=gq.data,aviso=antec(hq.data||[]),
+ gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
  D.innerHTML=top+`<div style="margin:10px 0 4px"><b style="font-size:20px">${esc(r.huesped_nombre_copia)}</b> <span class="tp" style="display:inline">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado.replace('_',' ')} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></div>
  <div style="display:flex;gap:8px;margin:8px 0">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button>${['tentativa','confirmada','en_casa'].includes(r.estado)?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
@@ -433,7 +451,7 @@ async function abrirDr(id){
  <div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('rh1','Llegada aprox.',r.hora_llegada_aprox,'time')}${F('rh2','Salida aprox.',r.hora_salida_aprox,'time')}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}${F('rcu','Cupo de estacionamiento',r.cupo_estacionamiento,'number')}</div>
  <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:8px">Guardar reserva</button></div>
  </div><div class="dinero">
- ${garHtml(r,gv)}<div class="tot"><div>Total<b>${clp(sa.total_a_pagar)}</b></div><div>Pagado<b>${clp(sa.total_pagado)}</b></div><div>Pendiente<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>
+ ${garHtml(r,gv)}<div class="tot"${dead?' style="grid-template-columns:repeat(4,1fr)"':''}><div>${dead?'Total original':'Total'}<b>${clp(total)}</b></div>${dead?`<div>${r.estado==='cancelada'?'Cargo cancelación':'Cargo no-show'}<b>${clp(cargoCan)}</b></div>`:''}<div>Pagado<b>${clp(pagado)}</b></div><div>Pendiente<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>${dead?`<p class="mu" style="margin:-4px 0 12px">El total original se conserva como referencia. Como la reserva está ${r.estado==='cancelada'?'cancelada':'como no-show'}, solo se cobra el cargo aplicado${pagado>cargoCan?` · el huésped pagó ${clp(pagado-cargoCan)} más que el cargo (a su favor o por devolver)`:''}.</p>`:''}
  <div class="sec c4"><h4 class="st">💳 Pagos <span class="mu">· ${r.estado_pago}</span></h4>${(p.data||[]).map(x=>`<div class="pg">💵 <b>${esc(MOTL[x.motivo]||'Pago')}</b> · ${x.metodo.replace('_',' ')} · ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)}${x.anticipado?' · anticipado':''}${x.id_transaccion?`<br><span class="mu">ID: ${esc(x.id_transaccion)}</span>`:''}</div>`).join('')||'<p class="mu" style="margin-top:0">Sin pagos registrados</p>'}
  <div class="g2" style="margin-top:10px">${SEL('pk','Método',['efectivo','transferencia','webpay','tarjeta_debito','tarjeta_credito'],'efectivo')}${SEL('pm','Moneda',['CLP','USD'],'CLP')}${F('pa','Monto',pend||'','number')}${F('pt','Tipo de cambio (solo USD)','','number')}<label>Motivo del pago<select id="pmo">${MOT.map(m=>`<option value="${m[0]}">${m[1]}</option>`).join('')}</select></label>${F('ptx','ID de transacción (comprobante, transferencia, voucher…)')}</div>
  <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="pn"> Pago anticipado</label><button class="p" onclick="addPago()">Registrar pago</button></div>
@@ -749,23 +767,180 @@ async function pCan(){
  if(error){$('#pc').innerHTML=`<p class="mu">${esc(error.message)}</p>`;return}
  let L=(data||[]).filter(r=>{if(CN.por==='entrada')return true;const f=loc(evento(r));return f&&f>=d1&&f<d2});
  L.sort((a,b)=>String(evento(b)||b.fecha_entrada).localeCompare(String(evento(a)||a.fecha_entrada)));
- const ids=L.map(x=>x.id),car={},sal={};
+ const ids=L.map(x=>x.id),car={},sal={},ext={};
  for(let i=0;i<ids.length;i+=80){const ch=ids.slice(i,i+80);
-  const [c,sv]=await Promise.all([sb.from('cargos').select('reserva_id,tipo,total').in('reserva_id',ch).in('tipo',['cancelacion','no_show']),sb.from('saldo_reserva').select('reserva_id,total_pagado').in('reserva_id',ch)]);
-  (c.data||[]).forEach(x=>car[x.reserva_id]=(car[x.reserva_id]||0)+(+x.total||0));(sv.data||[]).forEach(x=>sal[x.reserva_id]=x)}
- const pen=r=>Math.max(0,(car[r.id]||0)-((sal[r.id]&&sal[r.id].total_pagado)||0));
- const nC=L.filter(r=>r.estado==='cancelada').length,nN=L.length-nC,tot=L.reduce((a,r)=>a+(car[r.id]||0),0),pend=L.reduce((a,r)=>a+pen(r),0);
+  const [c,sv]=await Promise.all([sb.from('cargos').select('reserva_id,tipo,total').in('reserva_id',ch),sb.from('pagos').select('reserva_id,monto_clp').in('reserva_id',ch)]);
+  (c.data||[]).forEach(x=>{if(['cancelacion','no_show'].includes(x.tipo))car[x.reserva_id]=(car[x.reserva_id]||0)+(+x.total||0);else ext[x.reserva_id]=(ext[x.reserva_id]||0)+(+x.total||0)});(sv.data||[]).forEach(x=>sal[x.reserva_id]=(sal[x.reserva_id]||0)+(+x.monto_clp||0))}
+ const pen=r=>Math.max(0,(car[r.id]||0)-(sal[r.id]||0)),orig=r=>(r.noches||0)*(r.tarifa_noche||0)+(ext[r.id]||0);
+ const nC=L.filter(r=>r.estado==='cancelada').length,nN=L.length-nC,tot=L.reduce((a,r)=>a+(car[r.id]||0),0),pend=L.reduce((a,r)=>a+pen(r),0),totO=L.reduce((a,r)=>a+orig(r),0);
  const V=CN.t?L.filter(r=>r.estado===CN.t):L,mes=new Date(Date.UTC(y,mo-1,1)).toLocaleDateString('es',{month:'long',year:'numeric',timeZone:'UTC'});
  const chip=(v,t)=>`<button class="${CN.t===v?'p':''}" onclick="CN.t='${v}';pCan()">${t}</button>`;
  $('#pc').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button onclick="cMes(-1)">◀</button><b style="font-size:18px;min-width:150px;text-align:center;text-transform:capitalize">${mes}</b><button onclick="cMes(1)">▶</button><span style="margin-left:auto" class="mu">Mes según</span><select onchange="CN.por=this.value;pCan()"><option value="evento" ${CN.por==='evento'?'selected':''}>fecha de cancelación / no-show</option><option value="entrada" ${CN.por==='entrada'?'selected':''}>fecha de entrada de la reserva</option></select></div>
- <div class="kp"><div>Cancelaciones<b>${nC}</b></div><div>No-shows<b>${nN}</b></div><div>Cargos aplicados<b>${clp(tot)}</b></div><div>Pendiente de cobro<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>
+ <div class="kp" style="grid-template-columns:repeat(5,1fr)"><div>Cancelaciones<b>${nC}</b></div><div>No-shows<b>${nN}</b></div><div>Total original reservas<b>${clp(totO)}</b></div><div>Cargos aplicados<b>${clp(tot)}</b></div><div>Pendiente de cobro<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>
  <div style="display:flex;gap:6px;margin-bottom:12px">${chip('','Todas ('+L.length+')')}${chip('cancelada','Cancelaciones ('+nC+')')}${chip('no_show','No-shows ('+nN+')')}</div>
  <div class="cgr2">${V.map(r=>{const u=S.unidades.find(x=>x.id===r.unidad_id),nm=r.huesped_nombre_copia||r.huespedes?.nombre_completo||'(sin nombre)',ca=r.estado==='cancelada',c=car[r.id]||0,f=loc(evento(r)),mot=ca?r.motivo_cancelacion:r.no_show_nota;
   return`<div class="cc ${ca?'ca':'cn'}" onclick="irReserva('${r.id}')"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(nm)}</b><span class="bd ${ca?'ca':'cn'}">${ca?'Cancelada':'No-show'}</span></div>
   <div class="mu">${u?esc(u.edificios.nombre)+' · '+esc(u.codigo):'—'} · ${fm(r.fecha_entrada)} → ${fm(r.fecha_salida)} · ${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}</div>
   <p style="margin:8px 0">${mot?'<span class="mu">Motivo:</span> '+esc(mot):'<span class="mu">Sin motivo registrado</span>'}</p>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span>${c?'Cargo <b>'+clp(c)+'</b>':'<span class="mu">Sin cargo</span>'}</span>${c?(pen(r)?'<span class="bd pe">Pendiente '+clp(pen(r))+'</span>':'<span class="bd ok">Pagado</span>'):'<span class="bd sc">—</span>'}</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span><span class="mu">Total reserva</span> <b>${clp(orig(r))}</b> · ${c?'Cargo <b>'+clp(c)+'</b>':'<span class="mu">Sin cargo</span>'}</span>${c?(pen(r)?'<span class="bd pe">Pendiente '+clp(pen(r))+'</span>':'<span class="bd ok">Pagado</span>'):'<span class="bd sc">—</span>'}</div>
   <div class="mu" style="margin-top:6px">${ca?'Cancelada':'No-show'} el ${f?fm(f)+'/'+f.slice(0,4):'—'}</div></div>`}).join('')||'<p class="mu">No hay registros en este mes.</p>'}</div>`}
+
+// ---------- Auditoría ----------
+const AUDR=['gerencia','sysadmin'];
+const AUD_T={reservas:['Reservas','🛏'],pagos:['Pagos','💵'],cargos:['Cargos extra','➕'],huespedes:['Huéspedes','👤'],acompanantes:['Acompañantes','👥'],notas_huesped:['Notas de huésped','📝'],unidades:['Unidades','🚪'],tipos_unidad:['Categorías','🏷'],edificios:['Edificios','🏢'],configuracion:['Configuración','⚙'],perfiles:['Usuarios','🔑'],garantia_fechas:['Garantías por fecha','🛡'],limpieza:['Limpieza','🧹']};
+const audT=t=>AUD_T[t]||[String(t).replace(/_/g,' '),'📄'];
+const AUD_F={monto_clp:'Monto (CLP)',monto_original:'Monto original',metodo:'Método',moneda:'Moneda',tipo_cambio:'Tipo de cambio',motivo:'Motivo',anticipado:'Pago anticipado',id_transaccion:'ID de transacción',pagado_en:'Fecha de pago',tipo:'Tipo',descripcion:'Descripción',cantidad:'Cantidad',monto_unitario:'Monto unitario',total:'Total',estado:'Estado',fecha_entrada:'Entrada',fecha_salida:'Salida',tarifa_noche:'Tarifa por noche',unidad_id:'Unidad',noches:'Noches',canal:'Canal',adultos:'Adultos',menores:'Menores',observaciones:'Observaciones',estado_pago:'Estado de pago',numero_boleta:'N° boleta',referencia_externa:'Código externo',motivo_cancelacion:'Motivo de cancelación',cancelada_en:'Cancelada el',cancelada_por:'Cancelada por',no_show_en:'No-show el',no_show_por:'No-show por',no_show_nota:'Nota de no-show',garantia_omitida:'Garantía omitida',garantia_omitida_motivo:'Motivo omisión de garantía',garantia_omitida_por_nombre:'Garantía omitida por',garantia_omitida_en:'Garantía omitida el',nombre_completo:'Nombre',numero_documento:'Documento',telefono:'Teléfono',rol:'Rol',activo:'Activo',usuario:'Usuario',codigo:'Código',nombre:'Nombre',tarifa_base:'Tarifa base',nota:'Nota',categoria:'Categoría',gravedad:'Gravedad',clave:'Clave',valor:'Valor',creado_por:'Creado por',creado_en:'Creado el',uid_reserva:'ID de reserva',huesped_nombre_copia:'Huésped',entrada_real:'Entrada real',salida_real:'Salida real',usa_estacionamiento:'Usa estacionamiento',fecha:'Fecha'};
+const AUD_IGN=['actualizado_en','updated_at','modificado_en'];
+const AUD_MONEY=['monto_clp','total','tarifa_noche','tarifa_base','monto_unitario'];
+const AUD_CAMPOS={'Tarifa':['tarifa_noche','tarifa_base'],'Estado':['estado'],'Fechas':['fecha_entrada','fecha_salida'],'Unidad':['unidad_id'],'Monto / total':['monto_clp','monto_original','total','monto_unitario'],'Estado de pago':['estado_pago'],'Rol / activo':['rol','activo'],'Garantía omitida':['garantia_omitida']};
+const AUD_Q=[
+ {n:'Todo',f:{}},
+ {n:'💵 Pagos registrados',f:{tablas:['pagos'],acc:['INSERT']}},
+ {n:'⚠ Pagos modificados o eliminados',f:{tablas:['pagos'],acc:['UPDATE','DELETE']}},
+ {n:'➕ Cargos y descuentos',f:{tablas:['cargos']}},
+ {n:'🚫 Cancelaciones',f:{tablas:['reservas'],acc:['UPDATE'],campo:'Estado',txt:'"cancelada"'}},
+ {n:'🙅 No-shows',f:{tablas:['reservas'],acc:['UPDATE'],campo:'Estado',txt:'"no_show"'}},
+ {n:'🗑 Eliminaciones',f:{acc:['DELETE']}},
+ {n:'💲 Cambios de tarifa',f:{acc:['UPDATE'],campo:'Tarifa'}},
+ {n:'🛡 Garantías',f:{tablas:['garantia_fechas','pagos'],txt:'garantia'}},
+ {n:'🔑 Usuarios y permisos',f:{tablas:['perfiles']}},
+ {n:'⚙ Configuración',f:{tablas:['configuracion','tipos_unidad','edificios','unidades']}}];
+let AUD={f:null,rows:[],tot:0,res:null,users:{},ops:null,open:{},bt:null,q:0};
+const audF0=()=>({txt:'',per:'7',d1:'',d2:'',usr:'',tablas:[],acc:[],campo:'',m1:'',m2:''});
+const audK=k=>AUD_F[k]||(String(k).charAt(0).toUpperCase()+String(k).slice(1).replace(/_/g,' '));
+const audDia=ts=>new Date(ts).toLocaleDateString('sv',{timeZone:'America/Santiago'});
+function audDiaTxt(d){const h=hoyStr();if(d===h)return'Hoy';if(d===addD(h,-1))return'Ayer';return new Date(d+'T12:00:00Z').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'})}
+function audRel(ts){const m=Math.round((Date.now()-new Date(ts).getTime())/60000);if(m<1)return'justo ahora';if(m<60)return'hace '+m+' min';const h=Math.round(m/60);if(h<24)return'hace '+h+' h';const d=Math.round(h/24);return'hace '+d+' día'+(d>1?'s':'')}
+function audFechaHora(ts){return new Date(ts).toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}
+function audV(k,v){
+ if(v===null||v===undefined||v==='')return'<span class="mu">—</span>';
+ if(typeof v==='boolean')return v?'Sí':'No';
+ if(AUD_MONEY.includes(k)&&!isNaN(+v))return clp(+v);
+ if(k==='unidad_id'){const u=S.unidades.find(x=>x.id===v);return u?esc(u.edificios.nombre+' · '+u.codigo):'<span class="mu">'+esc(String(v).slice(0,8))+'…</span>'}
+ if(typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-/.test(v)){return AUD.users[v]?esc(AUD.users[v]):'<span class="mu">'+esc(v.slice(0,8))+'…</span>'}
+ if(typeof v==='string'&&/^\d{4}-\d\d-\d\dT/.test(v))return esc(audFechaHora(v));
+ if(typeof v==='object')return'<code>'+esc(JSON.stringify(v))+'</code>';
+ return esc(String(v))}
+function audCambios(a){
+ const n=a.datos_nuevos||{},o=a.datos_anteriores||{},ks=[...new Set([...Object.keys(o),...Object.keys(n)])],ch=ks.filter(k=>JSON.stringify(o[k])!==JSON.stringify(n[k]));
+ const util=ch.filter(k=>!AUD_IGN.includes(k));return util.length?util:ch}
+function audResumen(a){
+ const n=a.datos_nuevos||{},o=a.datos_anteriores||{},I=a.accion==='INSERT',U=a.accion==='UPDATE',D=a.accion==='DELETE',d=D?o:n,ck=U?audCambios(a):[],ch=k=>ck.includes(k),b=x=>`<b>${x}</b>`;
+ const lista=()=>ck.slice(0,4).map(k=>esc(audK(k))).join(', ')+(ck.length>4?'…':'');
+ const [tl]=audT(a.tabla),nom=esc(d.nombre_completo||d.nombre||d.codigo||'');
+ if(a.tabla==='pagos'){const m=b(clp(d.monto_clp)),met=esc(String(d.metodo||'').replace(/_/g,' '));
+  if(I)return{t:`Registró un pago de ${m} (${met}) · ${esc(MOTL[d.motivo]||'Pago')}${d.anticipado?' · anticipado':''}${d.id_transaccion?' · ID '+esc(d.id_transaccion):''}`,s:false};
+  if(D)return{t:`Eliminó un pago de ${m} (${met})`,s:true};
+  return{t:`Modificó un pago de ${m} — cambió: ${lista()}${ch('monto_clp')?` (de ${clp(o.monto_clp)} a ${clp(n.monto_clp)})`:''}`,s:true}}
+ if(a.tabla==='cargos'){const tp=esc(String(d.tipo||'').replace(/_/g,' ')),tot=b(clp(d.total));
+  if(I)return{t:`Agregó ${d.tipo==='descuento'?'un descuento':'un cargo'} ${b(tp)} · ${esc(d.cantidad)} × ${clp(d.monto_unitario)} = ${tot}`,s:d.tipo==='descuento'};
+  if(D)return{t:`Eliminó el cargo ${tp} de ${tot}`,s:true};
+  return{t:`Modificó el cargo ${tp} — cambió: ${lista()}`,s:true}}
+ if(a.tabla==='reservas'){const id=esc(d.uid_reserva||'');
+  if(I)return{t:`Creó la reserva ${b(id)} · ${esc(d.fecha_entrada)} → ${esc(d.fecha_salida)}${d.tarifa_noche?' · '+clp(d.tarifa_noche)+' por noche':''}`,s:false};
+  if(D)return{t:`Eliminó la reserva ${b(id)}`,s:true};
+  if(ch('estado'))return{t:`Cambió el estado de ${b(id)}: ${b(esc(o.estado))} → ${b(esc(n.estado))}`,s:['cancelada','no_show'].includes(n.estado)};
+  if(ch('tarifa_noche'))return{t:`Cambió la tarifa de ${b(id)}: ${clp(o.tarifa_noche)} → ${b(clp(n.tarifa_noche))}`,s:true};
+  if(ch('garantia_omitida'))return{t:`${n.garantia_omitida?'Omitió':'Reactivó'} la garantía de ${b(id)}${n.garantia_omitida_motivo?' · '+esc(n.garantia_omitida_motivo):''}`,s:!!n.garantia_omitida};
+  if(ch('unidad_id')||ch('fecha_entrada')||ch('fecha_salida'))return{t:`Movió o modificó la reserva ${b(id)} — cambió: ${lista()}`,s:false};
+  return{t:`Modificó la reserva ${b(id)} — cambió: ${lista()}`,s:false}}
+ if(a.tabla==='perfiles'){
+  if(I)return{t:`Creó el usuario ${b(nom)} (${esc(d.rol||'')})`,s:false};
+  if(D)return{t:`Eliminó el usuario ${b(nom)}`,s:true};
+  if(ch('rol'))return{t:`Cambió el rol de ${b(nom)}: ${esc(o.rol)} → ${b(esc(n.rol))}`,s:true};
+  if(ch('activo'))return{t:`${n.activo?'Activó':'Desactivó'} al usuario ${b(nom)}`,s:true};
+  return{t:`Modificó al usuario ${b(nom)} — cambió: ${lista()}`,s:false}}
+ if(a.tabla==='notas_huesped'&&I)return{t:`Agregó una nota al perfil: ${esc(String(d.nota||'').slice(0,120))}`,s:false};
+ const verbo=I?'Creó':U?'Modificó':'Eliminó';
+ return{t:`${verbo} ${b(esc(tl))}${nom?': '+nom:''}${U?' — cambió: '+lista():''}`,s:D||(U&&(a.tabla==='configuracion'||ck.some(k=>['tarifa_base','tarifa_noche','valor','activo','rol'].includes(k))))}}
+function audFila(a){
+ const r=audResumen(a),[tl,ic]=audT(a.tabla),cl=a.accion==='INSERT'?'i':a.accion==='UPDATE'?'u':'d',vb=a.accion==='INSERT'?'Crear':a.accion==='UPDATE'?'Modificar':'Eliminar';
+ const nm=a.usuario_nombre||(a.usuario_id?'Usuario eliminado':'Sistema / SQL'),ini=a.usuario_nombre?nm.split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase():'⚙';
+ const hora=new Date(a.fecha).toLocaleTimeString('es-CL',{timeZone:'America/Santiago',hour:'2-digit',minute:'2-digit',hour12:false});
+ return`<div class="au-r ${cl}" id="ar${a.id}"><div class="au-rh" onclick="audTog(${a.id})"><div class="au-av">${esc(ini)}</div><div style="flex:1;min-width:0"><div>${r.t}</div><div class="mu" style="margin-top:2px">${esc(nm)}${a.usuario_rol?' ('+esc(a.usuario_rol)+')':''} · ${hora} · ${audRel(a.fecha)}${a.reserva_uid?` · <a href="#" class="tg" onclick="event.stopPropagation();audIrRes('${a.reserva_id}');return false">${esc(a.reserva_uid)}${a.huesped?' · '+esc(a.huesped):''}</a>`:''}</div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="bd ${cl==='i'?'ok':cl==='u'?'ca':'cn'}">${vb}</span><span class="tg">${ic} ${esc(tl)}</span>${r.s?'<span class="bd pe">⚠ Revisar</span>':''}</div></div>${AUD.open[a.id]?audDet(a):''}</div>`}
+function audDet(a){
+ const n=a.datos_nuevos||{},o=a.datos_anteriores||{};let head,rows;
+ if(a.accion==='UPDATE'){head='<th>Campo</th><th>Antes</th><th>Después</th>';rows=audCambios(a).map(k=>`<tr><td>${esc(audK(k))}</td><td class="bf">${audV(k,o[k])}</td><td class="nf">${audV(k,n[k])}</td></tr>`).join('')}
+ else{const d=a.accion==='INSERT'?n:o;head='<th>Campo</th><th>'+(a.accion==='INSERT'?'Valor registrado':'Valor eliminado')+'</th>';rows=Object.keys(d).filter(k=>d[k]!==null&&d[k]!==''&&!AUD_IGN.includes(k)).map(k=>`<tr><td>${esc(audK(k))}</td><td>${audV(k,d[k])}</td></tr>`).join('')}
+ return`<div class="au-det"><table class="au-dt"><thead><tr>${head}</tr></thead><tbody>${rows||'<tr><td class="mu">Sin diferencias visibles</td></tr>'}</tbody></table><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">${a.registro_id?`<button onclick="audHist('${a.registro_id}')">🕘 Historial de este registro</button>`:''}${a.reserva_uid?`<button onclick="audIrRes('${a.reserva_id}')">Abrir reserva ${esc(a.reserva_uid)}</button>`:''}<span class="mu">Evento #${a.id} · ${esc(audFechaHora(a.fecha))}${a.registro_id?' · registro '+esc(a.registro_id):''}</span></div><details style="margin-top:8px"><summary class="mu" style="cursor:pointer">Ver JSON completo</summary><pre class="au-pre">${esc(JSON.stringify({antes:a.datos_anteriores,despues:a.datos_nuevos},null,2))}</pre></details></div>`}
+function audTog(id){AUD.open[id]=!AUD.open[id];const a=AUD.rows.find(x=>x.id===id),el=$('#ar'+id);if(a&&el)el.outerHTML=audFila(a)}
+function audIrRes(id){cerrarAud();abrirDr(id)}
+function audHist(id){AUD.f=audF0();AUD.f.txt=id;AUD.f.per='todo';audSync();audChips();audCargar(true)}
+function audErr(e){return`<div class="al r">No se pudo cargar la auditoría: ${esc(e.message||e)}<br>Si dice que la función no existe, corre primero el script <b>pms_auditoria.sql</b> en Supabase.</div>`}
+function audParams(){
+ const f=AUD.f,hoy=hoyStr();let d1=null,d2=null;
+ if(f.per==='hoy'){d1=d2=hoy}else if(f.per==='ayer'){d1=d2=addD(hoy,-1)}else if(f.per==='7'){d1=addD(hoy,-6);d2=hoy}else if(f.per==='30'){d1=addD(hoy,-29);d2=hoy}else if(f.per==='mes'){d1=hoy.slice(0,8)+'01';d2=hoy}else if(f.per==='custom'){d1=f.d1||null;d2=f.d2||null}
+ const p={};if(d1)p.p_desde=d1;if(d2)p.p_hasta=d2;
+ if(f.usr==='__sys')p.p_sin_usuario=true;else if(f.usr)p.p_usuario=f.usr;
+ if(f.tablas.length)p.p_tablas=f.tablas;if(f.acc.length)p.p_acciones=f.acc;if(f.txt.trim())p.p_texto=f.txt.trim();
+ if(f.m1!=='')p.p_monto_min=+f.m1;if(f.m2!=='')p.p_monto_max=+f.m2;if(f.campo)p.p_campos=AUD_CAMPOS[f.campo];
+ return p}
+async function audCargar(reset){
+ if(reset){AUD.rows=[];AUD.open={};$('#alst').innerHTML='<p class="mu">Buscando…</p>'}
+ const my=AUD.q=(AUD.q||0)+1,p=audParams();
+ const [lst,res]=await Promise.all([sb.rpc('auditoria_buscar',{...p,p_limite:50,p_desplazamiento:AUD.rows.length}),reset?sb.rpc('auditoria_resumen',p):Promise.resolve(null)]);
+ if(my!==AUD.q)return;
+ if(lst.error){$('#alst').innerHTML=audErr(lst.error);return}
+ AUD.rows=AUD.rows.concat(lst.data||[]);AUD.tot=(lst.data&&lst.data.length)?+lst.data[0].total:(reset?0:AUD.tot);
+ if(res){AUD.res=res.error?null:res.data;audKpi()}
+ audLista()}
+function audKpi(){
+ const r=AUD.res;if(!r){$('#akp').innerHTML='';return}
+ const k=(t,v,c)=>`<div>${t}<b${c?` style="color:${c}"`:''}>${v}</b></div>`;
+ $('#akp').innerHTML=`<div class="au-k">${k('Eventos',r.total)}${k('Creados',r.crear,'#16a34a')}${k('Modificados',r.modificar,'#d97706')}${k('Eliminados',r.eliminar,r.eliminar?'#dc2626':'')}${k('Usuarios activos',r.usuarios)}${k('Pagos registrados',r.pagos_n+' · '+clp(r.pagos_monto))}${k('Pagos modificados / eliminados',r.pagos_alterados,r.pagos_alterados?'#dc2626':'')}</div>${(r.top_usuarios||[]).length?`<div class="au-chs"><span class="mu">Actividad por usuario:</span>${r.top_usuarios.map(u=>`<button onclick="audUsr('${u.usuario_id||'__sys'}')">${esc(u.nombre)} · ${u.n}</button>`).join('')}</div>`:''}`}
+function audLista(){
+ const R=AUD.rows;
+ if(!R.length){$('#alst').innerHTML='<div class="mu" style="text-align:center;padding:40px">Sin resultados con estos filtros.</div>';return}
+ let h='',dia='';
+ for(const a of R){const d=audDia(a.fecha);if(d!==dia){dia=d;h+=`<div class="au-d">${audDiaTxt(d)}</div>`}h+=audFila(a)}
+ h+=`<div style="text-align:center;margin:14px 0" class="mu">Mostrando ${R.length} de ${AUD.tot}${R.length<AUD.tot?' <button class="p" onclick="audCargar(false)">Cargar más</button>':''}</div>`;
+ $('#alst').innerHTML=h}
+function audChips(){
+ $('#aq').innerHTML=AUD_Q.map((q,i)=>`<button onclick="audAtajo(${i})">${q.n}</button>`).join('');
+ $('#aac').innerHTML=[['INSERT','Crear'],['UPDATE','Modificar'],['DELETE','Eliminar']].map(([v,t])=>`<button class="${AUD.f.acc.includes(v)?'p':''}" onclick="audAcc('${v}')">${t}</button>`).join('');
+ const T=(AUD.ops&&AUD.ops.tablas&&AUD.ops.tablas.length?AUD.ops.tablas:Object.keys(AUD_T));
+ $('#atb').innerHTML=T.map(t=>`<button class="${AUD.f.tablas.includes(t)?'p':''}" onclick="audTab('${t}')">${audT(t)[1]} ${esc(audT(t)[0])}</button>`).join('')}
+function audSync(){
+ const f=AUD.f;$('#atx').value=f.txt;$('#aper').value=f.per;$('#ad1').value=f.d1;$('#ad2').value=f.d2;
+ $('#ad1w').style.display=$('#ad2w').style.display=f.per==='custom'?'':'none';$('#ausr').value=f.usr;$('#acm').value=f.campo;$('#am1').value=f.m1;$('#am2').value=f.m2}
+function audAtajo(i){const q=AUD_Q[i],keep={per:AUD.f.per,d1:AUD.f.d1,d2:AUD.f.d2,usr:AUD.f.usr};AUD.f=Object.assign(audF0(),keep,q.f);audSync();audChips();audCargar(true)}
+function audAcc(v){const a=AUD.f.acc,i=a.indexOf(v);if(i<0)a.push(v);else a.splice(i,1);audChips();audCargar(true)}
+function audTab(t){const a=AUD.f.tablas,i=a.indexOf(t);if(i<0)a.push(t);else a.splice(i,1);audChips();audCargar(true)}
+function audUsr(id){AUD.f.usr=id;audSync();audCargar(true)}
+function audTxt(v){AUD.f.txt=v;clearTimeout(AUD.bt);AUD.bt=setTimeout(()=>audCargar(true),350)}
+function audPer(v){AUD.f.per=v;audSync();audCargar(true)}
+function audMon(k,v){AUD.f[k]=v;clearTimeout(AUD.bt);AUD.bt=setTimeout(()=>audCargar(true),450)}
+function audLimpiar(){AUD.f=audF0();audSync();audChips();audCargar(true)}
+function audShell(){
+ const opU=(AUD.ops?AUD.ops.usuarios:[]).map(u=>`<option value="${u.id}">${esc(u.nombre)} (${esc(u.rol)})</option>`).join('');
+ $('#aud').innerHTML=`<div class="au-h"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0 auto 0 0">🕵 Auditoría</h3><button onclick="audCSV()">⬇ Exportar CSV</button><button onclick="cerrarAud()">✕ Cerrar</button></div>
+ <div class="au-chs" id="aq"></div>
+ <div class="au-f"><label style="grid-column:span 2">Buscar<input id="atx" placeholder="Nombre, R-… de reserva, monto, ID de transacción, texto…" oninput="audTxt(this.value)"></label>
+ <label>Periodo<select id="aper" onchange="audPer(this.value)"><option value="hoy">Hoy</option><option value="ayer">Ayer</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="mes">Este mes</option><option value="todo">Todo el historial</option><option value="custom">Personalizado…</option></select></label>
+ <label id="ad1w" style="display:none">Desde<input type="date" id="ad1" onchange="AUD.f.d1=this.value;audCargar(true)"></label><label id="ad2w" style="display:none">Hasta<input type="date" id="ad2" onchange="AUD.f.d2=this.value;audCargar(true)"></label>
+ <label>Usuario<select id="ausr" onchange="AUD.f.usr=this.value;audCargar(true)"><option value="">Todos</option><option value="__sys">Sistema / SQL (sin usuario)</option>${opU}</select></label>
+ <label>Se modificó…<select id="acm" onchange="AUD.f.campo=this.value;audCargar(true)"><option value="">Cualquier campo</option>${Object.keys(AUD_CAMPOS).map(k=>`<option>${k}</option>`).join('')}</select></label>
+ <label>Monto desde (CLP)<input type="number" id="am1" oninput="audMon('m1',this.value)"></label><label>Monto hasta (CLP)<input type="number" id="am2" oninput="audMon('m2',this.value)"></label></div>
+ <div class="au-chs"><span class="mu">Acción:</span><span id="aac" class="au-chs" style="margin:0"></span><button style="margin-left:auto" onclick="audLimpiar()">Limpiar filtros</button></div>
+ <div class="au-chs"><span class="mu">Tabla:</span><span id="atb" class="au-chs" style="margin:0"></span></div>
+ <div id="akp"></div></div><div class="au-b"><div id="alst"></div></div>`;
+ audChips();audSync()}
+async function abrirAud(){
+ if(!AUDR.includes(S.perfil.rol))return msg('Solo Gerencia o SysAdmin pueden ver la auditoría',1);
+ if(!AUD.f)AUD.f=audF0();
+ $('#aud').style.display='flex';audShell();
+ if(!AUD.ops){const {data,error}=await sb.rpc('auditoria_opciones');if(error){$('#alst').innerHTML=audErr(error);return}AUD.ops=data;AUD.users=Object.fromEntries((data.usuarios||[]).map(u=>[u.id,u.nombre]));audShell()}
+ audCargar(true)}
+function cerrarAud(){$('#aud').style.display='none'}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#aud').style.display==='flex')cerrarAud()});
+async function audCSV(){
+ const p=audParams();let rows=[];msg('Preparando CSV…');
+ for(let off=0;off<5000;off+=1000){const {data,error}=await sb.rpc('auditoria_buscar',{...p,p_limite:1000,p_desplazamiento:off});if(error)return msg(error.message,1);rows=rows.concat(data||[]);if(!data||data.length<1000)break}
+ const T=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent},q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+ const L=[['Fecha','Usuario','Rol','Acción','Tabla','Reserva','Huésped','Monto','Detalle','Antes','Después'].map(q).join(',')];
+ rows.forEach(a=>L.push([audFechaHora(a.fecha),a.usuario_nombre||'Sistema / SQL',a.usuario_rol||'',a.accion,a.tabla,a.reserva_uid||'',a.huesped||'',a.monto==null?'':a.monto,T(audResumen(a).t),a.datos_anteriores?JSON.stringify(a.datos_anteriores):'',a.datos_nuevos?JSON.stringify(a.datos_nuevos):''].map(q).join(',')));
+ const bl=new Blob(['\ufeff'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(bl),l=document.createElement('a');
+ l.href=u;l.download='auditoria_'+hoyStr()+'.csv';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);msg('CSV descargado ('+rows.length+' registros)')}
 
 // ---------- Catálogo de unidades ----------
 const fotoPath=f=>typeof f==='string'?f:(f?.path||'');
