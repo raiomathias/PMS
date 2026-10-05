@@ -171,13 +171,42 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .au-dt{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}.au-dt th,.au-dt td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
 .au-dt .bf{background:rgba(220,38,38,.09)}.au-dt .nf{background:rgba(22,163,74,.10)}
 .au-pre{background:var(--bg);padding:10px;border-radius:8px;overflow:auto;font-size:12px;max-height:260px}
+
+/* ---- Huéspedes ---- */
+#hue{position:fixed;inset:0;z-index:13;background:var(--bg);display:none;flex-direction:column}
+#hue .hh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 20px;background:var(--pn);border-bottom:1px solid var(--bd);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#hue .hh h3{margin:0 auto 0 0;font-size:18px}
+#hue .hb{flex:1;overflow:auto;padding:16px 20px}
+.hf{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.hsec{margin-bottom:20px}.hsec h4{margin-top:0}
+.hcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.hcard{border:1px solid var(--bd);border-left:6px solid var(--ac);border-radius:12px;background:var(--pn);padding:13px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.07);transition:box-shadow .12s,transform .12s}
+.hcard:hover{box-shadow:0 4px 14px rgba(0,0,0,.15);transform:translateY(-1px)}
+.hcard.current{border-left-color:#16a34a;background:rgba(22,163,74,.07)}
+.hcard .hn{font-size:18px;font-weight:800;margin-bottom:2px}.hcard .huuid{font-size:11px;color:var(--mu)}
+.hstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.hstat{background:var(--bg);border-radius:8px;padding:7px;font-size:10px;color:var(--mu)}.hstat b{display:block;font-size:16px;color:var(--tx)}
+.hpill{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:800;background:var(--bg);color:var(--mu)}
+.hpill.current{background:#dcfce7;color:#166534}.hpill.black{background:#fee2e2;color:#991b1b}.hpill.pending{background:#fef3c7;color:#92400e}
+.hdetail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.hpanel{border:1px solid var(--bd);border-radius:12px;background:var(--pn);padding:14px}
+.hinfo{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.hinfo>div{background:var(--bg);border-radius:9px;padding:9px}
+.hinfo span{display:block;font-size:11px;color:var(--mu)}.hinfo b{display:block;margin-top:2px;word-break:break-word}
+.hres-list{display:grid;gap:8px}.hres{border:1px solid var(--bd);border-radius:10px;padding:11px;background:var(--pn);cursor:pointer}
+.hres:hover{border-color:var(--ac)}.hres.current{border:2px solid #16a34a;background:rgba(22,163,74,.06)}
+.hres .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.hres .uid{font-weight:800}.hres .meta{font-size:11px;color:var(--mu);margin-top:3px}
+.hcomp{font-size:12px;padding:5px 0;border-top:1px dashed var(--bd);margin-top:6px}
+.hnotes{display:grid;gap:7px}.hnote{border-left:4px solid var(--ac);background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12px}.hnote.high{border-left-color:#dc2626}
+.hblack-box{padding:12px;border:2px solid #dc2626;border-radius:11px;background:rgba(220,38,38,.08);color:#991b1b}
+.hrequest-box{padding:12px;border:1px dashed var(--bd);border-radius:11px;background:var(--bg)}
+@media(max-width:850px){.hf{grid-template-columns:1fr 1fr}.hdetail-grid{grid-template-columns:1fr}.hinfo{grid-template-columns:1fr}.hstats{grid-template-columns:repeat(2,1fr)}}
+
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button onclick="abrirEst()">🅿 Estacionamiento</button><button id="bcn" style="display:none" onclick="abrirCanc()">🚫 Cancelaciones</button><button id="bau" style="display:none" onclick="abrirAud()">🕵 Auditoría</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button id="bhg" onclick="abrirHuespedes()">👤 Huéspedes</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button onclick="abrirEst()">🅿 Estacionamiento</button><button id="bcn" style="display:none" onclick="abrirCanc()">🚫 Cancelaciones</button><button id="bau" style="display:none" onclick="abrirAud()">🕵 Auditoría</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
-<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
+<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="hue"></div><div id="aud"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
 <script>
 // ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
 const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
@@ -219,7 +248,7 @@ async function iniciar(){
  const pe=await cargarPermisosEdificios();if(!pe)return;
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
- $('#bad').style.display=$('#bcn').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none';$('#bau').style.display=GER.includes(p.rol)?'':'none';
+ $('#bad').style.display=$('#bcn').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none';$('#bau').style.display=GER.includes(p.rol)?'':'none'; $('#bhg').style.display=p.rol==='limpieza'?'none':'';
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar({scrollAnchor:30*W});
@@ -396,11 +425,19 @@ let bt;function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
 function llenarH(g){$('#hn').value=g.nombre_completo||'';$('#hd').value=g.tipo_documento||'rut';$('#hx').value=g.numero_documento||'';$('#ht').value=g.telefono||'';$('#hna').value=g.nacionalidad||'';$('#hc').value=g.ciudad_origen||''}
 function nuevoH(){N.h=null;N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));llenarH({});$('#hn').value=$('#nq').value}
 async function elegirH(id){
- N.h=id;document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
+ N.h=id;N.lista=false;N.listaData=[];
+ document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
  const g=N.c.find(x=>x.id===id);$('#nf').style.display='block';llenarH(g);
- const [n,l,hh]=await Promise.all([sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),sb.rpc('revisar_lista_negra',{p_documento:g.numero_documento,p_nombre:g.nombre_completo}),sb.from('reservas').select('estado').eq('huesped_id',id).in('estado',['cancelada','no_show'])]);
- N.lista=!!l.data?.length;
- $('#na').innerHTML=antec(hh.data||[])+(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
+ const [n,hh,bl]=await Promise.all([
+  sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),
+  sb.from('reservas').select('estado').eq('huesped_id',id).in('estado',['cancelada','no_show']),
+  sb.rpc('revisar_lista_negra_huesped',{p_huesped_id:id})
+ ]);
+ if(bl.error)return msg('No se pudo comprobar lista negra: '+bl.error.message,1);
+ N.listaData=bl.data||[];N.lista=N.listaData.length>0;
+ $('#na').innerHTML=antec(hh.data||[])+
+  (N.lista?`<div class="al r"><b>⛔ ESTE HUÉSPED ESTÁ EN LISTA NEGRA</b><br>${N.listaData.map(x=>esc(x.motivo)).join('<br>')}</div>`:'')+
+  (n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
 }
 async function guardarNueva(){
  const fe=$('#ne').value,fs=$('#ns').value;if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;
@@ -408,17 +445,18 @@ async function guardarNueva(){
  if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
  if($('#nk').checked){const ue=S.unidades.find(u=>u.id===unidad);if(!await avisoCupo(ue?.edificio_id,fe,fs))return}
  let hid=N.h;
- if(hid){if(N.lista&&!confirm('⛔ Este huésped está en la lista negra. ¿Continuar igualmente?'))return;
+ if(hid){
+   const {data:bloq,error:eb}=await sb.rpc('revisar_lista_negra_huesped',{p_huesped_id:hid});
+   if(eb)return msg('No se pudo comprobar lista negra: '+eb.message,1);
+   if((bloq||[]).length)return msg('⛔ Reserva bloqueada: el huésped seleccionado está en la lista negra.',1);
   const g0=N.c.find(x=>x.id===hid)||{},nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
   const nuevo={nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value.trim()||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null};
   const cambio=Object.keys(nuevo).some(k=>(nuevo[k]||null)!==(g0[k]||null));
   if(cambio){
-   if(nuevo.numero_documento&&nuevo.numero_documento!==(g0.numero_documento||null)){const {data:lg2}=await sb.rpc('revisar_lista_negra',{p_documento:nuevo.numero_documento,p_nombre:nom});if(lg2?.length&&!confirm('⛔ El nuevo documento coincide con la lista negra: '+lg2[0].motivo+'\n¿Continuar igualmente?'))return}
    const {error:eg}=await sb.from('huespedes').update(nuevo).eq('id',hid);
    if(eg)return msg(eg.code==='23505'?'Ese documento ya pertenece a otro huésped: búscalo arriba':errTxt(eg),1)}}
  else{const nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
-  const {data:lg}=await sb.rpc('revisar_lista_negra',{p_documento:$('#hx').value,p_nombre:nom});
-  if(lg?.length&&!confirm('⛔ Coincide con la lista negra: '+lg[0].motivo+'\n¿Continuar igualmente?'))return;
+  // Un huésped NUEVO con el mismo nombre sí puede ser creado. El bloqueo se aplica al perfil existente seleccionado.
   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
  const {error}=await sb.from('reservas').insert({huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,canal:$('#nc').value,referencia_externa:$('#nx').value||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null});
@@ -579,18 +617,40 @@ async function nw(t,b,req){const o=datos(b.closest('.rw'));if(req.split(',').som
 function abrirAdmin(){A.open=true;panel('unidades')}
 async function panel(t){
  if(t)A.t=t;const T=[['unidades','Unidades'],['tipos','Categorías y tarifas'],['edificios','Edificios y estacionamiento'],['config','Horarios, cargos y cancelación'],['garantias','Garantías'],['cancelaciones','Cancelaciones y no-shows'],['borrar','🗑 Borrar datos']];
- if(GER.includes(S.perfil.rol))T.push(['usuarios','Usuarios']);
+ if(GER.includes(S.perfil.rol))T.push(['usuarios','Usuarios']); if(['administracion','gerencia','sysadmin'].includes(S.perfil.rol))T.push(['lista_negra','🚫 Lista negra']);
  $('#mo').innerHTML=`<div style="width:940px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⚙ Administración</h3><button onclick="cerrar()">✕</button></div><div class="tabs">${T.map(x=>`<button class="${x[0]===A.t?'p':''}" onclick="panel('${x[0]}')">${x[1]}</button>`).join('')}</div><div id="pc">Cargando…</div></div>`;
- $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,borrar:pBor,usuarios:pUsu}[A.t])();
+ $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,borrar:pBor,usuarios:pUsu,lista_negra:pListaNegra}[A.t])();
 }
 async function pUni(){
  const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
  const E=(e.data||[]).map(x=>[x.id,x.nombre]),T=(t.data||[]).map(x=>[x.id,x.nombre,x.edificio_id]);window._T=T;const TT=ed=>T.filter(x=>x[2]===ed);
  const L=(u.data||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
- $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Código (ej. 101)')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo')">Crear</button></div>
+ $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Código(s): 101, 102, 105-108')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nwUni(this)">Crear</button></div><p class="mu" style="margin:4px 0 0">Para crear varias a la vez separa los códigos con coma (101, 102, 103) o usa un rango (105-108). La categoría y el piso se aplican a todas.</p>
  <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',TT(x.edificio_id),x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Cada categoría pertenece a un edificio: aquí solo aparecen las del edificio elegido.</p>`;
 }
 function fT(s){const r=s.closest('.rw').querySelector('[data-c=tipo_unidad_id]');r.innerHTML='<option value="">—</option>'+_T.filter(t=>t[2]===s.value).map(t=>`<option value="${t[0]}">${esc(t[1])}</option>`).join('')}
+function parseCodigos(txt){
+ const out=[],vistos=new Set();
+ String(txt||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>{
+  const m=x.match(/^(\d+)\s*-\s*(\d+)$/);let l=[x];
+  if(m){const a=+m[1],z=+m[2];if(z>=a&&z-a<=99){l=[];for(let i=a;i<=z;i++)l.push(String(i).padStart(m[1].length,'0'))}}
+  l.forEach(c=>{const k=c.toLowerCase();if(!vistos.has(k)){vistos.add(k);out.push(c)}})});
+ return out}
+async function nwUni(b){
+ const rw=b.closest('.rw'),o=datos(rw),cods=parseCodigos(o.codigo);
+ if(!o.edificio_id)return msg('Elige el edificio',1);
+ if(!cods.length)return msg('Escribe al menos un código',1);
+ if(cods.length>200)return msg('Máximo 200 unidades por vez',1);
+ const {data:ex,error:e0}=await sb.from('unidades').select('codigo').eq('edificio_id',o.edificio_id);
+ if(e0)return msg(e0.message,1);
+ const ya=new Set((ex||[]).map(x=>String(x.codigo).toLowerCase())),nuevos=cods.filter(c=>!ya.has(c.toLowerCase())),omit=cods.filter(c=>ya.has(c.toLowerCase()));
+ if(!nuevos.length)return msg('Todas esas unidades ya existen en este edificio: '+omit.join(', '),1);
+ if(nuevos.length>1||omit.length){
+  const ed=rw.querySelector('[data-c=edificio_id]'),tp=rw.querySelector('[data-c=tipo_unidad_id]');
+  if(!confirm('Se crearán '+nuevos.length+' unidades en '+ed.selectedOptions[0].text+(o.tipo_unidad_id?' · '+tp.selectedOptions[0].text:' (sin categoría)')+':\n'+nuevos.join(', ')+(omit.length?'\n\nYa existían y se omiten: '+omit.join(', '):'')+'\n\n¿Continuar?'))return}
+ const {error}=await sb.from('unidades').insert(nuevos.map(c=>({...o,codigo:c})));
+ if(error)return msg(dup(error).message,1);
+ msg(nuevos.length===1?'Unidad creada':nuevos.length+' unidades creadas'+(omit.length?' · omitidas por ya existir: '+omit.join(', '):''));panel()}
 async function pTip(){
  const [t,e]=await Promise.all([sb.from('tipos_unidad').select('*').order('nombre'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden')]);
  const E=(e.data||[]).map(x=>[x.id,x.nombre]),eo=Object.fromEntries(E.map((x,k)=>[x[0],k]));
@@ -646,6 +706,45 @@ async function guardarPermisos(id){
  const {error:de}=await sb.from('perfiles_edificios').delete().eq('perfil_id',id);if(de)return msg(de.message,1);
  for(let i=0;i<ids.length;i+=500){const {error:ie}=await sb.from('perfiles_edificios').insert(ids.slice(i,i+500).map(edificio_id=>({perfil_id:id,edificio_id})));if(ie)return msg(ie.message,1)}
  msg(ids.length?`Permisos guardados: ${ids.length} edificio(s)`:'Permisos quitados');panel('usuarios');
+}
+
+
+// ---------- Lista negra ----------
+async function solicitarListaNegra(hid){
+ const motivo=prompt('Motivo de la solicitud de lista negra (obligatorio):');if(motivo===null)return;
+ if(motivo.trim().length<3)return msg('Debes indicar un motivo de al menos 3 caracteres',1);
+ const {error}=await sb.rpc('solicitar_lista_negra',{p_huesped_id:hid,p_motivo:motivo.trim()});
+ if(error)return msg(error.message,1);
+ msg('Solicitud de lista negra enviada a Administración');abrirHuesped(hid);
+}
+async function pListaNegra(){
+ if(!['administracion','gerencia','sysadmin'].includes(S.perfil.rol))return msg('Solo Administración, Gerencia o SysAdmin puede revisar la lista negra',1);
+ const [rq,bl,rr]=await Promise.all([
+  sb.from('lista_negra_solicitudes').select('*').eq('estado','pendiente').order('solicitado_en',{ascending:false}),
+  sb.from('lista_negra').select('*').order('agregado_en',{ascending:false}),
+  sb.from('perfiles').select('id,nombre_completo').order('nombre_completo')
+ ]);
+ if(rq.error)return msg(rq.error.message,1);if(bl.error)return msg(bl.error.message,1);
+ const users=Object.fromEntries((rr.data||[]).map(x=>[x.id,x.nombre_completo]));
+ const reqs=rq.data||[],lista=bl.data||[];
+ $('#pc').innerHTML=`<div class="hbox"><h4 style="margin-top:0">Solicitudes pendientes (${reqs.length})</h4>
+ ${reqs.map(x=>`<div class="rw" style="align-items:flex-start"><span style="flex:1"><b>${esc(x.nombre_completo)}</b><br><span class="mu">${esc(x.tipo_documento||'')} ${esc(x.numero_documento||'')} · ${esc(x.motivo)}<br>Solicitada por ${esc(users[x.solicitado_por]||'Usuario')} · ${esc(x.solicitado_en||'')}</span></span><button class="p" onclick="resolverListaNegra('${x.id}',true)">Aprobar</button><button onclick="resolverListaNegra('${x.id}',false)">Rechazar</button></div>`).join('')||'<p class="mu">No hay solicitudes pendientes.</p>'}</div>
+ <div class="hbox" style="margin-top:14px"><h4 style="margin-top:0">Lista negra activa e histórica</h4>
+ ${lista.map(x=>`<div class="rw" style="align-items:flex-start"><span style="flex:1"><b>${esc(x.nombre_completo)}</b> ${x.activo?'<span class="hpill black">ACTIVA</span>':'<span class="hpill">INACTIVA</span>'}<br><span class="mu">${esc(x.tipo_documento||'')} ${esc(x.numero_documento||'')} · ${esc(x.motivo)} · agregado ${esc(x.agregado_en||'')}</span></span>${x.activo?`<button class="r" onclick="desactivarListaNegra('${x.id}')">Desactivar</button>`:''}</div>`).join('')||'<p class="mu">La lista está vacía.</p>'}</div>`;
+}
+async function resolverListaNegra(id,aprobar){
+ let motivo=null;
+ if(!aprobar){motivo=prompt('Motivo del rechazo (obligatorio):');if(motivo===null)return;if(motivo.trim().length<3)return msg('Debes indicar un motivo',1)}
+ if(!confirm(aprobar?'¿Aprobar y activar esta persona en la lista negra?':'¿Rechazar esta solicitud?'))return;
+ const {error}=await sb.rpc('resolver_solicitud_lista_negra',{p_solicitud_id:id,p_aprobar:aprobar,p_motivo:motivo});
+ if(error)return msg(error.message,1);
+ msg(aprobar?'Persona agregada a la lista negra':'Solicitud rechazada');pListaNegra();
+}
+async function desactivarListaNegra(id){
+ const motivo=prompt('Motivo para desactivar la entrada (opcional):');if(motivo===null)return;
+ const {error}=await sb.rpc('desactivar_lista_negra',{p_lista_id:id,p_motivo:motivo.trim()||null});
+ if(error)return msg(error.message,1);
+ msg('Entrada desactivada');pListaNegra();
 }
 
 async function fn(body){const {data,error}=await sb.functions.invoke('smart-service',{body});if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch(e){}throw new Error(m)}return data}
@@ -787,7 +886,7 @@ async function pCan(){
 
 // ---------- Auditoría ----------
 const AUDR=['gerencia','sysadmin'];
-const AUD_T={reservas:['Reservas','🛏'],pagos:['Pagos','💵'],cargos:['Cargos extra','➕'],huespedes:['Huéspedes','👤'],acompanantes:['Acompañantes','👥'],notas_huesped:['Notas de huésped','📝'],unidades:['Unidades','🚪'],tipos_unidad:['Categorías','🏷'],edificios:['Edificios','🏢'],configuracion:['Configuración','⚙'],perfiles:['Usuarios','🔑'],garantia_fechas:['Garantías por fecha','🛡'],limpieza:['Limpieza','🧹']};
+const AUD_T={lista_negra:['Lista negra','🚫'],lista_negra_solicitudes:['Solicitudes lista negra','🚫'],reservas:['Reservas','🛏'],pagos:['Pagos','💵'],cargos:['Cargos extra','➕'],huespedes:['Huéspedes','👤'],acompanantes:['Acompañantes','👥'],notas_huesped:['Notas de huésped','📝'],unidades:['Unidades','🚪'],tipos_unidad:['Categorías','🏷'],edificios:['Edificios','🏢'],configuracion:['Configuración','⚙'],perfiles:['Usuarios','🔑'],garantia_fechas:['Garantías por fecha','🛡'],limpieza:['Limpieza','🧹']};
 const audT=t=>AUD_T[t]||[String(t).replace(/_/g,' '),'📄'];
 const AUD_F={monto_clp:'Monto (CLP)',monto_original:'Monto original',metodo:'Método',moneda:'Moneda',tipo_cambio:'Tipo de cambio',motivo:'Motivo',anticipado:'Pago anticipado',id_transaccion:'ID de transacción',pagado_en:'Fecha de pago',tipo:'Tipo',descripcion:'Descripción',cantidad:'Cantidad',monto_unitario:'Monto unitario',total:'Total',estado:'Estado',fecha_entrada:'Entrada',fecha_salida:'Salida',tarifa_noche:'Tarifa por noche',unidad_id:'Unidad',noches:'Noches',canal:'Canal',adultos:'Adultos',menores:'Menores',observaciones:'Observaciones',estado_pago:'Estado de pago',numero_boleta:'N° boleta',referencia_externa:'Código externo',motivo_cancelacion:'Motivo de cancelación',cancelada_en:'Cancelada el',cancelada_por:'Cancelada por',no_show_en:'No-show el',no_show_por:'No-show por',no_show_nota:'Nota de no-show',garantia_omitida:'Garantía omitida',garantia_omitida_motivo:'Motivo omisión de garantía',garantia_omitida_por_nombre:'Garantía omitida por',garantia_omitida_en:'Garantía omitida el',nombre_completo:'Nombre',numero_documento:'Documento',telefono:'Teléfono',rol:'Rol',activo:'Activo',usuario:'Usuario',codigo:'Código',nombre:'Nombre',tarifa_base:'Tarifa base',nota:'Nota',categoria:'Categoría',gravedad:'Gravedad',clave:'Clave',valor:'Valor',creado_por:'Creado por',creado_en:'Creado el',uid_reserva:'ID de reserva',huesped_nombre_copia:'Huésped',entrada_real:'Entrada real',salida_real:'Salida real',usa_estacionamiento:'Usa estacionamiento',fecha:'Fecha'};
 const AUD_IGN=['actualizado_en','updated_at','modificado_en'];
@@ -941,6 +1040,78 @@ async function audCSV(){
  rows.forEach(a=>L.push([audFechaHora(a.fecha),a.usuario_nombre||'Sistema / SQL',a.usuario_rol||'',a.accion,a.tabla,a.reserva_uid||'',a.huesped||'',a.monto==null?'':a.monto,T(audResumen(a).t),a.datos_anteriores?JSON.stringify(a.datos_anteriores):'',a.datos_nuevos?JSON.stringify(a.datos_nuevos):''].map(q).join(',')));
  const bl=new Blob(['\ufeff'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(bl),l=document.createElement('a');
  l.href=u;l.download='auditoria_'+hoyStr()+'.csv';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);msg('CSV descargado ('+rows.length+' registros)')}
+
+
+// ---------- Huéspedes: recepción ----------
+let H={rows:[],tk:0};
+function guestFmtDate(d){return d?String(d).slice(0,10):'—'}
+function guestEstado(r){return r==='en_casa'?'En casa':r==='check_out'?'Check-out':String(r||'').replace(/_/g,' ')}
+async function abrirHuespedes(){
+ if(S.perfil?.rol==='limpieza')return msg('La vista de huéspedes no está disponible para Limpieza',1);
+ $('#hue').style.display='flex';
+ $('#hue').innerHTML=`<div class="hh"><h3>👤 Huéspedes</h3><button onclick="hueCargar()">↻ Actualizar</button><button onclick="cerrarHuespedes()">✕ Cerrar</button></div><div class="hb"><div id="hueBody">Cargando…</div></div>`;
+ await hueCargar();
+}
+function cerrarHuespedes(){$('#hue').style.display='none'}
+async function hueCargar(){
+ const body=$('#hueBody');if(!body)return;
+ const tk=++H.tk;body.innerHTML='<div class="mu" style="padding:20px;text-align:center">Cargando huéspedes…</div>';
+ const {data,error}=await sb.rpc('huespedes_panel');if(tk!==H.tk)return;
+ if(error){body.innerHTML=`<div class="al r">No se pudo cargar huéspedes: ${esc(error.message)}</div>`;return}
+ H.rows=data||[];
+ const buildings=[...new Map(H.rows.map(x=>[x.edificio_id,{id:x.edificio_id,n:x.edificio}])).values()].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+ body.innerHTML=`<div class="hf"><label>Buscar<input id="hueQ" placeholder="Nombre, RUT, teléfono, UID…" oninput="hueRender()"></label><label>Edificio<select id="hueE" onchange="hueRender()"><option value="">Todos mis edificios</option>${buildings.map(b=>`<option value="${b.id}">${esc(b.n)}</option>`).join('')}</select></label><label>Estado<select id="hueS" onchange="hueRender()"><option value="">Todos</option><option value="en">En casa actualmente</option><option value="his">Con historial</option></select></label></div><div id="hueList"></div>`;
+ hueRender();
+}
+function guestMatch(x,q){
+ if(!q)return true;q=String(q).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ return [x.nombre_completo,x.uid_huesped,x.numero_documento,x.telefono,x.correo].some(v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q));
+}
+function guestCard(x){
+ const black=x.lista_negra_activa?'<span class="hpill black">⛔ Lista negra</span>':'',cur=x.en_casa?'<span class="hpill current">● En casa</span>':'';
+ return `<div class="hcard ${x.en_casa?'current':''}" onclick="abrirHuesped('${x.huesped_id}')"><div class="hn">${esc(x.nombre_completo)}</div><div class="huuid">${esc(x.uid_huesped||'')} ${black} ${cur}</div><div class="mu" style="margin-top:5px">${esc(x.edificio||'')} · Última estadía: ${guestFmtDate(x.ultima_estadia)}</div><div class="hstats"><div class="hstat">Estadías<b>${x.estadias||0}</b></div><div class="hstat">Cancelaciones<b>${x.cancelaciones||0}</b></div><div class="hstat">No-shows<b>${x.no_shows||0}</b></div><div class="hstat">Reservas aquí<b>${x.reservas_edificio||0}</b></div></div></div>`;
+}
+function hueRender(){
+ const L=$('#hueList');if(!L)return;
+ const q=$('#hueQ')?.value||'',ed=$('#hueE')?.value||'',st=$('#hueS')?.value||'';
+ const rows=H.rows.filter(x=>guestMatch(x,q)&&(!ed||x.edificio_id===ed)&&(!st||(st==='en'&&x.en_casa)||(st==='his'&&!x.en_casa)));
+ const cur=[...new Map(rows.filter(x=>x.en_casa).map(x=>[x.huesped_id,x])).values()].sort((a,b)=>a.nombre_completo.localeCompare(b.nombre_completo,'es'));
+ let h='';
+ if(cur.length)h+=`<div class="hsec"><h4>🟢 Huéspedes en casa actualmente (${cur.length})</h4><div class="hcards">${cur.map(guestCard).join('')}</div></div>`;
+ const groups={};rows.forEach(x=>(groups[x.edificio]??=[]).push(x));
+ Object.keys(groups).sort((a,b)=>a.localeCompare(b,'es')).forEach(n=>{const uniq=[...new Map(groups[n].map(x=>[x.huesped_id,x])).values()].sort((a,b)=>a.nombre_completo.localeCompare(b.nombre_completo,'es'));h+=`<div class="hsec"><h4>🏢 ${esc(n)} <span class="mu">· ${uniq.length} huéspedes</span></h4><div class="hcards">${uniq.map(guestCard).join('')}</div></div>`});
+ L.innerHTML=h||'<div class="audit-empty">No se encontraron huéspedes con esos filtros.</div>';
+}
+async function abrirHuesped(id){
+ const D=$('#hue');if(!D)return;
+ const [g,s,n,r,bl,pnd]=await Promise.all([
+  sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,documento_normalizado,telefono,correo,nacionalidad,ciudad_origen,fecha_nacimiento,es_vip,creado_en,creado_por').eq('id',id).maybeSingle(),
+  sb.from('resumen_huesped').select('*').eq('huesped_id',id).maybeSingle(),
+  sb.from('notas_huesped').select('*').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}),
+  sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,estado,adultos,menores,tarifa_noche,canal,huesped_nombre_copia,entrada_real,salida_real,noches').eq('huesped_id',id).order('fecha_entrada',{ascending:false}),
+  sb.rpc('revisar_lista_negra_huesped',{p_huesped_id:id}),
+  sb.from('lista_negra_solicitudes').select('*').eq('huesped_id',id).order('solicitado_en',{ascending:false}).limit(5)
+ ]);
+ if(g.error||!g.data)return msg(g.error?.message||'Huésped no encontrado',1);
+ const guest=g.data,summ=s.data||{},black=bl.error?[]:(bl.data||[]),pend=pnd.error?[]:(pnd.data||[]);
+ const unitIds=[...new Set((r.data||[]).map(x=>x.unidad_id).filter(Boolean))];let us=[];
+ if(unitIds.length){const ur=await sb.from('unidades').select('id,codigo,edificio_id,edificios(nombre),tipos_unidad(nombre)').in('id',unitIds);us=ur.data||[]}
+ const um=Object.fromEntries(us.map(u=>[u.id,u])),visibleRes=(r.data||[]).filter(x=>{const u=um[x.unidad_id];return u&&puedeVerEdificio(u.edificio_id)}),rids=visibleRes.map(x=>x.id);
+ const cr=rids.length?await sb.from('acompanantes').select('*').in('reserva_id',rids):{data:[]},cmap={};(cr.data||[]).forEach(c=>(cmap[c.reserva_id]??=[]).push(c));
+ const solicitudPend=pend.find(x=>x.estado==='pendiente');
+ const recep=['recepcion','administracion','gerencia','sysadmin'].includes(S.perfil.rol);
+ D.innerHTML=`<div class="hh"><h3>👤 ${esc(guest.nombre_completo)}</h3><button onclick="hueCargar()">← Volver</button><button onclick="cerrarHuespedes()">✕ Cerrar</button></div><div class="hb"><div class="hdetail-grid">
+ <div><div class="hpanel"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><h4 style="margin:0">Información del huésped</h4><div class="mu">${esc(guest.uid_huesped||'')}</div></div><div style="display:flex;gap:5px;flex-wrap:wrap">${guest.es_vip?'<span class="hpill current">⭐ VIP</span>':''}${black.length?'<span class="hpill black">⛔ LISTA NEGRA</span>':''}</div></div>
+ <div class="hinfo" style="margin-top:12px"><div><span>Nombre completo</span><b>${esc(guest.nombre_completo)}</b></div><div><span>Tipo de documento</span><b>${esc(guest.tipo_documento||'—')}</b></div><div><span>N° documento</span><b>${esc(guest.numero_documento||'—')}</b></div><div><span>Documento normalizado</span><b>${esc(guest.documento_normalizado||'—')}</b></div><div><span>Teléfono</span><b>${esc(guest.telefono||'—')}</b></div><div><span>Correo</span><b>${esc(guest.correo||'—')}</b></div><div><span>Nacionalidad</span><b>${esc(guest.nacionalidad||'—')}</b></div><div><span>Ciudad de origen</span><b>${esc(guest.ciudad_origen||'—')}</b></div><div><span>Fecha de nacimiento</span><b>${guest.fecha_nacimiento?guestFmtDate(guest.fecha_nacimiento):'—'}</b></div><div><span>Creado</span><b>${guest.creado_en?audFechaHora(guest.creado_en):'—'}</b></div><div><span>Creado por</span><b>${esc(AUD.users?.[guest.creado_por]||guest.creado_por||'—')}</b></div></div>
+ <div class="hstats" style="margin-top:12px"><div class="hstat">Estadías<b>${summ.estadias||0}</b></div><div class="hstat">Cancelaciones<b>${summ.cancelaciones||0}</b></div><div class="hstat">No-shows<b>${summ.no_shows||0}</b></div><div class="hstat">Última estadía<b>${guestFmtDate(summ.ultima_estadia)}</b></div></div>
+ ${black.length?`<div class="hblack-box" style="margin-top:12px"><b>⛔ LISTA NEGRA ACTIVA</b><br>${black.map(x=>esc(x.motivo)).join('<br>')}</div>`:solicitudPend?`<div class="hrequest-box" style="margin-top:12px"><span class="hpill pending">⏳ Solicitud pendiente</span><br><span class="mu">${esc(solicitudPend.motivo)}</span></div>`:recep?`<div class="hrequest-box" style="margin-top:12px"><button class="r" onclick="solicitarListaNegra('${id}')">🚫 Solicitar lista negra</button><span class="mu" style="margin-left:8px">La Administración debe aprobarla.</span></div>`:''}
+ </div><div class="hpanel"><h4 style="margin-top:0">📝 Notas del huésped</h4><div class="hnotes">${(n.data||[]).map(x=>`<div class="hnote ${x.gravedad>1?'high':''}"><b>${esc(x.categoria||'Nota')}</b> · gravedad ${x.gravedad??0}<br>${esc(x.nota)}<div class="mu" style="margin-top:3px">${guestFmtDate(x.creado_en)} · creado por ${esc(x.creado_por||'—')}</div></div>`).join('')||'<p class="mu">No hay notas registradas.</p>'}</div></div></div>
+ <div><div class="hpanel"><h4 style="margin-top:0">🛏 Reservas (${visibleRes.length})</h4><div class="hres-list">${visibleRes.map(x=>{const u=um[x.unidad_id],isCur=x.estado==='en_casa',cs=cmap[x.id]||[];return `<div class="hres ${isCur?'current':''}" onclick="irReservaDesdeHuesped('${x.id}')"><div class="top"><div class="uid">${isCur?'🟢 ':''}${esc(x.uid_reserva)}</div><span class="hpill ${isCur?'current':''}">${isCur?'ACTUAL':esc(guestEstado(x.estado))}</span></div><div class="meta">${esc(u?.edificios?.nombre||'—')} · ${esc(u?.codigo||'—')} · ${guestFmtDate(x.fecha_entrada)} → ${guestFmtDate(x.fecha_salida)} · ${x.noches||0} noches · ${esc(x.canal||'')}</div>${x.entrada_real?`<div class="meta">Entrada real: ${esc(x.entrada_real)}</div>`:''}${x.salida_real?`<div class="meta">Salida real: ${esc(x.salida_real)}</div>`:''}<div class="hcomp">${cs.length?`<b>Acompañantes (${cs.length})</b>: ${cs.map(c=>esc(c.nombre_completo)).join(', ')}`:'<span class="mu">Sin acompañantes registrados</span>'}</div></div>`}).join('')||'<p class="mu">No hay reservas visibles para los edificios autorizados.</p>'}</div></div>
+ <div class="hpanel"><h4 style="margin-top:0">👥 Acompañantes</h4>${Object.values(cmap).flat().map(c=>`<div class="rw"><span style="flex:1"><b>${esc(c.nombre_completo)}</b><br><span class="mu">${esc(c.tipo_documento||'')} ${esc(c.numero_documento||'')} · normalizado: ${esc(c.documento_normalizado||'—')} · ${c.es_menor?'Menor':'Adulto'} · creado ${guestFmtDate(c.creado_en)}<br>Huésped vinculado: ${esc(c.huesped_id||'—')}</span></span></div>`).join('')||'<p class="mu">No hay acompañantes registrados en las reservas visibles.</p>'}</div>
+ </div></div></div>`;
+ D.style.display='flex';
+}
+function irReservaDesdeHuesped(id){cerrarHuespedes();abrirDr(id)}
 
 // ---------- Catálogo de unidades ----------
 const fotoPath=f=>typeof f==='string'?f:(f?.path||'');
