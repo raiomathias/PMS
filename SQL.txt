@@ -333,3 +333,118 @@ CREATE TABLE public.categoria_ranking_edificio (
   CONSTRAINT categoria_ranking_edificio_edificio_id_fkey FOREIGN KEY (edificio_id) REFERENCES public.edificios(id),
   CONSTRAINT categoria_ranking_edificio_tipo_unidad_id_fkey FOREIGN KEY (tipo_unidad_id) REFERENCES public.tipos_unidad(id)
 );
+
+-- ================================================================
+-- PMS: CAMBIOS FINALES 2026-10
+-- ================================================================
+CREATE OR REPLACE VIEW public.resumen_huesped AS
+SELECT h.id AS huesped_id,count(r.id) FILTER (WHERE r.estado NOT IN ('cancelada','no_show'))::bigint AS estadias,
+count(r.id) FILTER (WHERE r.estado='cancelada')::bigint AS cancelaciones,count(r.id) FILTER (WHERE r.estado='no_show')::bigint AS no_shows,
+max(r.fecha_salida) FILTER (WHERE r.estado IN ('en_casa','check_out','confirmada')) AS ultima_estadia
+FROM huespedes h LEFT JOIN reservas r ON r.huesped_id=h.id GROUP BY h.id;
+
+CREATE OR REPLACE FUNCTION public.revisar_lista_negra(p_documento text DEFAULT NULL,p_nombre text DEFAULT NULL)
+RETURNS TABLE(id uuid,nombre_completo text,motivo text,numero_documento text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+ SELECT l.id,l.nombre_completo,l.motivo,l.numero_documento FROM lista_negra l WHERE l.activo AND
+ ((NULLIF(regexp_replace(COALESCE(p_documento,''),'[^0-9A-Za-z]','','g'),'') IS NOT NULL AND l.documento_normalizado=upper(regexp_replace(p_documento,'[^0-9A-Za-z]','','g')))
+ OR (NULLIF(trim(p_nombre),'') IS NOT NULL AND lower(COALESCE(l.nombre_normalizado,l.nombre_completo))=lower(trim(p_nombre))))
+ ORDER BY l.agregado_en DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.solicitar_lista_negra(p_huesped_id uuid,p_motivo text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE h huespedes%rowtype;v uuid;
+BEGIN
+ IF rol_actual() NOT IN ('recepcion','administracion','gerencia','sysadmin') THEN RAISE EXCEPTION 'Sin permiso'; END IF;
+ SELECT * INTO h FROM huespedes WHERE id=p_huesped_id;IF NOT FOUND THEN RAISE EXCEPTION 'Huésped no encontrado';END IF;
+ INSERT INTO lista_negra_solicitudes(huesped_id,nombre_completo,tipo_documento,numero_documento,documento_normalizado,motivo,solicitado_por)
+ VALUES(h.id,h.nombre_completo,h.tipo_documento,h.numero_documento,h.documento_normalizado,p_motivo,auth.uid()) RETURNING id INTO v;RETURN v;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.resolver_solicitud_lista_negra(p_solicitud_id uuid,p_aprobar boolean,p_decision_motivo text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE s lista_negra_solicitudes%rowtype;
+BEGIN
+ IF rol_actual() NOT IN ('administracion','gerencia','sysadmin') THEN RAISE EXCEPTION 'Solo administración o superior puede resolver solicitudes';END IF;
+ SELECT * INTO s FROM lista_negra_solicitudes WHERE id=p_solicitud_id FOR UPDATE;IF NOT FOUND THEN RAISE EXCEPTION 'Solicitud no encontrada';END IF;
+ IF p_aprobar THEN
+  INSERT INTO lista_negra(nombre_completo,tipo_documento,numero_documento,documento_normalizado,motivo,agregado_por,nombre_normalizado)
+  VALUES(s.nombre_completo,s.tipo_documento,s.numero_documento,s.documento_normalizado,s.motivo,auth.uid(),lower(trim(s.nombre_completo)));
+  UPDATE lista_negra_solicitudes SET estado='aprobada',revisado_por=auth.uid(),revisado_en=now(),decision_motivo=p_decision_motivo WHERE id=s.id;
+ ELSE
+  UPDATE lista_negra_solicitudes SET estado='rechazada',revisado_por=auth.uid(),revisado_en=now(),decision_motivo=p_decision_motivo WHERE id=s.id;
+ END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.limpieza_grilla(p_desde date)
+RETURNS TABLE(unidad_id uuid,estado estado_limpieza,creado_en timestamptz,iniciado_en timestamptz,terminado_en timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+ SELECT l.unidad_id,l.estado,l.creado_en::timestamptz,l.iniciado_en::timestamptz,l.terminado_en::timestamptz FROM limpieza l
+ WHERE rol_actual() IS NOT NULL AND (l.creado_en >= (p_desde::timestamp AT TIME ZONE 'America/Santiago')
+ OR l.id=(SELECT l2.id FROM limpieza l2 WHERE l2.unidad_id=l.unidad_id AND l2.creado_en < (p_desde::timestamp AT TIME ZONE 'America/Santiago') ORDER BY l2.creado_en DESC LIMIT 1))
+ ORDER BY l.unidad_id,l.creado_en;
+$$;
+
+CREATE OR REPLACE FUNCTION public.tablero_limpieza(p_edificio uuid DEFAULT NULL)
+RETURNS TABLE(unidad_id uuid,unidad_codigo text,categoria text,edificio_id uuid,edificio text,fecha_salida date,hora_salida_aprox time,reserva_estado text,hay_ingreso boolean,hora_llegada time,limpieza_id uuid,estado estado_limpieza,observacion_recepcion text,observacion_limpieza text,pendiente_desde timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+WITH hoy AS (SELECT (now() AT TIME ZONE 'America/Santiago')::date d)
+SELECT u.id,u.codigo::text,coalesce(t.nombre,'')::text,e.id,e.nombre::text,s.fecha_salida,s.hora_salida_aprox::time,s.estado::text,(i.unidad_id IS NOT NULL),i.hora_llegada_aprox::time,l.id,l.estado,l.observacion_recepcion,l.observacion_limpieza,CASE WHEN s.unidad_id IS NULL THEN l.creado_en::timestamptz END
+FROM unidades u JOIN edificios e ON e.id=u.edificio_id LEFT JOIN tipos_unidad t ON t.id=u.tipo_unidad_id CROSS JOIN hoy
+LEFT JOIN LATERAL(SELECT r.unidad_id,r.fecha_salida,r.hora_salida_aprox,r.estado FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_salida=hoy.d AND r.estado IN ('en_casa','check_out') ORDER BY r.salida_real DESC NULLS LAST LIMIT 1)s ON true
+LEFT JOIN LATERAL(SELECT r.unidad_id,r.hora_llegada_aprox FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_entrada=hoy.d AND r.estado IN ('confirmada','en_casa') ORDER BY r.hora_llegada_aprox NULLS LAST LIMIT 1)i ON true
+LEFT JOIN LATERAL(SELECT x.* FROM limpieza x WHERE x.unidad_id=u.id ORDER BY x.creado_en DESC LIMIT 1)l ON true
+WHERE rol_actual() IS NOT NULL AND u.activo AND (p_edificio IS NULL OR u.edificio_id=p_edificio) AND (s.unidad_id IS NOT NULL OR l.estado IN ('sucia','en_proceso','defectuosa'))
+ORDER BY e.orden,u.codigo;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion(p_edificio_id uuid,p_tipo_unidad_id uuid,p_entrada date,p_salida date,p_excluir_reserva uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_target uuid;v_blocker reservas%rowtype;v_plan jsonb;
+BEGIN
+ IF p_salida<=p_entrada THEN RETURN '[]'::jsonb;END IF;
+ SELECT u.id INTO v_target FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND NOT EXISTS(SELECT 1 FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show')) ORDER BY u.orden,u.codigo LIMIT 1;
+ IF v_target IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan','[]'::jsonb);END IF;
+ FOR v_target IN SELECT u.id FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND (SELECT count(*) FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show'))=1 ORDER BY u.orden,u.codigo LOOP
+  SELECT r.* INTO v_blocker FROM reservas r WHERE r.unidad_id=v_target AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show') LIMIT 1;
+  IF v_blocker.estado='en_casa' THEN CONTINUE;END IF;
+  WITH RECURSIVE chain AS(
+   SELECT v_blocker.id rid,v_blocker.unidad_id from_uid,c.id to_uid,1 depth,ARRAY[v_blocker.id]::uuid[] seen_r,ARRAY[v_target]::uuid[] seen_u
+   FROM unidades c JOIN unidades src ON src.id=v_blocker.unidad_id LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   WHERE c.activo AND c.edificio_id=src.edificio_id AND c.id<>v_blocker.unidad_id AND c.id<>v_target AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0))
+   UNION ALL
+   SELECT b.id,b.unidad_id,c.id,ch.depth+1,ch.seen_r||b.id,ch.seen_u||c.id
+   FROM chain ch JOIN reservas cur ON cur.id=ch.rid JOIN unidades src ON src.id=cur.unidad_id JOIN unidades c ON c.activo AND c.edificio_id=src.edificio_id AND c.id<>cur.unidad_id
+   LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   LEFT JOIN LATERAL(SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id FROM reservas r WHERE r.unidad_id=c.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<cur.fecha_salida AND r.fecha_salida>cur.fecha_entrada AND r.estado NOT IN ('cancelada','no_show') AND r.id<>ALL(ch.seen_r) LIMIT 1)b ON true
+   WHERE ch.depth<6 AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)) AND c.id<>ALL(ch.seen_u) AND (b.id IS NULL OR b.estado<>'en_casa')
+  ),terminals AS(
+   SELECT ch.* FROM chain ch JOIN reservas cur ON cur.id=ch.rid WHERE NOT EXISTS(SELECT 1 FROM reservas b WHERE b.unidad_id=ch.to_uid AND b.id IS DISTINCT FROM p_excluir_reserva AND b.fecha_entrada<cur.fecha_salida AND b.fecha_salida>cur.fecha_entrada AND b.estado NOT IN ('cancelada','no_show'))
+  )
+  SELECT jsonb_agg(jsonb_build_object('reserva_id',rid,'unidad_origen',from_uid,'unidad_destino',to_uid,'profundidad',depth) ORDER BY depth DESC) INTO v_plan FROM terminals;
+  IF v_plan IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan',v_plan);END IF;
+ END LOOP;RETURN '[]'::jsonb;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.crear_reserva_con_reacomodacion(p_reserva jsonb,p_plan jsonb DEFAULT '[]'::jsonb,p_iva integer DEFAULT 0,p_otro integer DEFAULT 0)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE x jsonb;r reservas%rowtype;v_id uuid;
+BEGIN
+ IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
+  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
+   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
+   IF r.estado='en_casa' THEN RAISE EXCEPTION 'No se puede mover una reserva que está en casa';END IF;
+   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
+   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  END LOOP;
+ END IF;
+ INSERT INTO reservas(huesped_id,unidad_id,fecha_entrada,fecha_salida,estado,canal,referencia_externa,adultos,menores,tarifa_noche,usa_estacionamiento,noches_estacionamiento,modelo_vehiculo,patente_vehiculo)
+ VALUES((p_reserva->>'huesped_id')::uuid,(p_reserva->>'unidad_id')::uuid,(p_reserva->>'fecha_entrada')::date,(p_reserva->>'fecha_salida')::date,(p_reserva->>'estado')::estado_reserva,(p_reserva->>'canal')::canal_reserva,NULLIF(p_reserva->>'referencia_externa',''),COALESCE((p_reserva->>'adultos')::int,1),COALESCE((p_reserva->>'menores')::int,0),COALESCE((p_reserva->>'tarifa_noche')::int,0),COALESCE((p_reserva->>'usa_estacionamiento')::boolean,false),COALESCE((p_reserva->>'noches_estacionamiento')::int,0),NULLIF(p_reserva->>'modelo_vehiculo',''),NULLIF(p_reserva->>'patente_vehiculo','')) RETURNING id INTO v_id;
+ IF COALESCE(p_iva,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_IVA__',1,p_iva);END IF;
+ IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
+ RETURN v_id;
+END $$;
