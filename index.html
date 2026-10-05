@@ -1156,12 +1156,12 @@ async function pDet(id){
  $('#pc').innerHTML=`<button onclick="panel('tipos')">← Categorías</button><h4>${esc(t.nombre)}</h4><div class="rw" id="dt">${NI('camas',t.camas,'N° de camas','number')}${NI('detalle_camas',t.detalle_camas,'Detalle (ej. 1 matrimonial + 1 sofá cama)')}</div><label style="margin-top:8px">Descripción<textarea id="dd" rows="3">${esc(t.descripcion)}</textarea></label><button class="p" style="margin-top:6px" onclick="gDet('${id}')">Guardar detalle</button>
  <h4>Fotos (${f.length})</h4>
  <div class="photo-help"><b>Posición de catálogo</b><br><span class="mu">Puedes saltarte posiciones. Por ejemplo, puedes asignar una imagen a Miniatura 1 y otra directamente a Miniatura 3. Las que queden en “Solo galería” no ocupan ninguna miniatura fija.</span></div>
- <div class="photo-toolbar"><input type="file" id="ff" accept="image/*" multiple><button class="p" onclick="subirFotos('${id}')">＋ Subir fotos</button><button onclick="guardarRanking('${id}')">💾 Guardar posiciones</button></div>
+ <div class="photo-toolbar"><input type="file" id="ff" accept="image/*" multiple><button class="p" onclick="subirFotos('${id}')">＋ Subir fotos</button><button onclick="guardarRankingFotos('${id}')">💾 Guardar posiciones</button></div>
  <div class="photo-admin">${f.map((x,i)=>`<div class="photo-card"><img src="${FU(x.path)}" alt=""><div class="pc-body"><div><b>${posLabel(x.rank)}</b></div><div class="pc-name">${esc(x.path.split('/').pop()||x.path)}</div><div class="pc-actions"><select class="foto-pos" data-fi="${i}">${opts(x.rank)}</select><button class="pc-del" onclick="delFoto('${id}',${i})">🗑</button></div></div></div>`).join('')||'<div class="mu">No hay fotos todavía.</div>'}</div>
  <p class="mu">La portada es la imagen grande; las miniaturas 1–3 son las tres pequeñas. El orden de subida ya no importa. Máximo 5 MB por foto.</p>`;
 }
 async function gDet(id){const o=datos($('#dt'));o.descripcion=$('#dd').value||null;const {error}=await sb.from('tipos_unidad').update(o).eq('id',id);er(error,'Detalle guardado')}
-async function guardarRanking(id){
+async function guardarRankingFotos(id){
  const {data:t,error}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single();
  if(error)return msg(error.message,1);
  const f=normalizarFotos(t.fotos),ocupados=new Set();
