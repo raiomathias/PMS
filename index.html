@@ -357,14 +357,18 @@ function abrirNueva(p={}){
  <div id="nb" class="sec c5" style="display:none"><h4 class="st">🔒 Bloqueo</h4>${F('nm','Motivo del bloqueo')}</div>
  <div id="nr"><div class="sec c1"><h4 class="st">👤 Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
  <div id="nf"><div class="g2">${F('hn','Nombre completo')}${SEL('hd','Tipo doc.',['rut','pasaporte','dni','otro'],'rut')}${F('hx','N° documento')}${F('ht','Teléfono')}${F('hna','Nacionalidad')}${F('hc','Ciudad de origen')}</div></div>
- </div><div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
- <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk" onchange="toggleNochesEst()"> Usa estacionamiento</label><div class="g2" id="nparkrow" style="margin-top:8px">${F('nne','Noches con estacionamiento',1,'number')}</div><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div></div>
+ </div><div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}${F('niva','IVA total',0,'number').replace('<label>','<label class="dinero">')}${F('notro','Otro total',0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}</div>
+ <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk" onchange="toggleNochesEst()"> Usa estacionamiento</label><div id="nparkrow" style="margin-top:8px;display:none"><div class="mu" style="margin-bottom:5px">Selecciona las fechas exactas en que se usará estacionamiento:</div><div id="npdates" class="ns"></div></div><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div></div>
  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarNueva()">Guardar</button></div></div>`;
- $('#mo').style.display='grid';filU(p.unidad);$('#nne').value=Math.max(1,diff($('#ne').value,$('#ns').value));toggleNochesEst();syncBookingRef();
+ $('#mo').style.display='grid';filU(p.unidad);renderParkingDates(true);$('#ne').onchange=()=>renderParkingDates(true);$('#ns').onchange=()=>renderParkingDates(true);toggleNochesEst();syncBookingRef();
  if(p.bloqueo){$('#nt').value='b';$('#nt').dispatchEvent(new Event('change'))}
 }
 function syncBookingRef(){const b=$('#nc')?.value==='booking';const x=$('#nx');if(!x)return;x.required=b;x.placeholder=b?'Obligatorio para Booking':'Opcional';if(b)x.closest('label')?.querySelector('span')?.remove()}
-function toggleNochesEst(){const on=$('#nk')?.checked,row=$('#nparkrow');if(!row)return;row.style.display=on?'grid':'none';if(on){const n=Math.max(1,diff($('#ne').value,$('#ns').value));$('#nne').value=Math.min(Math.max(+$('#nne').value||n,1),n)}else $('#nne').value=0}
+function parkingDateList(){const fe=$('#ne')?.value,fs=$('#ns')?.value;if(!fe||!fs||fs<=fe)return[];const a=[];for(let d=fe;d<fs;d=addD(d,1))a.push(d);return a}
+function renderParkingDates(selectAll=true){const box=$('#npdates');if(!box)return;const old=new Set([...box.querySelectorAll('input:checked')].map(x=>x.value));const days=parkingDateList();box.innerHTML=days.map(d=>`<label class="nd" style="border:1px solid var(--bd);border-radius:8px;cursor:pointer"><input type="checkbox" class="npd" value="${d}" ${selectAll||old.has(d)?'checked':''}><b>${d.slice(8,10)}/${d.slice(5,7)}</b><span class="mu">${new Date(d+'T12:00:00').toLocaleDateString('es-CL',{weekday:'short'})}</span></label>`).join('');}
+function parkingSelectedDates(){return [...document.querySelectorAll('#npdates .npd:checked')].map(x=>x.value).sort()}
+function toggleNochesEst(){const on=$('#nk')?.checked,row=$('#nparkrow');if(!row)return;row.style.display=on?'block':'none';if(on)renderParkingDates(false)}
+
 function filU(sel){const e=$('#ned').value,cur=sel||$('#nu').value;const cats=Object.entries(S.tipos).filter(([id,t])=>!e||S.unidades.some(u=>u.edificio_id===e&&u.tipo_unidad_id===id));const curT=$('#nca').value||'';$('#nca').innerHTML=cats.map(([id,t])=>`<option value="${id}" ${id===curT?'selected':''}>${esc(t.nombre)}</option>`).join('');const t=$('#nca').value;$('#nu').innerHTML='<option value="">Asignar automáticamente</option>'+S.unidades.filter(u=>(u.tipo_unidad_id||'')===t&&(!e||u.edificio_id===e)).map(u=>`<option value="${u.id}" ${u.id===cur?'selected':''}>${esc(u.codigo)}</option>`).join('');tarU()}
 function tarU(){$('#nta').value=S.tipos[$('#nca').value]?.tarifa_base||0}
 const nomU=id=>{const u=S.unidades.find(x=>x.id===id);return u?u.edificios.nombre+' · '+u.codigo:''};
@@ -415,10 +419,10 @@ async function elegirH(id){
  $('#na').innerHTML=antec(hh.data||[])+(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
 }
 async function guardarNueva(){
- const fe=$('#ne').value,fs=$('#ns').value;if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;
+ const fe=$('#ne').value,fs=$('#ns').value;if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;const parkingDates=parkingSelectedDates();
  if($('#nt').value==='b'){const {error}=await sb.from('reservas').insert({unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'bloqueado',observaciones:$('#nm').value||'Bloqueo'});if(error)return msg(errTxt(error),1);cerrar();return cargar()}
  if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
- const nochesEst=$('#nk').checked?Math.max(1,Math.min(+$('#nne').value||diff(fe,fs),diff(fe,fs))):0;
+ const nochesEst=$('#nk').checked?parkingDates.length:0;
  if($('#nk').checked){const ue=S.unidades.find(u=>u.id===unidad);if(!await avisoCupo(ue?.edificio_id,fe,addD(fe,nochesEst)))return}
  let hid=N.h;
  if(hid){if(N.lista&&!confirm('⛔ Este huésped está en la lista negra. ¿Continuar igualmente?'))return;
@@ -435,7 +439,7 @@ async function guardarNueva(){
   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
  const canal=$('#nc').value,ref=$('#nx').value.trim();if(canal==='booking'&&!ref)return msg('El código externo es obligatorio para Booking',1);
- if($('#nk').checked&&(!$('#nne').value||nochesEst<1))return msg('Indica cuántas noches tendrán estacionamiento',1);
+ if($('#nk').checked&&nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
  const {data:rnew,error}=await sb.from('reservas').insert({huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null}).select('id').single();
  if(error)return msg(errTxt(error),1);
  const iva=+$('#niva').value||0,otro=+$('#notro').value||0;
