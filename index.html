@@ -479,6 +479,7 @@ async function guardarNueva(){
  const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null},p_plan:N.plan||[],p_iva:+$('#niva').value||0,p_otro:+$('#notro').value||0});
  if(error)return msg(errTxt(error),1);
 
+}
 // ---------- Detalle de reserva ----------
 async function obtenerUidReservaReal(r){
   // Fuente principal: la fila exacta de reservas.
