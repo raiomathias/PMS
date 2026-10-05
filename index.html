@@ -22,7 +22,7 @@ header b{margin-right:auto}
 .hoy{position:absolute;top:0;bottom:0;width:var(--w);background:rgba(37,99,235,.09)}
 .blq{position:absolute;top:5px;bottom:5px;border-radius:6px;padding:2px 6px;font-size:11px;overflow:hidden;white-space:nowrap;cursor:pointer;color:#fff;box-sizing:border-box;line-height:1.25}
 .blq small{display:block;opacity:.85}
-.confirmada{background:#2563eb}.en_casa{background:#16a34a}.check_out{background:#6b7280}
+.confirmada{background:#2563eb}.en_casa{background:#16a34a}.check_out{background:#6b7280}.checkout-hoy{background:#14532d!important}.checkin-hoy{background:#c4b5fd!important;color:#312e81}
 .tentativa{background:repeating-linear-gradient(45deg,#d97706,#d97706 6px,#f59e0b 6px,#f59e0b 12px)}
 .bloqueado{background:repeating-linear-gradient(45deg,#374151,#374151 6px,#4b5563 6px,#4b5563 12px)}
 #dr{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--pn);border-left:1px solid var(--bd);box-shadow:-8px 0 24px rgba(0,0,0,.2);padding:16px;overflow:auto;z-index:10;display:none}
@@ -177,7 +177,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button onclick="abrirEst()">🅿 Estacionamiento</button><button id="bcn" style="display:none" onclick="abrirCanc()">🚫 Cancelaciones</button><button id="bau" style="display:none" onclick="abrirAud()">🕵 Auditoría</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
-<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
+<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
 <script>
 // ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
 const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
@@ -296,8 +296,11 @@ function dibujar(){
   let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';b+=celdasLimp(u.id,hi);
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
-   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
-   b+=`<div class="blq ${r.estado}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
+   const checkoutHoy=r.fecha_salida===hoy && ['check_out','en_casa','confirmada'].includes(r.estado);
+   const checkinHoy=r.fecha_entrada===hoy && ['confirmada','en_casa'].includes(r.estado);
+   const colorHoy=checkoutHoy?' checkout-hoy':(checkinHoy?' checkin-hoy':'');
+   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${checkoutHoy?'⬇ Check-out hoy · ':checkinHoy?'⬆ Check-in hoy · ':''}${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
+   b+=`<div class="blq ${r.estado}${colorHoy}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
   h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div></div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
  $('#gw').innerHTML=h;barra();
 }
@@ -425,7 +428,7 @@ async function guardarNueva(){
  const nochesEst=$('#nk').checked?parkingDates.length:0;
  if($('#nk').checked){const ue=S.unidades.find(u=>u.id===unidad);if(!await avisoCupo(ue?.edificio_id,fe,addD(fe,nochesEst)))return}
  let hid=N.h;
- if(hid){if(N.lista&&!confirm('⛔ Este huésped está en la lista negra. ¿Continuar igualmente?'))return;
+ if(hid){if(N.lista)return msg('⛔ No se puede crear la reserva: el huésped seleccionado está en la lista negra.',1);
   const g0=N.c.find(x=>x.id===hid)||{},nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
   const nuevo={nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value.trim()||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null};
   const cambio=Object.keys(nuevo).some(k=>(nuevo[k]||null)!==(g0[k]||null));
@@ -434,18 +437,12 @@ async function guardarNueva(){
    const {error:eg}=await sb.from('huespedes').update(nuevo).eq('id',hid);
    if(eg)return msg(eg.code==='23505'?'Ese documento ya pertenece a otro huésped: búscalo arriba':errTxt(eg),1)}}
  else{const nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
-  const {data:lg}=await sb.rpc('revisar_lista_negra',{p_documento:$('#hx').value,p_nombre:nom});
-  if(lg?.length&&!confirm('⛔ Coincide con la lista negra: '+lg[0].motivo+'\n¿Continuar igualmente?'))return;
   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
  const canal=$('#nc').value,ref=$('#nx').value.trim();if(canal==='booking'&&!ref)return msg('El código externo es obligatorio para Booking',1);
  if($('#nk').checked&&nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
- const {data:rnew,error}=await sb.from('reservas').insert({huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null}).select('id').single();
+ const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null},p_plan:N.plan||[],p_iva:+$('#niva').value||0,p_otro:+$('#notro').value||0});
  if(error)return msg(errTxt(error),1);
- const iva=+$('#niva').value||0,otro=+$('#notro').value||0;
- if(iva||otro){const rows=[];if(iva)rows.push({reserva_id:rnew.id,tipo:'otro',descripcion:'__PMS_IVA__',cantidad:1,monto_unitario:iva});if(otro)rows.push({reserva_id:rnew.id,tipo:'otro',descripcion:'__PMS_OTRO_PRECIO__',cantidad:1,monto_unitario:otro});const {error:ce}=await sb.from('cargos').insert(rows);if(ce){await sb.from('reservas').delete().eq('id',rnew.id);return msg(errTxt(ce),1)}}
- cerrar();msg('Reserva creada en '+nomU(unidad));cargar();
-}
 
 // ---------- Detalle de reserva ----------
 async function obtenerUidReservaReal(r){
@@ -1032,6 +1029,33 @@ async function audCSV(){
  const bl=new Blob(['\ufeff'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(bl),l=document.createElement('a');
  l.href=u;l.download='auditoria_'+hoyStr()+'.csv';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);msg('CSV descargado ('+rows.length+' registros)')}
 
+
+// ---------- Huéspedes ----------
+async function abrirHuespedes(){
+ const {data,error}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,correo,nacionalidad,ciudad_origen,fecha_nacimiento,es_vip,creado_en').order('nombre_completo');
+ if(error)return msg(error.message,1);
+ const ids=(data||[]).map(x=>x.id);
+ const {data:rs,error:re}=ids.length?await sb.from('reservas').select('id,uid_reserva,huesped_id,unidad_id,estado,canal,fecha_entrada,fecha_salida,tarifa_noche,noches,adultos,menores,usa_estacionamiento,noches_estacionamiento').in('huesped_id',ids).order('fecha_entrada',{ascending:false}):{data:[],error:null};
+ if(re)return msg(re.message,1);
+ const allowed=new Set(S.edificiosPermitidos.map(e=>e.id));
+ const visible=(rs||[]).filter(r=>{const u=S.unidades.find(u=>u.id===r.unidad_id);return u&&allowed.has(u.edificio_id)});
+ const guests=(data||[]).filter(g=>visible.some(r=>r.huesped_id===g.id));
+ const byEd={};visible.forEach(r=>{const u=S.unidades.find(u=>u.id===r.unidad_id),g=guests.find(x=>x.id===r.huesped_id);if(!u||!g)return;(byEd[u.edificio_id]??=[]).push(g)});
+ const uniq=a=>[...new Map(a.map(x=>[x.id,x])).values()];
+ const inhouse=new Set(visible.filter(r=>r.estado==='en_casa').map(r=>r.huesped_id));
+ $('#hue').style.cssText='position:fixed;inset:0;z-index:13;background:var(--bg);display:flex;flex-direction:column';
+ $('#hue').innerHTML='<div class="ch" style="display:flex;gap:10px;align-items:center;padding:12px 20px;background:var(--pn);border-bottom:1px solid var(--bd)"><h3 style="margin:0 auto 0 0">👥 Huéspedes</h3><span class="mu">'+guests.length+' huéspedes</span><button onclick="cerrarHuespedes()">✕ Cerrar</button></div><div style="padding:14px 20px;overflow:auto"><div class="sec c1"><h4 class="st">🏠 En casa actualmente</h4><div class="cg">'+(guests.filter(g=>inhouse.has(g.id)).map(g=>guestCard(g,visible.filter(r=>r.huesped_id===g.id),true)).join('')||'<p class="mu">No hay huéspedes en casa.</p>')+'</div></div>'+S.edificiosPermitidos.map(e=>{const L=uniq(byEd[e.id]||[]);return '<div class="sec"><h4 class="st">🏢 '+esc(e.nombre)+' <span class="mu">· '+L.length+'</span></h4><div class="cg">'+(L.map(g=>guestCard(g,visible.filter(r=>r.huesped_id===g.id),inhouse.has(g.id))).join('')||'<p class="mu">Sin huéspedes.</p>')+'</div></div>'}).join('')+'</div>';
+}
+function guestCard(g,rs,current){const r=rs.find(x=>x.estado==='en_casa')||rs[0],u=r&&S.unidades.find(x=>x.id===r.unidad_id);return '<div class="cat" style="cursor:pointer" onclick="verHuesped(\''+g.id+'\')"><div style="display:flex;justify-content:space-between;gap:8px"><div><b style="font-size:16px">'+esc(g.nombre_completo)+'</b><div class="mu">'+esc(g.uid_huesped)+' · '+rs.length+' reserva'+(rs.length!==1?'s':'')+'</div></div>'+(current?'<span class="bd ok">EN CASA</span>':'')+'</div><div class="mu" style="margin-top:8px">'+(u?esc(u.edificios?.nombre||'')+' · '+esc(u.codigo):'Sin unidad actual')+(g.es_vip?' · ⭐ VIP':'')+'</div><div class="mu">'+(g.telefono?esc(g.telefono):'Sin teléfono')+(g.numero_documento?' · '+esc(g.numero_documento):'')+'</div></div>'}
+function cerrarHuespedes(){$('#hue').style.display='none'}
+async function verHuesped(id){
+ const [{data:g,error:ge},{data:rs,error:re},{data:nt}]=await Promise.all([sb.from('huespedes').select('*').eq('id',id).single(),sb.from('reservas').select('*,unidades(codigo,edificio_id,edificios(nombre)),acompanantes(*)').eq('huesped_id',id).order('fecha_entrada',{ascending:false}),sb.from('notas_huesped').select('*').eq('huesped_id',id).order('creado_en',{ascending:false})]);
+ if(ge||re)return msg((ge||re).message,1);
+ const R=(rs||[]).filter(r=>puedeVerEdificio(r.unidades?.edificio_id));
+ const cur=R.find(r=>r.estado==='en_casa');
+ const {data:s}=await sb.from('resumen_huesped').select('*').eq('huesped_id',id).maybeSingle();
+ $('#hue').innerHTML='<div class="ch" style="display:flex;gap:10px;align-items:center;padding:12px 20px;background:var(--pn);border-bottom:1px solid var(--bd)"><button onclick="abrirHuespedes()">← Huéspedes</button><h3 style="margin:0 auto 0 0">'+esc(g.nombre_completo)+'</h3><button onclick="cerrarHuespedes()">✕</button></div><div style="padding:16px 20px;overflow:auto;max-width:1100px;width:100%;box-sizing:border-box;margin:auto"><div class="kp"><div>Estadías<b>'+(s?.estadias||0)+'</b></div><div>Cancelaciones<b>'+(s?.cancelaciones||0)+'</b></div><div>No-shows<b>'+(s?.no_shows||0)+'</b></div><div>Última estadía<b>'+(s?.ultima_estadia||'—')+'</b></div></div><div class="sec c1"><h4 class="st">👤 Información completa</h4><div class="g2">'+[['UID',g.uid_huesped],['Documento',(g.tipo_documento||'')+' '+(g.numero_documento||'')],['Teléfono',g.telefono],['Correo',g.correo],['Nacionalidad',g.nacionalidad],['Ciudad de origen',g.ciudad_origen],['Nacimiento',g.fecha_nacimiento],['Creado',g.creado_en?.slice(0,16).replace('T',' ')],['VIP',g.es_vip?'Sí':'No']].map(x=>'<div class="pg"><span class="mu">'+esc(x[0])+'</span><br><b>'+esc(x[1]||'—')+'</b></div>').join('')+'</div></div><div class="sec c2"><h4 class="st">📋 Reservas</h4><div class="cgr2">'+(R.map(r=>'<div class="cc '+(r.id===cur?.id?'ca':'')+'" onclick="abrirDr(\''+r.id+'\')"><b>'+(r.id===cur?.id?'🟢 RESERVA ACTUAL · ':'')+esc(r.uid_reserva)+'</b><div>'+esc(r.unidades?.edificios?.nombre||'')+' · '+esc(r.unidades?.codigo||'')+'</div><div class="mu">'+r.fecha_entrada+' → '+r.fecha_salida+' · '+r.estado.replace('_',' ')+' · '+(r.noches||0)+' noches</div><div class="mu">Canal: '+esc(r.canal)+' · '+clp(r.tarifa_noche||0)+'/noche</div>'+((r.acompanantes||[]).length?'<div class="mu">👥 '+(r.acompanantes||[]).map(a=>esc(a.nombre_completo)).join(', ')+'</div>':'')+'</div>').join('')||'<p class="mu">Sin reservas visibles.</p>')+'</div></div><div class="sec c4"><h4 class="st">📝 Notas del huésped</h4>'+((nt||[]).map(n=>'<div class="al '+(n.gravedad>1?'r':'')+'"><b>'+esc(n.categoria)+'</b> · '+esc(n.nota)+' <span class="mu">'+(n.creado_en?.slice(0,10)||'')+'</span></div>').join('')||'<p class="mu">Sin notas.</p>')+'</div></div>';
+}
 // ---------- Catálogo de unidades ----------
 const fotoPath=f=>typeof f==='string'?f:(f?.path||'');
 function normalizarFotos(f){
