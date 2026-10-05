@@ -300,7 +300,7 @@ function dibujar(){
    const checkinHoy=r.fecha_entrada===hoy && ['confirmada','en_casa'].includes(r.estado);
    const colorHoy=checkoutHoy?' checkout-hoy':(checkinHoy?' checkin-hoy':'');
    const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${checkoutHoy?'⬇ Check-out hoy · ':checkinHoy?'⬆ Check-in hoy · ':''}${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
-   b+=`<div class="blq ${r.estado}${colorHoy}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
+   b+=`<div class="blq ${r.estado}${colorHoy}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
   h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div></div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
  $('#gw').innerHTML=h;barra();
 }
