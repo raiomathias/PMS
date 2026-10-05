@@ -350,9 +350,9 @@ $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
 const cerrar=()=>{$('#mo').style.display='none';if(PT){const f=PT;PT=null;f(null)}if(A.open){A.open=false;cargar()}},cerrarDr=()=>{$('#dr').style.display='none';if($('#est').style.display==='flex')estCargar()};
 
 // ---------- Nueva reserva / bloqueo ----------
-let N={h:null,c:[],lista:false};
+let N={h:null,c:[],lista:false,plan:[],reacomodacion:null};
 function abrirNueva(p={}){
- N={h:null,c:[],lista:false};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
+ N={h:null,c:[],lista:false,plan:[],reacomodacion:null};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
  const pu=S.unidades.find(u=>u.id===p.unidad),pt=p.tipo!==undefined?p.tipo:pu?(pu.tipo_unidad_id||''):tk[0]?.[0],pe=p.edificio||(pu?pu.edificio_id:'');
  $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
  <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Edificio<select id="ned" onchange="filU()"><option value="">Seleccionar edificio</option>${ed.map(([id,n])=>`<option value="${id}" ${pe===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label><label>Categoría<select id="nca" onchange="filU()"></select></label>
@@ -375,13 +375,48 @@ function toggleNochesEst(){const on=$('#nk')?.checked,row=$('#nparkrow');if(!row
 function filU(sel){const e=$('#ned').value,cur=sel||$('#nu').value;const cats=Object.entries(S.tipos).filter(([id,t])=>!e||S.unidades.some(u=>u.edificio_id===e&&u.tipo_unidad_id===id));const curT=$('#nca').value||'';$('#nca').innerHTML=cats.map(([id,t])=>`<option value="${id}" ${id===curT?'selected':''}>${esc(t.nombre)}</option>`).join('');const t=$('#nca').value;$('#nu').innerHTML='<option value="">Asignar automáticamente</option>'+S.unidades.filter(u=>(u.tipo_unidad_id||'')===t&&(!e||u.edificio_id===e)).map(u=>`<option value="${u.id}" ${u.id===cur?'selected':''}>${esc(u.codigo)}</option>`).join('');tarU()}
 function tarU(){$('#nta').value=S.tipos[$('#nca').value]?.tarifa_base||0}
 const nomU=id=>{const u=S.unidades.find(x=>x.id===id);return u?u.edificios.nombre+' · '+u.codigo:''};
+async function confirmarReacomodacion(plan,targetId){
+ const ids=[...new Set((plan||[]).map(x=>x.reserva_id).filter(Boolean))],faltan=ids.filter(id=>!S.res.some(r=>r.id===id));
+ let extra=[];
+ if(faltan.length){
+  const {data,error}=await sb.from('reservas').select('id,uid_reserva,huesped_nombre_copia,fecha_entrada,fecha_salida,unidad_id,estado').in('id',faltan);
+  if(error){msg('No se pudo cargar el detalle de las reservas que habría que mover: '+error.message,1);return null}
+  extra=data||[];
+ }
+ const byId=Object.fromEntries(S.res.concat(extra).map(x=>[x.id,x])),lab=id=>{
+  const u=S.unidades.find(x=>x.id===id);return u?u.codigo+' · '+(u.tipos_unidad?.nombre||'sin categoría'):(id||'—')
+ };
+ const target=S.unidades.find(u=>u.id===targetId),targetCat=target?.tipos_unidad?.nombre||'la categoría solicitada';
+ const cambios=(plan||[]).filter(x=>{
+  const s=S.unidades.find(u=>u.id===x.unidad_origen),d=S.unidades.find(u=>u.id===x.unidad_destino);
+  return !!(s&&d&&s.tipo_unidad_id!==d.tipo_unidad_id);
+ });
+ const movs=(plan||[]).slice().sort((a,b)=>(b.profundidad||0)-(a.profundidad||0)).map(x=>{
+  const a=byId[x.reserva_id];
+  return '• '+(a?.uid_reserva||'Reserva')+' · '+(a?.huesped_nombre_copia||'Huésped')+' · '+lab(x.unidad_origen)+' → '+lab(x.unidad_destino)+' · '+(a?.fecha_entrada||'')+' → '+(a?.fecha_salida||'');
+ }).join('\n');
+ const aviso=cambios.length
+  ? '⚠ El plan requiere '+cambios.length+' cambio'+(cambios.length>1?'s':'')+' de categoría (upgrade). La tarifa de las reservas movidas se mantiene sin cambios.'
+  : 'El plan mantiene la categoría de las reservas que se mueven.';
+ return confirm('No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value+'.\n\n'+aviso+'\nNinguna reserva en casa puede ser movida.\n\nMovimientos que se ejecutarán:\n'+movs+'\n\nDestino de la nueva reserva: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación automática?');
+}
 async function elegirUnidad(fe,fs){
- const v=$('#nu').value;if(v)return v;
+ const v=$('#nu').value;if(v){N.plan=[];N.reacomodacion=null;return v}
  if($('#nt').value==='b'){msg('Elige la unidad a bloquear',1);return null}
+ const ed=$('#ned').value,tipo=$('#nca').value;
+ if(!ed||!tipo){msg('Selecciona edificio y categoría',1);return null}
  const {data,error}=await sb.from('reservas').select('unidad_id').lt('fecha_entrada',fs).gt('fecha_salida',fe).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
  if(error){msg(error.message,1);return null}
- const oc=new Set(data.map(x=>x.unidad_id)),u=[...$('#nu').options].map(o=>o.value).find(x=>x&&!oc.has(x));
- if(!u)msg('No hay unidades libres de esa categoría en esas fechas',1);return u||null}
+ const oc=new Set((data||[]).map(x=>x.unidad_id)),u=[...$('#nu').options].map(o=>o.value).find(x=>x&&!oc.has(x));
+ if(u){N.plan=[];N.reacomodacion=null;return u}
+ const {data:planRaw,error:pe}=await sb.rpc('buscar_reacomodacion',{p_edificio_id:ed,p_tipo_unidad_id:tipo,p_entrada:fe,p_salida:fs});
+ if(pe){msg('No se pudo calcular una reacomodación automática: '+errTxt(pe),1);return null}
+ const planObj=planRaw&&!Array.isArray(planRaw)&&typeof planRaw==='object'?planRaw:null,plan=Array.isArray(planObj?.plan)?planObj.plan:[];
+ if(!planObj?.unidad_id||!plan.length){msg('No hay unidades libres de esa categoría ni una cadena válida de reacomodación para esas fechas',1);return null}
+ const ok=await confirmarReacomodacion(plan,planObj.unidad_id);
+ if(!ok){N.plan=[];N.reacomodacion=null;return null}
+ N.plan=plan;N.reacomodacion=planObj;return planObj.unidad_id;
+}
 // ---------- Color de limpieza en la grilla (solo ayer y hoy) ----------
 function medianoche(d){const o=Date.parse(d+'T00:00:00Z');let t=o;for(let i=0;i<2;i++){const l=Date.parse(new Date(t).toLocaleString('sv',{timeZone:'America/Santiago'}).replace(' ','T')+'Z');t+=o-l}return t}
 function estLimp(uid,ts){
