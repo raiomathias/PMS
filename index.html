@@ -247,23 +247,38 @@ try{document.documentElement.dataset.theme=localStorage.t||(matchMedia('(prefers
 const emailDe=n=>n.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.')+'@pms.local';
 async function entrar(){const {error}=await sb.auth.signInWithPassword({email:emailDe($('#lu').value),password:$('#lp').value});if(error)return msg('Usuario o clave incorrectos',1);iniciar()}
 async function salir(){await sb.auth.signOut();location.reload()}
-let RT={channel:null,timer:null,working:false,pending:false};
+let RT={channel:null,timer:null,working:false,pending:false,pendingTable:'',mutating:0};
+
+function solicitarRealtime(tabla=''){
+ RT.pendingTable=tabla||RT.pendingTable||'';
+ clearTimeout(RT.timer);
+ RT.timer=setTimeout(()=>{
+  if(RT.mutating||RT.working){RT.pending=true;return}
+  const t=RT.pendingTable;RT.pendingTable='';
+  actualizarRealtime(t).catch(e=>msg(e?.message||'Error actualizando Realtime',1));
+ },350);
+}
+
+function drenarRealtime(){
+ if(RT.mutating||RT.working||!RT.pending)return;
+ RT.pending=false;
+ const t=RT.pendingTable||'';RT.pendingTable='';
+ clearTimeout(RT.timer);
+ RT.timer=setTimeout(()=>actualizarRealtime(t).catch(e=>msg(e?.message||'Error actualizando Realtime',1)),0);
+}
 
 function iniciarRealtime(){
  if(RT.channel)sb.removeChannel(RT.channel);
- const refrescar=payload=>{
-  clearTimeout(RT.timer);
-  RT.timer=setTimeout(()=>actualizarRealtime(payload?.table||''),350);
- };
+ const refrescarRT=payload=>solicitarRealtime(payload?.table||'');
  RT.channel=sb.channel('pms-realtime')
-  .on('postgres_changes',{event:'*',schema:'public'},refrescar)
+  .on('postgres_changes',{event:'*',schema:'public'},refrescarRT)
   .subscribe(status=>{
    if(status==='CHANNEL_ERROR')msg('Realtime no pudo conectarse. Revisa la publicación supabase_realtime.',1);
   });
 }
 
 async function actualizarRealtime(tabla){
- if(RT.working){RT.pending=true;return}
+ if(RT.mutating||RT.working){RT.pending=true;RT.pendingTable=tabla||RT.pendingTable||'';return}
  RT.working=true;
  try{
   if(['perfiles','perfiles_edificios','perfiles_permisos_edicion','edificios'].includes(tabla)){
@@ -283,7 +298,31 @@ async function actualizarRealtime(tabla){
   if($('#dr').style.display==='block'&&$('#mo').style.display!=='grid'&&S.cur?.id)await abrirDr(S.cur.id);
  }finally{
   RT.working=false;
-  if(RT.pending){RT.pending=false;actualizarRealtime(tabla)}
+  drenarRealtime();
+ }
+}
+
+function protegerMutacionesRealtime(){
+ const nombres=[
+  'guardarNueva','guardarEditorReserva','marcarPagadaHistorica','guardarPermisosEdicion','accion',
+  'guardarReclamo','hacerCheckOut','guardarR','guardarG','notaNueva','addAc','delAc','addCargo','addPago',
+  'cambiarLimp','marcarSucia','gd','nw','guardarRanking','gCfg','guardarPermisos','borrarU',
+  'addGarantia','omitirGarantia','reactivarGarantia','moverReserva','gAplicar','gQuitarFecha','gDet',
+  'guardarRankingFotos','subirFotos','delFoto','borrarReserva','bDelR','bDelH','bDelTodos'
+ ];
+ for(const nombre of nombres){
+  const fn=window[nombre];
+  if(typeof fn!=='function'||fn.__pmsRtWrapped)continue;
+  const env=function(...args){
+   RT.mutating++;
+   let out;
+   try{out=fn.apply(this,args)}
+   catch(e){RT.mutating--;drenarRealtime();throw e}
+   if(out&&typeof out.then==='function')return out.finally(()=>{RT.mutating--;drenarRealtime()});
+   RT.mutating--;drenarRealtime();return out;
+  };
+  env.__pmsRtWrapped=true;
+  window[nombre]=env;
  }
 }
 
@@ -639,7 +678,18 @@ async function abrirDr(id){
  <div class="g2" style="margin-top:10px"><label>Tipo de cargo<select id="ct" onchange="defCargo()">${['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'].map(x=>`<option value="${x}">${x.replace(/_/g,' ')}</option>`).join('')}</select></label>${F('cd','Descripción del cargo')}${F('cq','Cantidad de horas (o noches)',1,'number')}${F('cm','Monto unitario',0,'number')}</div><button class="p" onclick="addCargo()" style="margin-top:8px">Agregar cargo</button></div>
  </div></div>`;
 }
-const refrescar=async()=>{await cargar();abrirDr(S.cur.id)};
+const refrescar=async()=>{
+ if(RT.mutating||RT.working){RT.pending=true;RT.pendingTable='local';return}
+ RT.working=true;
+ try{
+  const id=S.cur?.id;
+  await cargar();
+  if(id&&$('#dr').style.display==='block'&&$('#mo').style.display!=='grid')await abrirDr(id);
+ }finally{
+  RT.working=false;
+  drenarRealtime();
+ }
+};
 async function cargarCatalogoEdicion(){
  const [e,t,u]=await Promise.all([sb.from('edificios').select('id,nombre,orden').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre'),sb.from('unidades').select('id,codigo,edificio_id,tipo_unidad_id').eq('activo',true).order('codigo')]);
  if(e.error||t.error||u.error)throw(e.error||t.error||u.error);
@@ -1509,5 +1559,6 @@ let bt2;function buscarR(){clearTimeout(bt2);bt2=setTimeout(async()=>{
  $('#br').innerHTML=L.map(x=>`<div class="cand" onclick="irReserva('${x.reserva_id}')"><b>${esc(x.huesped)}</b> <span class="mu">${esc(x.uid_huesped)} · ${esc(x.uid_reserva)}</span><br><span class="mu">${esc(x.edificio)} ${esc(x.unidad)} · ${x.fecha_entrada} → ${x.fecha_salida} · ${x.estado.replace('_',' ')}${x.telefono?' · '+esc(x.telefono):''}</span></div>`).join('')||'<p class="mu">Sin resultados</p>'},300)}
 
 async function irReserva(id){cerrar();await abrirDr(id)}
+protegerMutacionesRealtime();
 iniciar();
 </script></body></html>
