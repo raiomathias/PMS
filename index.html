@@ -310,8 +310,8 @@ function dibujar(){
   let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';b+=celdasLimp(u.id,hi);
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
-   const checkoutHoy=r.fecha_salida===hoy && ['check_out','en_casa','confirmada'].includes(r.estado);
-   const checkinHoy=r.fecha_entrada===hoy && ['confirmada','en_casa'].includes(r.estado);
+   const checkoutHoy=r.fecha_salida===hoy && r.estado==='en_casa';
+   const checkinHoy=r.fecha_entrada===hoy && r.estado==='confirmada';
    const colorHoy=checkoutHoy?' checkout-hoy':(checkinHoy?' checkin-hoy':'');
    const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${checkoutHoy?'⬇ Check-out hoy · ':checkinHoy?'⬆ Check-in hoy · ':''}${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
    b+=`<div class="blq ${r.estado}${colorHoy}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
