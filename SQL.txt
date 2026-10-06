@@ -544,7 +544,13 @@ begin
     update reservas set tarifa_noche=coalesce(p_tarifa_noche,tarifa_noche) where id=r.id;
   end if;
   if public.tiene_permiso_edicion(v_user,'vehicle') then
-    update reservas set modelo_vehiculo=coalesce(p_modelo_vehiculo,modelo_vehiculo),patente_vehiculo=coalesce(p_patente_vehiculo,patente_vehiculo),cupo_estacionamiento=p_cupo_estacionamiento,usa_estacionamiento=coalesce(p_usa_estacionamiento,usa_estacionamiento) where id=r.id;
+    if coalesce(p_usa_estacionamiento,r.usa_estacionamiento)
+       and nullif(trim(coalesce(p_modelo_vehiculo,r.modelo_vehiculo,'')),'') is null
+       then raise exception 'Para usar estacionamiento debes indicar el modelo del vehículo'; end if;
+    if coalesce(p_usa_estacionamiento,r.usa_estacionamiento)
+       and nullif(trim(coalesce(p_patente_vehiculo,r.patente_vehiculo,'')),'') is null
+       then raise exception 'Para usar estacionamiento debes indicar la patente del vehículo'; end if;
+    update reservas set modelo_vehiculo=coalesce(nullif(trim(p_modelo_vehiculo),''),modelo_vehiculo),patente_vehiculo=coalesce(nullif(trim(p_patente_vehiculo),''),patente_vehiculo),cupo_estacionamiento=p_cupo_estacionamiento,usa_estacionamiento=coalesce(p_usa_estacionamiento,usa_estacionamiento) where id=r.id;
   end if;
   if public.tiene_permiso_edicion(v_user,'observations') then
     update reservas set observaciones=p_observaciones where id=r.id;
