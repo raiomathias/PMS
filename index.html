@@ -247,6 +247,46 @@ try{document.documentElement.dataset.theme=localStorage.t||(matchMedia('(prefers
 const emailDe=n=>n.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.')+'@pms.local';
 async function entrar(){const {error}=await sb.auth.signInWithPassword({email:emailDe($('#lu').value),password:$('#lp').value});if(error)return msg('Usuario o clave incorrectos',1);iniciar()}
 async function salir(){await sb.auth.signOut();location.reload()}
+let RT={channel:null,timer:null,working:false,pending:false};
+
+function iniciarRealtime(){
+ if(RT.channel)sb.removeChannel(RT.channel);
+ const refrescar=payload=>{
+  clearTimeout(RT.timer);
+  RT.timer=setTimeout(()=>actualizarRealtime(payload?.table||''),350);
+ };
+ RT.channel=sb.channel('pms-realtime')
+  .on('postgres_changes',{event:'*',schema:'public'},refrescar)
+  .subscribe(status=>{
+   if(status==='CHANNEL_ERROR')msg('Realtime no pudo conectarse. Revisa la publicación supabase_realtime.',1);
+  });
+}
+
+async function actualizarRealtime(tabla){
+ if(RT.working){RT.pending=true;return}
+ RT.working=true;
+ try{
+  if(['perfiles','perfiles_edificios','perfiles_permisos_edicion','edificios'].includes(tabla)){
+   const pe=await cargarPermisosEdificios();
+   if(!pe)return;
+   await cargarPermisosEdicion();
+  }
+  if(S.perfil?.rol==='limpieza'){
+   await tareasLimp();
+   return;
+  }
+  await cargar();
+  if($('#est').style.display==='flex')await estCargar();
+  if($('#hosp').style.display==='flex')await hosCargar();
+  if($('#cat').style.display==='flex')await catDibujar();
+  if($('#aud').style.display==='flex')await audCargar(true);
+  if($('#dr').style.display==='block'&&$('#mo').style.display!=='grid'&&S.cur?.id)await abrirDr(S.cur.id);
+ }finally{
+  RT.working=false;
+  if(RT.pending){RT.pending=false;actualizarRealtime(tabla)}
+ }
+}
+
 async function iniciar(){
  const {data:{session}}=await sb.auth.getSession();
  if(!session){$('#login').style.display='grid';$('#app').style.display='none';return}
@@ -258,11 +298,11 @@ async function iniciar(){
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
  $('#madm').style.display=ADM.includes(p.rol)?'inline-flex':'none';
+ iniciarRealtime();
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar({scrollAnchor:30*W});
- let t;const d=()=>{clearTimeout(t);t=setTimeout(()=>{cargar();if($('#est').style.display==='flex')estCargar();if($('#hosp').style.display==='flex')hosCargar()},400)};
- sb.channel('pms').on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).subscribe();
+
 }
 
 // ---------- Mi perfil ----------
@@ -769,9 +809,7 @@ async function vistaLimpieza(){
  LB.e=sv&&E.some(x=>x.id===sv)?sv:'';
  $('#le').innerHTML='<option value="">Todos mis edificios</option>'+E.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');$('#le').value=LB.e;
  await tareasLimp();
- let t;const d=()=>{clearTimeout(t);t=setTimeout(tareasLimp,400)};
- sb.channel('mov').on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).subscribe();
- setInterval(tareasLimp,60000);
+
 }
 async function cambiarLimp(id,estado){
  let o=null;
