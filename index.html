@@ -699,7 +699,7 @@ const MOT=[['estadia','Estadía'],['estacionamiento','Estacionamiento'],['horari
 function pagoMotivoFila(motivo='estadia',monto=''){
  return `<div class="pago-motivo-row" style="display:grid;grid-template-columns:1fr 150px auto;gap:6px;align-items:center"><select class="pago-motivo">${MOT.map(m=>`<option value="${m[0]}" ${m[0]===motivo?'selected':''}>${m[1]}</option>`).join('')}</select><input class="pago-monto" type="number" min="0" step="0.01" value="${monto}" placeholder="Monto"><button type="button" onclick="this.parentElement.remove()">✕</button></div>`;
 }
-function agregarMotivoPago(motivo='estadia',monto=''){const box=$('#pml');if(box)box.insertAdjacentHTML('beforeend',pagoMotivoFila(motivo,monto));}
+function agregarMotivoPago(motivo='estadia',monto=''){const box=$('#pml');if(!box)return;if(!box.children.length&&monto==='')monto=$('#pa')?.value||'';box.insertAdjacentHTML('beforeend',pagoMotivoFila(motivo,monto));}
 function inicializarMotivosPago(){const box=$('#pml');if(!box)return;box.innerHTML='';agregarMotivoPago('estadia',$('#pa')?.value||'');const mo=$('#pa');if(mo&&!mo.dataset.pmHook){mo.dataset.pmHook='1';mo.addEventListener('input',()=>{const f=document.querySelector('.pago-monto');if(f&&document.querySelectorAll('.pago-motivo-row').length===1)f.value=mo.value})}}
 async function addPago(){
  const usd=$('#pm').value==='USD',mo=+$('#pa').value,tc=+$('#pt').value,mt=$('#pk').value,tx=$('#ptx').value.trim();
