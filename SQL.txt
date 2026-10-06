@@ -674,3 +674,135 @@ WHERE NOT EXISTS (
 -- código/reportes antiguos. pagos_motivos es la fuente detallada
 -- cuando un pago tiene más de un motivo.
 -- ============================================================
+
+
+-- ================================================================
+-- PMS: BORRADO COMPLETO DE USUARIOS
+-- Elimina el perfil y la cuenta de autenticación.
+-- Conserva los registros históricos y elimina sus referencias
+-- al perfil para no romper las claves foráneas.
+-- ================================================================
+
+CREATE OR REPLACE FUNCTION public.eliminar_usuario_completo(
+  p_usuario_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public, auth
+AS $function$
+DECLARE
+  v_actor uuid := auth.uid();
+  v_actor_rol text;
+  v_target_rol text;
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT rol::text
+  INTO v_actor_rol
+  FROM public.perfiles
+  WHERE id = v_actor
+    AND activo = true;
+
+  IF v_actor_rol NOT IN ('gerencia', 'sysadmin') THEN
+    RAISE EXCEPTION 'No tienes permiso para eliminar usuarios';
+  END IF;
+
+  IF p_usuario_id IS NULL THEN
+    RAISE EXCEPTION 'Usuario no especificado';
+  END IF;
+
+  IF p_usuario_id = v_actor THEN
+    RAISE EXCEPTION 'No puedes eliminar tu propio usuario';
+  END IF;
+
+  SELECT rol::text
+  INTO v_target_rol
+  FROM public.perfiles
+  WHERE id = p_usuario_id;
+
+  IF v_target_rol IS NULL THEN
+    RAISE EXCEPTION 'Usuario no encontrado';
+  END IF;
+
+  IF v_target_rol = 'sysadmin' AND v_actor_rol <> 'sysadmin' THEN
+    RAISE EXCEPTION 'Solo un SysAdmin puede eliminar a otro SysAdmin';
+  END IF;
+
+  -- Quitamos las referencias al perfil, pero NO eliminamos
+  -- reservas, pagos, auditoría ni demás historial del PMS.
+  UPDATE public.configuracion
+  SET actualizado_por = NULL
+  WHERE actualizado_por = p_usuario_id;
+
+  UPDATE public.huespedes
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.lista_negra
+  SET agregado_por = NULL
+  WHERE agregado_por = p_usuario_id;
+
+  UPDATE public.reservas
+  SET creado_por = NULL,
+      cancelada_por = NULL
+  WHERE creado_por = p_usuario_id
+     OR cancelada_por = p_usuario_id;
+
+  UPDATE public.notas_huesped
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.cargos
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.pagos
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.limpieza
+  SET asignado_a = NULL,
+      actualizado_por = NULL
+  WHERE asignado_a = p_usuario_id
+     OR actualizado_por = p_usuario_id;
+
+  UPDATE public.lista_negra_solicitudes
+  SET solicitado_por = NULL,
+      revisado_por = NULL
+  WHERE solicitado_por = p_usuario_id
+     OR revisado_por = p_usuario_id;
+
+  UPDATE public.reclamos_sugerencias
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  DELETE FROM public.perfiles_edificios
+  WHERE perfil_id = p_usuario_id;
+
+  DELETE FROM public.perfiles_permisos_edicion
+  WHERE perfil_id = p_usuario_id;
+
+  -- Elimina primero el perfil local.
+  DELETE FROM public.perfiles
+  WHERE id = p_usuario_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No se pudo eliminar el perfil del usuario';
+  END IF;
+
+  -- Elimina la identidad de Supabase Auth.
+  -- Esto invalida el acceso de forma permanente.
+  DELETE FROM auth.users
+  WHERE id = p_usuario_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El perfil fue eliminado, pero no se encontró la cuenta de autenticación';
+  END IF;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.eliminar_usuario_completo(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.eliminar_usuario_completo(uuid) TO authenticated;
