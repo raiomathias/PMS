@@ -342,11 +342,15 @@ async function cargar(op={}){
  ]);
  if(r.error||l.error)return msg((r.error||l.error).message,1);
  const rids=(r.data||[]).map(x=>x.id);
+ let sv={data:[],error:null};
+ if(rids.length)sv=await sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',rids);
+ if(sv.error)return msg(sv.error.message,1);
+ const rids=(r.data||[]).map(x=>x.id);
  let gp={data:[],error:null};
  if(rids.length)gp=await sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',rids);
  if(gp.error)return msg(gp.error.message,1);
  S.tipos={};S.unidades.forEach(u=>S.tipos[u.tipo_unidad_id||'']=Object.assign({},u.tipos_unidad||{nombre:'Sin categoría',tarifa_base:0},{ed:u.edificios.nombre}));
- S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));S.res=r.data||[];S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));
+ S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));S.saldo=Object.fromEntries((sv.data||[]).map(x=>[x.reserva_id,{total:+x.total_a_pagar||0,pagado:+x.total_pagado||0} ]));S.res=r.data||[];S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));
  S.lh={};if(lh.error){if(!S.lhMsg){S.lhMsg=1;msg('Falta correr el SQL de limpieza: '+lh.error.message,1)}}else(lh.data||[]).filter(x=>uids.includes(x.unidad_id)).forEach(x=>(S.lh[x.unidad_id]=S.lh[x.unidad_id]||[]).push(x));
  Object.values(S.lh).forEach(a=>a.sort((p,q)=>Date.parse(p.creado_en)-Date.parse(q.creado_en)));dibujar();
  const target=Number.isFinite(op.scrollAnchor)?op.scrollAnchor:Number.isFinite(oldScroll)?oldScroll:null;
@@ -362,7 +366,8 @@ function dibujar(){
   let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';b+=celdasLimp(u.id,hi);
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
-   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
+   const sr=S.saldo[r.id]||{total:0,pagado:0},debe=Math.max(0,sr.total-sr.pagado);
+   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small><strong>${clp(debe)}</strong> · ${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)} · ${clp(sr.total)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
    b+=`<div class="blq ${r.estado}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
   h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div></div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
  $('#gw').innerHTML=h;barra();
