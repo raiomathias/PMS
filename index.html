@@ -619,9 +619,14 @@ async function accion(k){
 }
 async function abrirReclamoReserva(reservaId=S.cur?.id){
   if(!reservaId)return;
+  let r=S.cur;
+  if(!r||r.id!==reservaId){
+    const {data:rr,error:er}=await sb.from('reservas').select('*').eq('id',reservaId).maybeSingle();
+    if(er||!rr)return msg(er?.message||'No se encontró la reserva',1);
+    r=rr;S.cur=r;
+  }
   const {data,error}=await sb.from('reclamos_sugerencias').select('*').eq('reserva_id',reservaId).maybeSingle();
   if(error)return msg('No se pudo cargar el reclamo: '+error.message,1);
-  const r=S.cur;
   $('#mo').innerHTML=`<div style="width:680px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">💬 Reclamo o sugerencia</h3><button onclick="cerrar()">✕</button></div><p class="mu" style="margin:6px 0 12px">${esc(r?.huesped_nombre_copia||'')} · ${esc(r?nomU(r.unidad_id):'')}</p><div class="rec-box"><h4>Observaciones de reclamos o sugerencias</h4><textarea id="recTxt" class="rec-text" placeholder="Escribe aquí el reclamo, sugerencia, felicitación u observación del huésped…">${esc(data?.contenido||'')}</textarea></div><div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><span class="mu">${data?'Ya existe un reclamo para esta reserva. Puedes editarlo.':'Todavía no hay un reclamo registrado para esta reserva.'}</span><div style="display:flex;gap:8px"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarReclamo('${reservaId}')">Guardar reclamo</button></div></div></div>`;
   $('#mo').style.display='grid';$('#recTxt').focus();
 }
@@ -642,7 +647,7 @@ async function pRec(){
  const {data,error}=await sb.from('reclamos_sugerencias').select('id,reserva_id,huesped_id,contenido,creado_en,actualizado_en,huespedes(nombre_completo),reservas(uid_reserva,huesped_nombre_copia,estado,fecha_entrada,fecha_salida,unidad_id,unidades(codigo,edificios(nombre)))').order('actualizado_en',{ascending:false}).limit(500);
  if(error)return msg('No se pudieron cargar los reclamos: '+error.message,1);
  const L=(data||[]).filter(x=>{const h=x.huespedes?.nombre_completo||x.reservas?.huesped_nombre_copia||'';const u=x.reservas?.unidades?.codigo||'';const e=x.reservas?.unidades?.edificios?.nombre||'';return !q||[h,u,e,x.contenido,x.reservas?.uid_reserva].some(v=>String(v||'').toLowerCase().includes(q))});
- $('#reclamosLista').innerHTML=L.map(x=>`<div class="rec-card"><div class="rh"><div><b>${esc(x.huespedes?.nombre_completo||x.reservas?.huesped_nombre_copia||'Huésped')}</b><div class="rec-meta">${esc(x.reservas?.uid_reserva||'')} · ${esc(x.reservas?.unidades?.edificios?.nombre||'')} · ${esc(x.reservas?.unidades?.codigo||'')} · ${x.reservas?.fecha_entrada||'—'} → ${x.reservas?.fecha_salida||'—'}</div></div><button onclick="abrirDr('${x.reserva_id}')">Ver reserva</button></div><div class="rec-card rc">${esc(x.contenido)}</div><div class="rec-meta" style="margin-top:8px">Actualizado: ${esc(String(x.actualizado_en||x.creado_en||'').slice(0,16).replace('T',' '))}</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button onclick="abrirReclamoReserva('${x.reserva_id}')">✏️ Editar</button></div></div>`).join('')||'<div class="rec-empty">No hay reclamos o sugerencias que coincidan con la búsqueda.</div>';
+ $('#reclamosLista').innerHTML=L.map(x=>`<div class="rec-card"><div class="rh"><div><b>${esc(x.huespedes?.nombre_completo||x.reservas?.huesped_nombre_copia||'Huésped')}</b><div class="rec-meta">${esc(x.reservas?.uid_reserva||'')} · ${esc(x.reservas?.unidades?.edificios?.nombre||'')} · ${esc(x.reservas?.unidades?.codigo||'')} · ${x.reservas?.fecha_entrada||'—'} → ${x.reservas?.fecha_salida||'—'}</div></div><button onclick="abrirDr('${x.reserva_id}')">Ver reserva</button></div><div class="rc">${esc(x.contenido)}</div><div class="rec-meta" style="margin-top:8px">Actualizado: ${esc(String(x.actualizado_en||x.creado_en||'').slice(0,16).replace('T',' '))}</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button onclick="abrirReclamoReserva('${x.reserva_id}')">✏️ Editar</button></div></div>`).join('')||'<div class="rec-empty">No hay reclamos o sugerencias que coincidan con la búsqueda.</div>';
 }
 function abrirReclamos(){
  if(!ADM.includes(S.perfil.rol))return msg('Solo Administración puede ver los reclamos y sugerencias',1);
