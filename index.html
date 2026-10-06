@@ -167,6 +167,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .photo-toolbar button{min-width:150px}
 .photo-help{padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);margin-bottom:14px}
 @media(max-width:720px){.photo-card{grid-template-columns:1fr}.photo-card img{width:100%;height:180px}}
+.pago-motivo-row{padding:6px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
 /* ---- Menús principales ---- */
 .main-menu{position:relative;display:inline-flex}
 .main-menu>button{display:flex;align-items:center;gap:6px}
@@ -539,8 +540,8 @@ async function abrirDr(id){
  if(r.estado==='bloqueado'){D.innerHTML=top+`<p>🔒 ${esc(r.observaciones)}</p><p>${r.fecha_entrada} → ${r.fecha_salida}</p><button class="r" onclick="accion('del')">Quitar bloqueo</button>`;return}
  D.innerHTML=top+'<p>Cargando…</p>';
  const q=(t,c,v)=>sb.from(t).select('*').eq(c,v);
- const [c,p,a,n,s,g,gq,hq]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single(),q('garantia_reserva','reserva_id',id).maybeSingle(),sb.from('reservas').select('estado').eq('huesped_id',r.huesped_id).in('estado',['cancelada','no_show']).neq('id',id)]);
- const G=g.data||{},sa=s.data||{},dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
+ const [c,p,pm,a,n,s,g,gq,hq]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('pagos_motivos','pago_id',id),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single(),q('garantia_reserva','reserva_id',id).maybeSingle(),sb.from('reservas').select('estado').eq('huesped_id',r.huesped_id).in('estado',['cancelada','no_show']).neq('id',id)]);
+ const G=g.data||{},sa=s.data||{},pmL=pm.data||[],dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
  const nsOK=r.fecha_entrada<=hoyStr(),B=({confirmada:[['in','Check-in','p'],['ns','No-show',''],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['ns','No-show',''],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[]).filter(b=>b[0]!=='ns'||nsOK),
  gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
@@ -555,8 +556,9 @@ async function abrirDr(id){
  <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:8px">Guardar reserva</button></div>
  </div><div class="dinero">
  ${garHtml(r,gv)}<div class="tot"${dead?' style="grid-template-columns:repeat(4,1fr)"':''}><div>${dead?'Total original':'Total'}<b>${clp(total)}</b></div>${dead?`<div>${r.estado==='cancelada'?'Cargo cancelación':'Cargo no-show'}<b>${clp(cargoCan)}</b></div>`:''}<div>Pagado<b>${clp(pagado)}</b></div><div>Pendiente<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>${dead?`<p class="mu" style="margin:-4px 0 12px">El total original se conserva como referencia. Como la reserva está ${r.estado==='cancelada'?'cancelada':'como no-show'}, solo se cobra el cargo aplicado${pagado>cargoCan?` · el huésped pagó ${clp(pagado-cargoCan)} más que el cargo (a su favor o por devolver)`:''}.</p>`:''}
- <div class="sec c4"><h4 class="st">💳 Pagos <span class="mu">· ${r.estado_pago}</span></h4>${(p.data||[]).map(x=>`<div class="pg">💵 <b>${esc(MOTL[x.motivo]||'Pago')}</b> · ${x.metodo.replace('_',' ')} · ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)}${x.anticipado?' · anticipado':''}${x.id_transaccion?`<br><span class="mu">ID: ${esc(x.id_transaccion)}</span>`:''}</div>`).join('')||'<p class="mu" style="margin-top:0">Sin pagos registrados</p>'}
- <div class="g2" style="margin-top:10px">${SEL('pk','Método',['efectivo','transferencia','webpay','tarjeta_debito','tarjeta_credito'],'efectivo')}${SEL('pm','Moneda',['CLP','USD'],'CLP')}${F('pa','Monto',pend||'','number')}${F('pt','Tipo de cambio (solo USD)','','number')}<label>Motivo del pago<select id="pmo">${MOT.map(m=>`<option value="${m[0]}">${m[1]}</option>`).join('')}</select></label>${F('ptx','ID de transacción (comprobante, transferencia, voucher…)')}</div>
+ <div class="sec c4"><h4 class="st">💳 Pagos <span class="mu">· ${r.estado_pago}</span></h4>${(p.data||[]).map(x=>{const det=pmL.filter(z=>z.pago_id===x.id);const motivos=det.length?det.map(z=>esc(MOTL[z.motivo]||z.motivo)+' '+clp(z.monto_clp)).join(' + '):esc(MOTL[x.motivo]||'Pago');return `<div class="pg">💵 <b>${motivos}</b> · ${x.metodo.replace('_',' ')} · ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)}${x.anticipado?' · anticipado':''}${x.id_transaccion?`<br><span class="mu">ID: ${esc(x.id_transaccion)}</span>`:''}${x.referencia?`<br><span class="mu">${esc(x.referencia)}</span>`:''}</div>`}).join('')||'<p class="mu" style="margin-top:0">Sin pagos registrados</p>'}
+ <div class="g2" style="margin-top:10px">${SEL('pk','Método',['efectivo','transferencia','webpay','tarjeta_debito','tarjeta_credito'],'efectivo')}${SEL('pm','Moneda',['CLP','USD'],'CLP')}${F('pa','Monto',pend||'','number')}${F('pt','Tipo de cambio (solo USD)','','number')}${F('ptx','ID de transacción (comprobante, transferencia, voucher…)')}</div>
+ <div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Motivos del mismo pago</b><span class="mu">La suma debe coincidir con el monto del pago.</span></div><div id="pml" style="display:grid;gap:6px;margin-top:7px"></div><button type="button" onclick="agregarMotivoPago()" style="margin-top:7px">＋ Añadir motivo</button></div></div>
  <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="pn"> Pago anticipado</label><button class="p" onclick="addPago()">Registrar pago</button></div>
  <div class="sec c5"><h4 class="st">➕ Cargos extra</h4>${(c.data||[]).map(x=>`<div class="pg">${esc(x.tipo.replace(/_/g,' '))} · ${x.cantidad} × ${clp(x.monto_unitario)} = <b>${clp(x.total)}</b> ${esc(x.descripcion||'')}</div>`).join('')||'<p class="mu" style="margin-top:0">Sin cargos extra</p>'}
  <div class="g2" style="margin-top:10px"><label>Tipo de cargo<select id="ct" onchange="defCargo()">${['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'].map(x=>`<option value="${x}">${x.replace(/_/g,' ')}</option>`).join('')}</select></label>${F('cd','Descripción del cargo')}${F('cq','Cantidad de horas (o noches)',1,'number')}${F('cm','Monto unitario',0,'number')}</div><button class="p" onclick="addCargo()" style="margin-top:8px">Agregar cargo</button></div>
@@ -589,10 +591,21 @@ async function abrirEditorReserva(){
  <div class="sec c4"><h4 class="st">🚗 Vehículo y estacionamiento</h4><div class="g2">${F('er_modelo','Vehículo',r.modelo_vehiculo)}${F('er_patente','Patente',r.patente_vehiculo)}${F('er_cupo','Cupo estacionamiento',r.cupo_estacionamiento,'number')}${F('er_npark','Noches con estacionamiento',r.noches_estacionamiento??r.noches??0,'number')}</div><label style="flex-direction:row;display:flex;gap:6px;margin-top:8px"><input type="checkbox" id="er_est" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label></div>
  <div class="sec c5"><h4 class="st">📝 Observaciones</h4><textarea id="er_obs" rows="6" ${disabled('observations')}>${esc(r.observaciones||'')}</textarea></div>
  <div class="sec"><h4 class="st">🔐 Permisos efectivos</h4><div class="mu">${EDIT_FIELDS.map(x=>`<span class="tg" style="opacity:${editable(x[0])?1:.45}">${editable(x[0])?'✓':'×'} ${esc(x[1])}</span>`).join('')}</div></div>
- </div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarEditorReserva()">Guardar todos los cambios</button></div></div>`;
+ </div></div><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:14px"><button class="r" onclick="marcarPagadaHistorica()" title="Deja la reserva en $0 pendiente mediante una regularización histórica">💳 Marcar como pagada · $0 pendiente</button><div style="display:flex;justify-content:flex-end;gap:8px"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarEditorReserva()">Guardar todos los cambios</button></div></div></div>`;
  const sync=()=>{const ed=$('#er_ed').value,ts=cat.t.filter(x=>x.edificio_id===ed);$('#er_tipo').innerHTML=ts.map(x=>`<option value="${x.id}" ${x.id===tipo0?'selected':''}>${esc(x.nombre)}</option>`).join('');const ti=$('#er_tipo').value;$('#er_uni').innerHTML=cat.u.filter(x=>x.edificio_id===ed&&x.tipo_unidad_id===ti).map(x=>`<option value="${x.id}" ${x.id===r.unidad_id?'selected':''}>${esc(x.codigo)}</option>`).join('')};
  $('#er_ed').disabled=!editable('building_category_unit');$('#er_estado').disabled=!editable('status');['er_ent','er_sal'].forEach(x=>$('#'+x).disabled=!editable('dates'));['er_td','er_doc'].forEach(x=>$('#'+x).disabled=!editable('guest_document'));['er_tel','er_correo','er_nac','er_ciudad'].forEach(x=>$('#'+x).disabled=!editable('guest_contact'));$('#er_canal').disabled=!editable('channel');$('#er_ref').disabled=!editable('channel');$('#er_iva').disabled=!editable('price_iva');$('#er_otro').disabled=!editable('price_other');['er_ad','er_me'].forEach(x=>$('#'+x).disabled=!editable('occupancy'));$('#er_tar').disabled=!editable('rate');$('#er_total').disabled=!editable('total');['er_modelo','er_patente','er_cupo','er_est'].forEach(x=>$('#'+x).disabled=!editable('vehicle'));$('#er_npark').disabled=!editable('parking_nights');sync();$('#er_ed').onchange=sync;$('#er_tipo').onchange=()=>{const ed=$('#er_ed').value,ti=$('#er_tipo').value;$('#er_uni').innerHTML=cat.u.filter(x=>x.edificio_id===ed&&x.tipo_unidad_id===ti).map(x=>`<option value="${x.id}">${esc(x.codigo)}</option>`).join('')};
  $('#mo').style.display='grid';
+}
+async function marcarPagadaHistorica(){
+ const r=S.cur;if(!r)return;
+ const {data:s,error:es}=await sb.from('saldo_reserva').select('total_a_pagar,total_pagado').eq('reserva_id',r.id).maybeSingle();
+ if(es)return msg(es.message,1);
+ const pendiente=Math.max(0,(+s?.total_a_pagar||0)-(+s?.total_pagado||0));
+ if(pendiente<=0)return msg('La reserva ya tiene $0 pendiente');
+ if(!confirm('Se registrará una regularización histórica por '+clp(pendiente)+' para dejar esta reserva en $0 pendiente. No representa un nuevo cobro; sirve para migrar una reserva cuyo pago ya estaba realizado. ¿Continuar?'))return;
+ const {error}=await sb.from('pagos').insert({reserva_id:r.id,metodo:'efectivo',moneda:'CLP',monto_original:pendiente,monto_clp:pendiente,anticipado:false,motivo:'otro',referencia:'Regularización histórica de migración',id_transaccion:'REG-HIST-'+r.id});
+ if(error)return msg(errTxt(error),1);
+ cerrar();await cargar();await abrirDr(r.id);msg('Reserva regularizada: $0 pendiente');
 }
 async function guardarEditorReserva(){
  const r=S.cur, v=id=>$('#'+id)?.value||null, n=id=>$('#'+id)?.value===''?null:+$('#'+id).value;
@@ -683,12 +696,27 @@ async function addCargo(){
  const {error}=await sb.from('cargos').insert({reserva_id:S.cur.id,tipo:t,descripcion:$('#cd').value||null,cantidad:q,monto_unitario:t==='descuento'?-Math.abs(m):m});
  er(error,'Cargo agregado');if(!error)refrescar()}
 const MOT=[['estadia','Estadía'],['estacionamiento','Estacionamiento'],['horario_extra','Check-in temprano / check-out tardío'],['penalizacion','Penalización o daños'],['consumos','Consumos (minibar, lavandería, desayuno)'],['garantia','Garantía'],['otro','Otro']],MOTL=Object.fromEntries(MOT);
+function pagoMotivoFila(motivo='estadia',monto=''){
+ return `<div class="pago-motivo-row" style="display:grid;grid-template-columns:1fr 150px auto;gap:6px;align-items:center"><select class="pago-motivo">${MOT.map(m=>`<option value="${m[0]}" ${m[0]===motivo?'selected':''}>${m[1]}</option>`).join('')}</select><input class="pago-monto" type="number" min="0" step="0.01" value="${monto}" placeholder="Monto"><button type="button" onclick="this.parentElement.remove()">✕</button></div>`;
+}
+function agregarMotivoPago(motivo='estadia',monto=''){const box=$('#pml');if(box)box.insertAdjacentHTML('beforeend',pagoMotivoFila(motivo,monto));}
+function inicializarMotivosPago(){const box=$('#pml');if(!box)return;box.innerHTML='';agregarMotivoPago('estadia',$('#pa')?.value||'');const mo=$('#pa');if(mo&&!mo.dataset.pmHook){mo.dataset.pmHook='1';mo.addEventListener('input',()=>{const f=document.querySelector('.pago-monto');if(f&&document.querySelectorAll('.pago-motivo-row').length===1)f.value=mo.value})}}
 async function addPago(){
  const usd=$('#pm').value==='USD',mo=+$('#pa').value,tc=+$('#pt').value,mt=$('#pk').value,tx=$('#ptx').value.trim();
  if(!(mo>0))return msg('Monto inválido',1);if(usd&&!(tc>0))return msg('Indica el tipo de cambio',1);if(usd&&mt!=='efectivo')return msg('USD solo en efectivo',1);
  if(mt!=='efectivo'&&!tx)return msg('Indica el ID de la transacción (comprobante, transferencia, voucher…)',1);
- const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:mt,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:Math.round(usd?mo*tc:mo),anticipado:$('#pn').checked,motivo:$('#pmo').value,id_transaccion:tx||null});
- er(error,'Pago registrado');if(!error)refrescar()}
+ if(!document.querySelectorAll('.pago-motivo-row').length)agregarMotivoPago();
+ const rows=[...document.querySelectorAll('.pago-motivo-row')],alloc=rows.map(row=>({motivo:row.querySelector('.pago-motivo')?.value,monto_original:+(row.querySelector('.pago-monto')?.value||0)})).filter(x=>x.monto_original>0);
+ if(!alloc.length)return msg('Agrega al menos un motivo y su monto',1);
+ const sum=alloc.reduce((a,x)=>a+x.monto_original,0),eps=usd?0.005:0.5;if(Math.abs(sum-mo)>eps)return msg('Los motivos no coinciden con el monto total del pago',1);
+ const totalClp=Math.round(usd?mo*tc:mo),allocClp=alloc.map(x=>({...x,monto_clp:Math.round(usd?x.monto_original*tc:x.monto_original)}));
+ const ajuste=totalClp-allocClp.reduce((a,x)=>a+x.monto_clp,0);if(ajuste)allocClp[allocClp.length-1].monto_clp+=ajuste;
+ const {data:pay,error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:mt,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:totalClp,anticipado:$('#pn').checked,motivo:alloc[0].motivo,id_transaccion:tx||null}).select('id').single();
+ if(error)return msg(errTxt(error),1);
+ const {error:ae}=await sb.from('pagos_motivos').insert(allocClp.map(x=>({pago_id:pay.id,motivo:x.motivo,monto_original:x.monto_original,monto_clp:x.monto_clp})));
+ if(ae){await sb.from('pagos').delete().eq('id',pay.id);return msg(errTxt(ae),1)}
+ refrescar();
+}
 // ---------- Limpieza: vista móvil (rol limpieza) ----------
 let LB={e:''};const hm=t=>t?String(t).slice(0,5):'';
 async function vistaLimpieza(){
