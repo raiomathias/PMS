@@ -167,6 +167,22 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .photo-toolbar button{min-width:150px}
 .photo-help{padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);margin-bottom:14px}
 @media(max-width:720px){.photo-card{grid-template-columns:1fr}.photo-card img{width:100%;height:180px}}
+/* ---- Menús principales ---- */
+.main-menu{position:relative;display:inline-flex}
+.main-menu>button{display:flex;align-items:center;gap:6px}
+.menu-drop{position:absolute;top:calc(100% + 6px);left:0;min-width:210px;background:var(--pn);border:1px solid var(--bd);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:6px;display:none;z-index:30}
+.menu-drop.open{display:grid}
+.menu-drop button{width:100%;text-align:left;border:0;background:transparent;padding:9px 11px;border-radius:7px}
+.menu-drop button:hover{background:var(--bg);filter:none}
+.menu-drop .menu-sep{height:1px;background:var(--bd);margin:5px 2px}
+.rec-box{border:2px solid #7c3aed;border-radius:12px;padding:14px;background:rgba(124,58,237,.06)}
+.rec-box h4{margin:0 0 8px;color:#7c3aed;border-bottom:2px solid #7c3aed}
+.rec-text{width:100%;min-height:180px;box-sizing:border-box;resize:vertical}
+.rec-card{border:1px solid var(--bd);border-left:6px solid #7c3aed;border-radius:12px;background:var(--pn);padding:13px 14px;margin-bottom:10px}
+.rec-card .rh{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.rec-card .rc{white-space:pre-wrap;margin-top:10px;padding:10px;border-radius:8px;background:var(--bg)}
+.rec-meta{font-size:12px;color:var(--mu)}
+.rec-empty{padding:24px;text-align:center;color:var(--mu);border:1px dashed var(--bd);border-radius:10px}
 /* ---- Auditoría ---- */
 #aud{position:fixed;inset:0;z-index:13;background:var(--bg);display:none;flex-direction:column}
 .au-h{padding:12px 20px 8px;background:var(--pn);border-bottom:1px solid var(--bd);box-shadow:0 1px 3px rgba(0,0,0,.06);max-height:62vh;overflow:auto}
@@ -188,7 +204,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><button onclick="abrirCatalogo()">🏨 Catálogo</button><button onclick="abrirEst()">🅿 Estacionamiento</button><button onclick="abrirHospedados()">🏠 Hospedados</button><button id="bcn" style="display:none" onclick="abrirCanc()">🚫 Cancelaciones</button><button id="bau" style="display:none" onclick="abrirAud()">🕵 Auditoría</button><button id="bad" style="display:none" onclick="abrirAdmin()">⚙ Administración</button><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
@@ -219,6 +235,10 @@ const er=(e,ok)=>e?msg(errTxt(e),1):msg(ok);
 const F=(id,l,v='',t='text')=>`<label>${l}<input id="${id}" type="${t}" value="${esc(v)}"></label>`;
 const SEL=(id,l,o,v)=>`<label>${l}<select id="${id}">${o.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select></label>`;
 function msg(t,err){const m=$('#ms');m.textContent=t;m.style.background=err?'#b91c1c':'#111';m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',4500)}
+function cerrarMenus(){document.querySelectorAll('.menu-drop.open').forEach(m=>m.classList.remove('open'))}
+function toggleMenu(id){const m=$('#'+id);if(!m)return;const was=m.classList.contains('open');cerrarMenus();if(!was)m.classList.add('open')}
+document.addEventListener('click',e=>{if(!e.target.closest('.main-menu'))cerrarMenus()});
+
 function tema(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.t=t}catch(e){}}
 try{document.documentElement.dataset.theme=localStorage.t||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch(e){}
 
@@ -236,7 +256,7 @@ async function iniciar(){
  await cargarPermisosEdicion();
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
- $('#bad').style.display=$('#bcn').style.display=['administracion','gerencia','sysadmin'].includes(p.rol)?'':'none';$('#bau').style.display=GER.includes(p.rol)?'':'none';
+ $('#madm').style.display=ADM.includes(p.rol)?'inline-flex':'none';
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar({scrollAnchor:30*W});
@@ -525,7 +545,7 @@ async function abrirDr(id){
  gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
  D.innerHTML=top+`<div style="margin:10px 0 4px"><b style="font-size:20px">${esc(r.huesped_nombre_copia)}</b> <span class="tp" style="display:inline">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado.replace('_',' ')} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></div>
- <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button>${['tentativa','confirmada','en_casa'].includes(r.estado)&&r.estado!=='en_casa'?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="p big" onclick="abrirEditorReserva()">✏️ Editar reserva completa</button><button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
+ <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button><button onclick="abrirReclamoReserva()">💬 Reclamo / sugerencia</button>${['tentativa','confirmada','en_casa'].includes(r.estado)&&r.estado!=='en_casa'?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="p big" onclick="abrirEditorReserva()">✏️ Editar reserva completa</button><button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
  ${aviso}${cobro}${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}
  <div class="dg"><div>
  <div class="sec c1"><h4 class="st">👤 Huésped</h4>${u.edificios.requiere_documento?'':'<p class="mu" style="margin-top:0">Acceso remoto: documento no requerido</p>'}<div class="g2">${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div><button onclick="guardarG()" style="margin-top:8px">Guardar huésped</button></div>
@@ -597,15 +617,48 @@ async function accion(k){
  if(k==='del')({error:e}=await sb.from('reservas').delete().eq('id',r.id));
  if(e)return msg(errTxt(e),1);refrescar();
 }
+async function abrirReclamoReserva(reservaId=S.cur?.id){
+  if(!reservaId)return;
+  const {data,error}=await sb.from('reclamos_sugerencias').select('*').eq('reserva_id',reservaId).maybeSingle();
+  if(error)return msg('No se pudo cargar el reclamo: '+error.message,1);
+  const r=S.cur;
+  $('#mo').innerHTML=`<div style="width:680px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">💬 Reclamo o sugerencia</h3><button onclick="cerrar()">✕</button></div><p class="mu" style="margin:6px 0 12px">${esc(r?.huesped_nombre_copia||'')} · ${esc(r?nomU(r.unidad_id):'')}</p><div class="rec-box"><h4>Observaciones de reclamos o sugerencias</h4><textarea id="recTxt" class="rec-text" placeholder="Escribe aquí el reclamo, sugerencia, felicitación u observación del huésped…">${esc(data?.contenido||'')}</textarea></div><div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><span class="mu">${data?'Ya existe un reclamo para esta reserva. Puedes editarlo.':'Todavía no hay un reclamo registrado para esta reserva.'}</span><div style="display:flex;gap:8px"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarReclamo('${reservaId}')">Guardar reclamo</button></div></div></div>`;
+  $('#mo').style.display='grid';$('#recTxt').focus();
+}
+async function guardarReclamo(reservaId=S.cur?.id){
+ const contenido=$('#recTxt')?.value.trim()||'';
+ if(!reservaId)return;
+ if(!contenido){
+  const {error}=await sb.from('reclamos_sugerencias').delete().eq('reserva_id',reservaId);
+  if(error)return msg('No se pudo eliminar el reclamo: '+error.message,1);
+  cerrar();msg('Reclamo eliminado');if(S.cur?.id===reservaId)abrirDr(reservaId);return;
+ }
+ const {error}=await sb.from('reclamos_sugerencias').upsert({reserva_id:reservaId,huesped_id:S.cur?.huesped_id||null,contenido,creado_por:S.perfil?.id},{onConflict:'reserva_id'});
+ if(error)return msg('No se pudo guardar el reclamo: '+error.message,1);
+ cerrar();msg('Reclamo guardado');if(S.cur?.id===reservaId)abrirDr(reservaId);
+}
+async function pRec(){
+ const q=$('#recq')?.value.trim().toLowerCase()||'';
+ const {data,error}=await sb.from('reclamos_sugerencias').select('id,reserva_id,huesped_id,contenido,creado_en,actualizado_en,huespedes(nombre_completo),reservas(uid_reserva,huesped_nombre_copia,estado,fecha_entrada,fecha_salida,unidad_id,unidades(codigo,edificios(nombre)))').order('actualizado_en',{ascending:false}).limit(500);
+ if(error)return msg('No se pudieron cargar los reclamos: '+error.message,1);
+ const L=(data||[]).filter(x=>{const h=x.huespedes?.nombre_completo||x.reservas?.huesped_nombre_copia||'';const u=x.reservas?.unidades?.codigo||'';const e=x.reservas?.unidades?.edificios?.nombre||'';return !q||[h,u,e,x.contenido,x.reservas?.uid_reserva].some(v=>String(v||'').toLowerCase().includes(q))});
+ $('#reclamosLista').innerHTML=L.map(x=>`<div class="rec-card"><div class="rh"><div><b>${esc(x.huespedes?.nombre_completo||x.reservas?.huesped_nombre_copia||'Huésped')}</b><div class="rec-meta">${esc(x.reservas?.uid_reserva||'')} · ${esc(x.reservas?.unidades?.edificios?.nombre||'')} · ${esc(x.reservas?.unidades?.codigo||'')} · ${x.reservas?.fecha_entrada||'—'} → ${x.reservas?.fecha_salida||'—'}</div></div><button onclick="abrirDr('${x.reserva_id}')">Ver reserva</button></div><div class="rec-card rc">${esc(x.contenido)}</div><div class="rec-meta" style="margin-top:8px">Actualizado: ${esc(String(x.actualizado_en||x.creado_en||'').slice(0,16).replace('T',' '))}</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button onclick="abrirReclamoReserva('${x.reserva_id}')">✏️ Editar</button></div></div>`).join('')||'<div class="rec-empty">No hay reclamos o sugerencias que coincidan con la búsqueda.</div>';
+}
+function abrirReclamos(){
+ if(!ADM.includes(S.perfil.rol))return msg('Solo Administración puede ver los reclamos y sugerencias',1);
+ $('#mo').innerHTML=`<div style="width:980px;max-width:96vw"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">💬 Reclamos y Sugerencias</h3><button onclick="cerrar()">✕</button></div><p class="mu">Todos los reclamos y sugerencias enviados desde las reservas.</p><input id="recq" style="width:100%;box-sizing:border-box;margin-bottom:12px" placeholder="Buscar por huésped, reserva, unidad, edificio o contenido" oninput="clearTimeout(pRec.t);pRec.t=setTimeout(pRec,250)"><div id="reclamosLista"></div></div>`;
+ $('#mo').style.display='grid';pRec();
+}
 function abrirCheckOut(){const r=S.cur;
  $('#mo').innerHTML=`<div style="width:520px"><h3 style="margin:0 0 4px">Check-out · ${esc(r.huesped_nombre_copia||'')}</h3><p class="mu" style="margin-top:0">${esc(nomU(r.unidad_id))}</p>
  <label>Observaciones para el personal de limpieza (opcional)<textarea id="co1" rows="3" placeholder="Ej.: dejó la ventana abierta, cama extra sin desarmar, mancha en la alfombra"></textarea></label>
- <label style="margin-top:8px">Nota para el perfil del huésped (opcional)<textarea id="co2" rows="2" placeholder="Ej.: cliente ruidoso, dejó olvidado un objeto, VIP"></textarea></label>
+ <label style="margin-top:8px">Nota para el perfil del huésped (opcional)<textarea id="co2" rows="2" placeholder="Ej.: cliente ruidoso, dejó olvidado un objeto, VIP"></textarea></label><div class="rec-box" style="margin-top:10px"><h4>Observaciones de reclamos o sugerencias</h4><textarea id="co3" class="rec-text" rows="7" placeholder="Registra aquí un reclamo, sugerencia, felicitación u observación comunicada por el huésped…"></textarea></div>
  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="hacerCheckOut()">Confirmar check-out</button></div></div>`;
  $('#mo').style.display='grid';$('#co1').focus()}
-async function hacerCheckOut(){const r=S.cur,o=$('#co1').value.trim(),n=$('#co2').value.trim();
+async function hacerCheckOut(){const r=S.cur,o=$('#co1').value.trim(),n=$('#co2').value.trim(),rec=$('#co3').value.trim();
+ if(rec){const {error:re}=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id,contenido:rec,creado_por:S.perfil.id},{onConflict:'reserva_id'});if(re)return msg('No se pudo guardar el reclamo: '+re.message,1)}
  const {error}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n||null,p_obs_limpieza:o||null});
- if(error)return msg(errTxt(error),1);cerrar();msg('Check-out realizado'+(o?' · observación enviada a limpieza':''));refrescar()}
+ if(error)return msg(errTxt(error),1);cerrar();msg('Check-out realizado'+(o?' · observación enviada a limpieza':'')+(rec?' · reclamo/sugerencia guardado':''));refrescar()}
 async function guardarDesglosePrecio(id,iva,otro){await sb.from('cargos').delete().eq('reserva_id',id).in('descripcion',['__PMS_IVA__','__PMS_OTRO_PRECIO__']);const rows=[];if(iva)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_IVA__',cantidad:1,monto_unitario:iva});if(otro)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_OTRO_PRECIO__',cantidad:1,monto_unitario:otro});if(rows.length){const {error}=await sb.from('cargos').insert(rows);if(error)return msg(errTxt(error),1)}return true}
 async function guardarR(){const v=i=>$('#'+i).value||null;
  const ne0=Math.max(0,+$('#rnp').value||0);if($('#re').checked){const u0=S.unidades.find(u=>u.id===S.cur.unidad_id);if(!await avisoCupo(u0?.edificio_id,S.cur.fecha_entrada,addD(S.cur.fecha_entrada,ne0),S.cur.id))return}
@@ -923,7 +976,7 @@ async function pCan(){
   <div class="mu" style="margin-top:6px">${ca?'Cancelada':'No-show'} el ${f?fm(f)+'/'+f.slice(0,4):'—'}</div></div>`}).join('')||'<p class="mu">No hay registros en este mes.</p>'}</div>`}
 
 // ---------- Auditoría ----------
-const AUDR=['gerencia','sysadmin'];
+const AUDR=['administracion','gerencia','sysadmin'];
 const AUD_T={reservas:['Reservas','🛏'],pagos:['Pagos','💵'],cargos:['Cargos extra','➕'],huespedes:['Huéspedes','👤'],acompanantes:['Acompañantes','👥'],notas_huesped:['Notas de huésped','📝'],unidades:['Unidades','🚪'],tipos_unidad:['Categorías','🏷'],edificios:['Edificios','🏢'],configuracion:['Configuración','⚙'],perfiles:['Usuarios','🔑'],garantia_fechas:['Garantías por fecha','🛡'],limpieza:['Limpieza','🧹']};
 const audT=t=>AUD_T[t]||[String(t).replace(/_/g,' '),'📄'];
 const AUD_F={monto_clp:'Monto (CLP)',monto_original:'Monto original',metodo:'Método',moneda:'Moneda',tipo_cambio:'Tipo de cambio',motivo:'Motivo',anticipado:'Pago anticipado',id_transaccion:'ID de transacción',pagado_en:'Fecha de pago',tipo:'Tipo',descripcion:'Descripción',cantidad:'Cantidad',monto_unitario:'Monto unitario',total:'Total',estado:'Estado',fecha_entrada:'Entrada',fecha_salida:'Salida',tarifa_noche:'Tarifa por noche',unidad_id:'Unidad',noches:'Noches',canal:'Canal',adultos:'Adultos',menores:'Menores',observaciones:'Observaciones',estado_pago:'Estado de pago',numero_boleta:'N° boleta',referencia_externa:'Código externo',motivo_cancelacion:'Motivo de cancelación',cancelada_en:'Cancelada el',cancelada_por:'Cancelada por',no_show_en:'No-show el',no_show_por:'No-show por',no_show_nota:'Nota de no-show',garantia_omitida:'Garantía omitida',garantia_omitida_motivo:'Motivo omisión de garantía',garantia_omitida_por_nombre:'Garantía omitida por',garantia_omitida_en:'Garantía omitida el',nombre_completo:'Nombre',numero_documento:'Documento',telefono:'Teléfono',rol:'Rol',activo:'Activo',usuario:'Usuario',codigo:'Código',nombre:'Nombre',tarifa_base:'Tarifa base',nota:'Nota',categoria:'Categoría',gravedad:'Gravedad',clave:'Clave',valor:'Valor',creado_por:'Creado por',creado_en:'Creado el',uid_reserva:'ID de reserva',huesped_nombre_copia:'Huésped',entrada_real:'Entrada real',salida_real:'Salida real',usa_estacionamiento:'Usa estacionamiento',fecha:'Fecha'};
