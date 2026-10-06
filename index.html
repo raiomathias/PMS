@@ -205,7 +205,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
@@ -265,6 +265,29 @@ async function iniciar(){
  sb.channel('pms').on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).subscribe();
 }
 
+// ---------- Mi perfil ----------
+const ROL_NOMBRES={recepcion:'Recepción',administracion:'Administración',gerencia:'Gerencia',sysadmin:'SysAdmin',limpieza:'Limpieza'};
+function nombreRol(rol){return ROL_NOMBRES[rol]||rol||'—'}
+function abrirMiPerfil(){
+ const p=S.perfil;if(!p)return;
+ const edificios=rolVeTodosEdificios()?'Todos los edificios':S.edificiosPermitidos.map(x=>x.nombre).join(', ')||'Ningún edificio asignado';
+ const permisos=ADM.includes(p.rol)?'Acceso completo a edición':EDIT_FIELDS.filter(x=>S.permisosEdicion.has(x[0])).map(x=>x[1]).join(' · ')||'Sin permisos de edición especiales';
+ $('#mo').innerHTML=`<div style="width:620px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">👤 Mi perfil</h3><button onclick="cerrar()">✕</button></div><div class="sec c1" style="margin-top:14px"><h4 class="st">Información de acceso</h4><div class="g2"><div><span class="mu">Nombre</span><br><b>${esc(p.nombre_completo)}</b></div><div><span class="mu">Cargo / nivel de permisos</span><br><b>${esc(nombreRol(p.rol))}</b></div></div><div style="margin-top:12px"><span class="mu">Edificios que puedes ver</span><br><b>${esc(edificios)}</b></div><div style="margin-top:12px"><span class="mu">Permisos de edición</span><br><span class="mu">${esc(permisos)}</span></div></div><div class="sec c2"><h4 class="st">🔑 Contraseña</h4><p style="margin-top:0">Puedes establecer una nueva contraseña mientras tu sesión esté activa.</p><button class="p" onclick="abrirCambiarClave()">Restablecer contraseña</button></div></div>`;
+ $('#mo').style.display='grid';
+}
+function abrirCambiarClave(){
+ if(!S.perfil)return;
+ $('#mo').innerHTML=`<div style="width:480px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">🔑 Restablecer contraseña</h3><button onclick="cerrar()">✕</button></div><p class="mu">La nueva contraseña debe tener al menos 6 caracteres. Al guardarla, tu contraseña actual dejará de funcionar.</p><label>Nueva contraseña<input id="mpn1" type="password" autocomplete="new-password" minlength="6"></label><label style="margin-top:10px">Repetir nueva contraseña<input id="mpn2" type="password" autocomplete="new-password" minlength="6" onkeydown="if(event.key==='Enter')restablecerClave()"></label><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="abrirMiPerfil()">Cancelar</button><button class="p" onclick="restablecerClave()">Guardar nueva contraseña</button></div></div>`;
+ $('#mo').style.display='grid';$('#mpn1').focus();
+}
+async function restablecerClave(){
+ const a=$('#mpn1')?.value||'',b=$('#mpn2')?.value||'';
+ if(a.length<6)return msg('La nueva contraseña debe tener al menos 6 caracteres',1);
+ if(a!==b)return msg('Las contraseñas no coinciden',1);
+ const {error}=await sb.auth.updateUser({password:a});
+ if(error)return msg(error.message,1);
+ cerrar();msg('Contraseña actualizada correctamente');
+}
 // ---------- Permisos de vista por edificio ----------
 async function cargarPermisosEdificios(){
  const {data:ed,error:ee}=await sb.from('edificios').select('id,nombre,orden,activo').eq('activo',true).order('orden');
