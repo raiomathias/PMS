@@ -448,3 +448,132 @@ BEGIN
  IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
  RETURN v_id;
 END $$;
+
+-- ================================================================
+-- FIX: editar_reserva_completa / canal_reserva
+-- p_canal es text en la firma RPC, pero reservas.canal es canal_reserva.
+-- ================================================================
+CREATE OR REPLACE FUNCTION public.editar_reserva_completa(
+  p_reserva_id uuid,
+  p_huesped_nombre text DEFAULT NULL::text,
+  p_tipo_documento text DEFAULT NULL::text,
+  p_numero_documento text DEFAULT NULL::text,
+  p_telefono text DEFAULT NULL::text,
+  p_correo text DEFAULT NULL::text,
+  p_nacionalidad text DEFAULT NULL::text,
+  p_ciudad_origen text DEFAULT NULL::text,
+  p_estado text DEFAULT NULL::text,
+  p_fecha_entrada date DEFAULT NULL::date,
+  p_fecha_salida date DEFAULT NULL::date,
+  p_unidad_id uuid DEFAULT NULL::uuid,
+  p_canal text DEFAULT NULL::text,
+  p_referencia_externa text DEFAULT NULL::text,
+  p_adultos integer DEFAULT NULL::integer,
+  p_menores integer DEFAULT NULL::integer,
+  p_tarifa_noche integer DEFAULT NULL::integer,
+  p_total_manual integer DEFAULT NULL::integer,
+  p_modelo_vehiculo text DEFAULT NULL::text,
+  p_patente_vehiculo text DEFAULT NULL::text,
+  p_cupo_estacionamiento integer DEFAULT NULL::integer,
+  p_usa_estacionamiento boolean DEFAULT NULL::boolean,
+  p_observaciones text DEFAULT NULL::text,
+  p_iva_total integer DEFAULT NULL::integer,
+  p_otro_precio integer DEFAULT NULL::integer,
+  p_noches_estacionamiento integer DEFAULT NULL::integer
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+declare
+  r reservas%rowtype;
+  v_user uuid := auth.uid();
+  v_ent date;
+  v_sal date;
+  v_unit uuid;
+  v_iva integer;
+  v_otro integer;
+  v_npark integer;
+  v_base_total integer;
+  v_ajuste integer;
+begin
+  select * into r from reservas where id = p_reserva_id for update;
+  if not found then raise exception 'Reserva no encontrada'; end if;
+  if v_user is null then raise exception 'Sesión no válida'; end if;
+
+  v_ent := coalesce(p_fecha_entrada,r.fecha_entrada);
+  v_sal := coalesce(p_fecha_salida,r.fecha_salida);
+  v_unit := coalesce(p_unidad_id,r.unidad_id);
+  v_iva := greatest(0,coalesce(p_iva_total,0));
+  v_otro := greatest(0,coalesce(p_otro_precio,0));
+  v_npark := greatest(0,coalesce(p_noches_estacionamiento,
+    case when r.usa_estacionamiento then (r.fecha_salida-r.fecha_entrada) else 0 end));
+
+  if v_sal <= v_ent then raise exception 'La salida debe ser posterior a la entrada'; end if;
+  if p_canal is not null and p_canal='booking' and nullif(trim(coalesce(p_referencia_externa,'')),'') is null
+     and public.tiene_permiso_edicion(v_user,'channel')
+  then raise exception 'El código externo es obligatorio para Booking'; end if;
+  if v_npark > (v_sal-v_ent) then raise exception 'Las noches con estacionamiento no pueden superar la estadía'; end if;
+  if r.estado='en_casa' and v_unit<>r.unidad_id then raise exception 'Una persona que ya está en casa nunca puede ser movida de unidad'; end if;
+
+  if p_huesped_nombre is not null and public.tiene_permiso_edicion(v_user,'guest_name') then
+    update huespedes set nombre_completo=p_huesped_nombre where id=r.huesped_id;
+    update reservas set huesped_nombre_copia=p_huesped_nombre where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'guest_document') then
+    update huespedes set tipo_documento=coalesce(p_tipo_documento,tipo_documento),numero_documento=coalesce(p_numero_documento,numero_documento) where id=r.huesped_id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'guest_contact') then
+    update huespedes set telefono=coalesce(p_telefono,telefono),correo=coalesce(p_correo,correo),nacionalidad=coalesce(p_nacionalidad,nacionalidad),ciudad_origen=coalesce(p_ciudad_origen,ciudad_origen) where id=r.huesped_id;
+  end if;
+  if p_estado is not null and public.tiene_permiso_edicion(v_user,'status') then
+    update reservas set estado=p_estado::estado_reserva where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'channel') then
+    -- FIX: ambos argumentos de COALESCE deben ser canal_reserva.
+    update reservas
+      set canal=coalesce(p_canal::canal_reserva,canal),
+          referencia_externa=case when p_referencia_externa is null then referencia_externa else nullif(trim(p_referencia_externa),'') end
+      where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'occupancy') then
+    update reservas set adultos=coalesce(p_adultos,adultos),menores=coalesce(p_menores,menores) where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'rate') then
+    update reservas set tarifa_noche=coalesce(p_tarifa_noche,tarifa_noche) where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'vehicle') then
+    update reservas set modelo_vehiculo=coalesce(p_modelo_vehiculo,modelo_vehiculo),patente_vehiculo=coalesce(p_patente_vehiculo,patente_vehiculo),cupo_estacionamiento=p_cupo_estacionamiento,usa_estacionamiento=coalesce(p_usa_estacionamiento,usa_estacionamiento) where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'observations') then
+    update reservas set observaciones=p_observaciones where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'dates') or public.tiene_permiso_edicion(v_user,'building_category_unit') then
+    if public.tiene_permiso_edicion(v_user,'dates') or public.tiene_permiso_edicion(v_user,'building_category_unit') then
+      if r.estado='en_casa' and v_unit<>r.unidad_id then raise exception 'Una persona que ya está en casa nunca puede ser movida de unidad'; end if;
+      if exists(select 1 from reservas x where x.id<>r.id and x.unidad_id=v_unit and x.estado in ('tentativa','confirmada','en_casa','bloqueado') and x.fecha_entrada<v_sal and x.fecha_salida>v_ent) then raise exception 'La unidad ya está ocupada en esas fechas'; end if;
+      update reservas set unidad_id=v_unit,fecha_entrada=v_ent,fecha_salida=v_sal where id=r.id;
+    end if;
+  end if;
+
+  if public.tiene_permiso_edicion(v_user,'price_iva') then
+    delete from cargos where reserva_id=r.id and descripcion='__PMS_IVA__';
+    if v_iva>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_IVA__',1,v_iva); end if;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'price_other') then
+    delete from cargos where reserva_id=r.id and descripcion='__PMS_OTRO_PRECIO__';
+    if v_otro>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_OTRO_PRECIO__',1,v_otro); end if;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'parking_nights') then
+    update reservas set noches_estacionamiento=case when coalesce(p_usa_estacionamiento,r.usa_estacionamiento) then v_npark else 0 end where id=r.id;
+  end if;
+
+  if p_total_manual is not null and public.tiene_permiso_edicion(v_user,'total') then
+    delete from cargos where reserva_id=r.id and tipo='otro' and descripcion='__PMS_AJUSTE_TOTAL_MANUAL__';
+    select ((v_sal-v_ent)*coalesce((select tarifa_noche from reservas where id=r.id),r.tarifa_noche))+coalesce(sum(case when descripcion not in ('__PMS_AJUSTE_TOTAL_MANUAL__') then total else 0 end),0) into v_base_total from cargos where reserva_id=r.id;
+    v_ajuste:=p_total_manual-coalesce(v_base_total,0);
+    if v_ajuste<>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_AJUSTE_TOTAL_MANUAL__',1,v_ajuste); end if;
+  end if;
+end;
+$function$;
