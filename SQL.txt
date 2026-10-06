@@ -621,3 +621,50 @@ EXECUTE FUNCTION public.reclamos_sugerencias_set_actualizado_en();
 -- El frontend usa INSERT/UPDATE/DELETE/UPSERT directamente
 -- igual que las tablas existentes del PMS.
 -- ============================================================
+
+-- ============================================================
+-- PAGOS: múltiples motivos en un mismo pago
+-- Un pago sigue siendo una sola transacción; sus conceptos se
+-- distribuyen en esta tabla hija. Esto permite, por ejemplo,
+-- Estadía $100.000 + Estacionamiento $20.000 = un pago $120.000.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.pagos_motivos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  pago_id uuid NOT NULL,
+  motivo text NOT NULL CHECK (motivo = ANY (ARRAY[
+    'estadia'::text,
+    'estacionamiento'::text,
+    'horario_extra'::text,
+    'penalizacion'::text,
+    'consumos'::text,
+    'garantia'::text,
+    'otro'::text
+  ])),
+  monto_original numeric NOT NULL CHECK (monto_original > 0),
+  monto_clp integer NOT NULL CHECK (monto_clp > 0),
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT pagos_motivos_pkey PRIMARY KEY (id),
+  CONSTRAINT pagos_motivos_pago_id_fkey FOREIGN KEY (pago_id)
+    REFERENCES public.pagos(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagos_motivos_pago_id
+  ON public.pagos_motivos(pago_id);
+
+-- Migración de pagos existentes:
+-- cada pago antiguo tenía un solo motivo en pagos.motivo, por lo
+-- que lo convertimos a una asignación única. Los pagos nuevos
+-- pueden tener una o varias asignaciones.
+INSERT INTO public.pagos_motivos (pago_id, motivo, monto_original, monto_clp)
+SELECT p.id, p.motivo, p.monto_original, p.monto_clp
+FROM public.pagos p
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.pagos_motivos pm WHERE pm.pago_id = p.id
+);
+
+-- ============================================================
+-- IMPORTANTE
+-- El frontend conserva pagos.motivo para compatibilidad con
+-- código/reportes antiguos. pagos_motivos es la fuente detallada
+-- cuando un pago tiene más de un motivo.
+-- ============================================================
