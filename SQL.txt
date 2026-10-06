@@ -664,9 +664,18 @@ CREATE INDEX IF NOT EXISTS idx_pagos_motivos_pago_id
 INSERT INTO public.pagos_motivos (pago_id, motivo, monto_original, monto_clp)
 SELECT p.id, p.motivo, p.monto_original, p.monto_clp
 FROM public.pagos p
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.pagos_motivos pm WHERE pm.pago_id = p.id
-);
+WHERE p.motivo = ANY (ARRAY[
+  'estadia'::text,
+  'estacionamiento'::text,
+  'horario_extra'::text,
+  'penalizacion'::text,
+  'consumos'::text,
+  'garantia'::text,
+  'otro'::text
+])
+  AND NOT EXISTS (
+    SELECT 1 FROM public.pagos_motivos pm WHERE pm.pago_id = p.id
+  );
 
 -- ============================================================
 -- IMPORTANTE
