@@ -577,3 +577,47 @@ begin
   end if;
 end;
 $function$;
+
+
+-- ============================================================
+-- RECLAMOS Y SUGERENCIAS
+-- Una sola ficha por reserva. El mismo botón de la reserva
+-- siempre recupera esta fila y permite editarla.
+-- Ejecutar en Supabase SQL Editor.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.reclamos_sugerencias (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reserva_id uuid NOT NULL,
+  huesped_id uuid,
+  contenido text NOT NULL,
+  creado_por uuid DEFAULT auth.uid(),
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  actualizado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT reclamos_sugerencias_pkey PRIMARY KEY (id),
+  CONSTRAINT reclamos_sugerencias_reserva_id_key UNIQUE (reserva_id),
+  CONSTRAINT reclamos_sugerencias_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id) ON DELETE CASCADE,
+  CONSTRAINT reclamos_sugerencias_huesped_id_fkey FOREIGN KEY (huesped_id) REFERENCES public.huespedes(id),
+  CONSTRAINT reclamos_sugerencias_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id)
+);
+
+CREATE OR REPLACE FUNCTION public.reclamos_sugerencias_set_actualizado_en()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.actualizado_en := now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_reclamos_sugerencias_actualizado_en ON public.reclamos_sugerencias;
+CREATE TRIGGER trg_reclamos_sugerencias_actualizado_en
+BEFORE UPDATE ON public.reclamos_sugerencias
+FOR EACH ROW
+EXECUTE FUNCTION public.reclamos_sugerencias_set_actualizado_en();
+
+-- ============================================================
+-- MIGRACIÓN SEGURA DEL FRONTEND:
+-- El frontend usa INSERT/UPDATE/DELETE/UPSERT directamente
+-- igual que las tablas existentes del PMS.
+-- ============================================================
