@@ -345,7 +345,6 @@ async function cargar(op={}){
  let sv={data:[],error:null};
  if(rids.length)sv=await sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',rids);
  if(sv.error)return msg(sv.error.message,1);
- const rids=(r.data||[]).map(x=>x.id);
  let gp={data:[],error:null};
  if(rids.length)gp=await sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',rids);
  if(gp.error)return msg(gp.error.message,1);
