@@ -284,8 +284,16 @@ async function restablecerClave(){
  const a=$('#mpn1')?.value||'',b=$('#mpn2')?.value||'';
  if(a.length<6)return msg('La nueva contraseña debe tener al menos 6 caracteres',1);
  if(a!==b)return msg('Las contraseñas no coinciden',1);
- const {error}=await sb.auth.updateUser({password:a});
+ let {data:{session},error}=await sb.auth.getSession();
  if(error)return msg(error.message,1);
+ if(!session){
+  const r=await sb.auth.refreshSession();
+  session=r.data?.session||null;error=r.error;
+  if(error)return msg(error.message,1);
+ }
+ if(!session)return msg('La sesión de autenticación expiró. Cierra sesión e ingresa nuevamente antes de cambiar la contraseña.',1);
+ const r=await sb.auth.updateUser({password:a});
+ if(r.error)return msg(r.error.message,1);
  cerrar();msg('Contraseña actualizada correctamente');
 }
 // ---------- Permisos de vista por edificio ----------
