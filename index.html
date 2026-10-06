@@ -240,7 +240,7 @@ async function iniciar(){
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
  await cargar({scrollAnchor:30*W});
- let t;const d=()=>{clearTimeout(t);t=setTimeout(()=>{cargar();if($('#est').style.display==='flex')estCargar()},400)};
+ let t;const d=()=>{clearTimeout(t);t=setTimeout(()=>{cargar();if($('#est').style.display==='flex')estCargar();if($('#hosp').style.display==='flex')hosCargar()},400)};
  sb.channel('pms').on('postgres_changes',{event:'*',schema:'public',table:'reservas'},d).on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},d).subscribe();
 }
 
