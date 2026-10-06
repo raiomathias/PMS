@@ -811,7 +811,9 @@ GRANT EXECUTE ON FUNCTION public.eliminar_usuario_completo(uuid) TO authenticate
 -- ============================================================
 -- REALTIME GLOBAL DEL PMS
 -- ============================================================
--- Habilita Postgres Changes para todas las tablas del modelo del PMS.
+-- Habilita Postgres Changes para todas las tablas disponibles del PMS.
+-- Las tablas que todavía no existan en la base se omiten, por lo que
+-- esta migración no falla si una funcionalidad aún no fue instalada.
 -- Ejecutar una vez en Supabase SQL Editor.
 DO $$
 DECLARE
@@ -847,13 +849,14 @@ BEGIN
     'reclamos_sugerencias',
     'pagos_motivos'
   ] LOOP
-    IF NOT EXISTS (
-      SELECT 1
-      FROM pg_publication_tables
-      WHERE pubname = 'supabase_realtime'
-        AND schemaname = 'public'
-        AND tablename = t
-    ) THEN
+    IF to_regclass('public.' || t) IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1
+         FROM pg_publication_tables
+         WHERE pubname = 'supabase_realtime'
+           AND schemaname = 'public'
+           AND tablename = t
+       ) THEN
       EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
     END IF;
   END LOOP;
