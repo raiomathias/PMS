@@ -22,7 +22,7 @@ header b{margin-right:auto}
 .hoy{position:absolute;top:0;bottom:0;width:var(--w);background:rgba(37,99,235,.09)}
 .blq{position:absolute;top:5px;bottom:5px;border-radius:6px;padding:2px 6px;font-size:11px;overflow:hidden;white-space:nowrap;cursor:pointer;color:#fff;box-sizing:border-box;line-height:1.25}
 .blq small{display:block;opacity:.85}
-.confirmada{background:#2563eb}.en_casa{background:#16a34a}.check_out{background:#6b7280}.checkout-hoy{background:#14532d!important}.checkin-hoy{background:#c4b5fd!important;color:#312e81}
+.confirmada{background:#2563eb}.en_casa{background:#16a34a}.check_out{background:#6b7280}
 .tentativa{background:repeating-linear-gradient(45deg,#d97706,#d97706 6px,#f59e0b 6px,#f59e0b 12px)}
 .bloqueado{background:repeating-linear-gradient(45deg,#374151,#374151 6px,#4b5563 6px,#4b5563 12px)}
 #dr{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--pn);border-left:1px solid var(--bd);box-shadow:-8px 0 24px rgba(0,0,0,.2);padding:16px;overflow:auto;z-index:10;display:none}
@@ -310,11 +310,8 @@ function dibujar(){
   let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';b+=celdasLimp(u.id,hi);
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
-   const checkoutHoy=r.fecha_salida===hoy && r.estado==='en_casa';
-   const checkinHoy=r.fecha_entrada===hoy && r.estado==='confirmada';
-   const colorHoy=checkoutHoy?' checkout-hoy':(checkinHoy?' checkin-hoy':'');
-   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${checkoutHoy?'⬇ Check-out hoy · ':checkinHoy?'⬆ Check-in hoy · ':''}${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
-   b+=`<div class="blq ${r.estado}${colorHoy}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
+   const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small>${S.gar[r.id]?'⚠ Garantía pendiente · ':''}${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}${r.estado_pago==='pagado'?' · pagado':''}</small>`;
+   b+=`<div class="blq ${r.estado}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
   h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div></div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
  $('#gw').innerHTML=h;barra();
 }
@@ -492,6 +489,9 @@ async function guardarNueva(){
  if($('#nk').checked&&nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
  const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nv').value||null,patente_vehiculo:$('#np').value||null},p_plan:N.plan||[],p_iva:+$('#niva').value||0,p_otro:+$('#notro').value||0});
  if(error)return msg(errTxt(error),1);
+ cerrar();
+ await cargar();
+ msg('Reserva guardada en '+nomU(unidad));
 
 }
 // ---------- Detalle de reserva ----------
