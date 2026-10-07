@@ -779,7 +779,7 @@ async function abrirExtensionEstadia(){
  if(!r)return;
  if(['cancelada','no_show','bloqueado','check_out'].includes(r.estado))return msg('Esta reserva no puede extenderse en su estado actual',1);
  S.extensionEstadia=null;
- $('#mo').innerHTML=\`<div style="width:720px;max-width:94vw">
+ $('#mo').innerHTML=`<div style="width:720px;max-width:94vw">
   <div style="display:flex;justify-content:space-between;align-items:center">
    <div><h3 style="margin:0">↔ Extender estadía</h3><span class="mu">\${esc(r.uid_reserva||'')} · \${esc(nomU(r.unidad_id))}</span></div>
    <button onclick="cerrar()">✕</button>
@@ -798,7 +798,7 @@ async function abrirExtensionEstadia(){
    <button onclick="cerrar()">Cancelar</button>
    <button class="p" onclick="buscarExtensionEstadia()">Buscar disponibilidad</button>
   </div>
- </div>\`;
+ </div>`;
  $('#mo').style.display='grid';
 }
 function extRenderPlan(plan,nuevaEntrada,nuevaSalida){
@@ -807,10 +807,10 @@ function extRenderPlan(plan,nuevaEntrada,nuevaSalida){
  const by=Object.fromEntries(S.res.map(x=>[x.id,x]));
  const lines=(plan||[]).slice().sort((a,b)=>(b.profundidad||0)-(a.profundidad||0)).map(x=>{
   const q=by[x.reserva_id];
-  return \`<div class="pg">• <b>\${esc(q?.uid_reserva||'Reserva')}</b> · \${esc(q?.huesped_nombre_copia||'Huésped')} · \${esc(lab(x.unidad_origen))} → <b>\${esc(lab(x.unidad_destino))}</b> · \${x.fecha_entrada||q?.fecha_entrada||'—'} → \${x.fecha_salida||q?.fecha_salida||'—'}</div>\`;
+  return `<div class="pg">• <b>\${esc(q?.uid_reserva||'Reserva')}</b> · \${esc(q?.huesped_nombre_copia||'Huésped')} · \${esc(lab(x.unidad_origen))} → <b>\${esc(lab(x.unidad_destino))}</b> · \${x.fecha_entrada||q?.fecha_entrada||'—'} → \${x.fecha_salida||q?.fecha_salida||'—'}</div>`;
  }).join('');
  const noches=diff(nuevaEntrada,nuevaSalida);
- $('#ext_result').innerHTML=\`<div class="sec c3">
+ $('#ext_result').innerHTML=`<div class="sec c3">
   <h4 class="st">Resultado</h4>
   <p style="margin-top:0">Nueva estadía: <b>\${nuevaEntrada}</b> → <b>\${nuevaSalida}</b> · <b>\${noches}</b> noches.</p>
   \${plan.length
@@ -819,7 +819,7 @@ function extRenderPlan(plan,nuevaEntrada,nuevaSalida){
   <div style="display:flex;justify-content:flex-end;margin-top:12px">
    <button class="p" onclick="ejecutarExtensionEstadia()">Confirmar extensión</button>
   </div>
- </div>\`;
+ </div>`;
 }
 async function buscarExtensionEstadia(){
  const r=S.cur;
