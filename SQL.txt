@@ -1052,32 +1052,40 @@ CREATE OR REPLACE FUNCTION public.buscar_reacomodacion_cambio_unidad(
   p_entrada date,
   p_salida date
 )
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO public AS $$
 DECLARE
   v_plan jsonb;
   v_bloqueadores integer;
   v_cadenas integer;
 BEGIN
-  IF p_salida<=p_entrada THEN RETURN '[]'::jsonb;END IF;
-  IF NOT EXISTS(SELECT 1 FROM unidades WHERE id=p_unidad_destino AND activo) THEN RETURN '[]'::jsonb;END IF;
+  IF p_salida<=p_entrada THEN RETURN '[]'::jsonb; END IF;
+  IF NOT EXISTS (SELECT 1 FROM unidades WHERE id=p_unidad_destino AND activo) THEN
+    RETURN '[]'::jsonb;
+  END IF;
 
   SELECT count(*) INTO v_bloqueadores
   FROM reservas r
   WHERE r.unidad_id=p_unidad_destino
     AND r.id<>p_reserva_id
-    AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada
+    AND r.fecha_entrada<p_salida
+    AND r.fecha_salida>p_entrada
     AND r.estado NOT IN ('cancelada','no_show');
 
   IF v_bloqueadores=0 THEN
     RETURN jsonb_build_object('unidad_id',p_unidad_destino,'plan','[]'::jsonb);
   END IF;
 
-  IF EXISTS(
+  IF EXISTS (
     SELECT 1
     FROM reservas r
     WHERE r.unidad_id=p_unidad_destino
       AND r.id<>p_reserva_id
-      AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada
+      AND r.fecha_entrada<p_salida
+      AND r.fecha_salida>p_entrada
       AND (
         r.estado IN ('en_casa','bloqueado')
         OR COALESCE(r.no_mover_unidad,false)
@@ -1087,12 +1095,17 @@ BEGIN
   END IF;
 
   /*
-   * Cada reserva que bloquea el destino se convierte en una raíz
-   * independiente. Esto es importante cuando hay varias reservas
-   * consecutivas en la misma unidad (por ejemplo 01→12 y 12→13).
+   * Cada reserva que bloquea el destino es una raíz independiente.
+   * Primero se intenta el intercambio directo hacia la unidad actual
+   * de la reserva que estamos moviendo. Esto permite, por ejemplo:
    *
-   * Para cada raíz se busca una cadena de destinos. Las cadenas pueden
-   * reutilizar una unidad si sus intervalos no se superponen.
+   *   R1 01→12 : unidad A → unidad C
+   *   R2 12→13 : unidad A → unidad C
+   *   R3 10→13 : unidad C → unidad A
+   *
+   * R1 y R2 pueden compartir C porque sus intervalos no se superponen.
+   *
+   * Si ese intercambio directo no sirve, se buscan cadenas más largas.
    */
   WITH RECURSIVE
   roots AS (
@@ -1104,31 +1117,39 @@ BEGIN
     FROM reservas r
     WHERE r.unidad_id=p_unidad_destino
       AND r.id<>p_reserva_id
-      AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada
+      AND r.fecha_entrada<p_salida
+      AND r.fecha_salida>p_entrada
       AND r.estado NOT IN ('cancelada','no_show')
   ),
   chain AS (
+    /* Candidatos iniciales. La unidad actual de la reserva que se mueve
+       tiene prioridad absoluta porque permite un intercambio directo. */
     SELECT
       rt.rid AS root_id,
       rt.rid,
-      rt.unidad_id AS from_uid,
+      rt.from_uid,
       c.id AS to_uid,
       1 AS depth,
       ARRAY[rt.rid]::uuid[] AS seen_r,
-      ARRAY[p_unidad_destino]::uuid[] AS seen_u
+      ARRAY[p_unidad_destino]::uuid[] AS seen_u,
+      CASE WHEN c.id=(SELECT unidad_id FROM reservas WHERE id=p_reserva_id)
+           THEN 0 ELSE 1 END AS prioridad
     FROM roots rt
-    JOIN unidades src ON src.id=rt.unidad_id
+    JOIN unidades src ON src.id=rt.from_uid
     JOIN unidades c
       ON c.activo
       AND c.edificio_id=src.edificio_id
-      AND c.id<>rt.unidad_id
+      AND c.id<>rt.from_uid
       AND c.id<>p_unidad_destino
     LEFT JOIN categoria_ranking_edificio rs
-      ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id
+      ON rs.edificio_id=src.edificio_id
+      AND rs.tipo_unidad_id=src.tipo_unidad_id
     LEFT JOIN categoria_ranking_edificio rc
-      ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+      ON rc.edificio_id=c.edificio_id
+      AND rc.tipo_unidad_id=c.tipo_unidad_id
     WHERE (
-      c.tipo_unidad_id=src.tipo_unidad_id
+      c.id=(SELECT unidad_id FROM reservas WHERE id=p_reserva_id)
+      OR c.tipo_unidad_id=src.tipo_unidad_id
       OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)
     )
 
@@ -1141,7 +1162,8 @@ BEGIN
       c.id,
       ch.depth+1,
       ch.seen_r||b.id,
-      ch.seen_u||c.id
+      ch.seen_u||c.id,
+      1 AS prioridad
     FROM chain ch
     JOIN reservas cur ON cur.id=ch.rid
     JOIN unidades src ON src.id=cur.unidad_id
@@ -1150,11 +1172,19 @@ BEGIN
       AND c.edificio_id=src.edificio_id
       AND c.id<>cur.unidad_id
     LEFT JOIN categoria_ranking_edificio rs
-      ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id
+      ON rs.edificio_id=src.edificio_id
+      AND rs.tipo_unidad_id=src.tipo_unidad_id
     LEFT JOIN categoria_ranking_edificio rc
-      ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+      ON rc.edificio_id=c.edificio_id
+      AND rc.tipo_unidad_id=c.tipo_unidad_id
     LEFT JOIN LATERAL (
-      SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id,r.no_mover_unidad
+      SELECT
+        r.id,
+        r.estado,
+        r.fecha_entrada,
+        r.fecha_salida,
+        r.unidad_id,
+        r.no_mover_unidad
       FROM reservas r
       WHERE r.unidad_id=c.id
         AND r.id<>p_reserva_id
@@ -1191,13 +1221,17 @@ BEGIN
         AND b.fecha_entrada<cur.fecha_salida
         AND b.fecha_salida>cur.fecha_entrada
         AND b.estado NOT IN ('cancelada','no_show')
+        AND b.id<>ALL(ch.seen_r)
     )
   ),
   best AS (
     SELECT DISTINCT ON (root_id)
       root_id,rid,from_uid,to_uid,depth
     FROM terminals
-    ORDER BY root_id,depth,to_uid
+    ORDER BY root_id,depth,
+      CASE WHEN to_uid=(SELECT unidad_id FROM reservas WHERE id=p_reserva_id)
+           THEN 0 ELSE 1 END,
+      to_uid
   ),
   conflicts AS (
     SELECT 1
@@ -1210,27 +1244,27 @@ BEGIN
       AND ra.fecha_salida>rb.fecha_entrada
     LIMIT 1
   )
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'reserva_id',rid,
-      'unidad_origen',from_uid,
-      'unidad_destino',to_uid,
-      'profundidad',depth
-    )
-    ORDER BY depth DESC,root_id
-  ), count(DISTINCT root_id)
+  SELECT
+    jsonb_agg(
+      jsonb_build_object(
+        'reserva_id',rid,
+        'unidad_origen',from_uid,
+        'unidad_destino',to_uid,
+        'profundidad',depth
+      )
+      ORDER BY depth DESC,root_id
+    ),
+    count(DISTINCT root_id)
   INTO v_plan,v_cadenas
   FROM best;
 
-  IF v_cadenas<>v_bloqueadores THEN
-    RETURN '[]'::jsonb;
-  END IF;
+  IF v_cadenas<>v_bloqueadores THEN RETURN '[]'::jsonb; END IF;
+  IF EXISTS(SELECT 1 FROM conflicts) THEN RETURN '[]'::jsonb; END IF;
 
-  IF EXISTS(SELECT 1 FROM conflicts) THEN
-    RETURN '[]'::jsonb;
-  END IF;
-
-  RETURN jsonb_build_object('unidad_id',p_unidad_destino,'plan',COALESCE(v_plan,'[]'::jsonb));
+  RETURN jsonb_build_object(
+    'unidad_id',p_unidad_destino,
+    'plan',COALESCE(v_plan,'[]'::jsonb)
+  );
 END $$;
 
 -- El RPC que ejecuta la cadena también vuelve a protegerse contra bloqueos
