@@ -336,7 +336,7 @@ async function iniciar(){
  await cargarPermisosEdicion();
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
- $('#madm').style.display=ADM.includes(p.rol)?'inline-flex':'none';
+ $('#madm').style.display=GER.includes(p.rol)?'inline-flex':'none';
  iniciarRealtime();
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
