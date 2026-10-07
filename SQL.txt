@@ -2547,14 +2547,18 @@ GRANT EXECUTE ON FUNCTION public.ejecutar_extension_estadia(
 -- ============================================================
 -- FIX RLS: GUARDAR FECHAS DE ESTACIONAMIENTO
 -- ============================================================
--- Elimina posibles firmas antiguas/conflictivas para que PostgREST
--- pueda encontrar una única función con la firma usada por el frontend.
+-- Firma única compatible con PostgREST/Supabase:
+-- (p_fechas date[], p_reserva_id uuid)
+--
+-- Se eliminan posibles versiones anteriores para evitar que el
+-- schema cache encuentre una firma distinta.
+
 DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(date[], uuid);
 DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(uuid, date[]);
 
 CREATE OR REPLACE FUNCTION public.guardar_fechas_estacionamiento(
-  p_reserva_id uuid,
-  p_fechas date[] DEFAULT ARRAY[]::date[]
+  p_fechas date[],
+  p_reserva_id uuid
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -2563,7 +2567,7 @@ SET search_path = public
 AS $function$
 DECLARE
   v_user uuid := auth.uid();
-  r reservas%rowtype;
+  v_reserva public.reservas%rowtype;
   v_fechas date[] := COALESCE(p_fechas, ARRAY[]::date[]);
 BEGIN
   IF v_user IS NULL THEN
@@ -2571,9 +2575,9 @@ BEGIN
   END IF;
 
   SELECT *
-    INTO r
-    FROM public.reservas
-   WHERE id = p_reserva_id
+    INTO v_reserva
+    FROM public.reservas rr
+   WHERE rr.id = p_reserva_id
    FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -2581,46 +2585,62 @@ BEGIN
   END IF;
 
   IF NOT public.tiene_permiso_edicion(v_user, 'vehicle') THEN
-    RAISE EXCEPTION 'No tienes permiso para editar el estacionamiento de esta reserva';
+    RAISE EXCEPTION
+      'No tienes permiso para editar el estacionamiento de esta reserva';
   END IF;
 
-  IF NOT r.usa_estacionamiento AND COALESCE(array_length(v_fechas, 1), 0) > 0 THEN
-    RAISE EXCEPTION 'La reserva no tiene estacionamiento habilitado';
+  IF NOT v_reserva.usa_estacionamiento
+     AND COALESCE(array_length(v_fechas, 1), 0) > 0
+  THEN
+    RAISE EXCEPTION
+      'La reserva no tiene estacionamiento habilitado';
   END IF;
 
   IF EXISTS (
     SELECT 1
-      FROM unnest(v_fechas) AS x(fecha)
-     WHERE x.fecha < r.fecha_entrada
-        OR x.fecha >= r.fecha_salida
+    FROM unnest(v_fechas) AS x(fecha)
+    WHERE x.fecha < v_reserva.fecha_entrada
+       OR x.fecha >= v_reserva.fecha_salida
   ) THEN
-    RAISE EXCEPTION 'Las fechas de estacionamiento deben estar dentro de la estadía';
+    RAISE EXCEPTION
+      'Las fechas de estacionamiento deben estar dentro de la estadía';
   END IF;
 
   IF (
     SELECT count(*)
-      FROM unnest(v_fechas) AS x(fecha)
+    FROM unnest(v_fechas) AS x(fecha)
   ) <> (
     SELECT count(DISTINCT x.fecha)
-      FROM unnest(v_fechas) AS x(fecha)
+    FROM unnest(v_fechas) AS x(fecha)
   ) THEN
     RAISE EXCEPTION 'Hay fechas de estacionamiento duplicadas';
   END IF;
 
-  DELETE FROM public.estacionamiento_reserva_fechas
-   WHERE reserva_id = p_reserva_id;
+  DELETE FROM public.estacionamiento_reserva_fechas erf
+   WHERE erf.reserva_id = p_reserva_id;
 
-  INSERT INTO public.estacionamiento_reserva_fechas(reserva_id, fecha)
-  SELECT p_reserva_id, x.fecha
-    FROM unnest(v_fechas) AS x(fecha)
-   ORDER BY x.fecha;
+  INSERT INTO public.estacionamiento_reserva_fechas(
+    reserva_id,
+    fecha
+  )
+  SELECT
+    p_reserva_id,
+    x.fecha
+  FROM unnest(v_fechas) AS x(fecha)
+  ORDER BY x.fecha;
 
-  UPDATE public.reservas
-     SET noches_estacionamiento = COALESCE(array_length(v_fechas, 1), 0)
-   WHERE id = p_reserva_id;
+  UPDATE public.reservas rr
+  SET noches_estacionamiento = COALESCE(array_length(v_fechas, 1), 0)
+  WHERE rr.id = p_reserva_id;
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento(uuid, date[]) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(uuid, date[]) TO authenticated;
+REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid)
+FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid)
+TO authenticated;
+
+-- Forzar a PostgREST/Supabase a recargar el schema cache.
+NOTIFY pgrst, 'reload schema';
 
