@@ -528,7 +528,7 @@ async function avisoCupoFechas(ed,dates,excl){if(!dates.length)return true;const
 function filU(sel){const e=$('#ned').value,cur=sel||$('#nu').value;const cats=Object.entries(S.tipos).filter(([id,t])=>!e||S.unidades.some(u=>u.edificio_id===e&&u.tipo_unidad_id===id));const curT=$('#nca').value||'';$('#nca').innerHTML=cats.map(([id,t])=>`<option value="${id}" ${id===curT?'selected':''}>${esc(t.nombre)}</option>`).join('');const t=$('#nca').value;$('#nu').innerHTML='<option value="">Asignar automáticamente</option>'+S.unidades.filter(u=>(u.tipo_unidad_id||'')===t&&(!e||u.edificio_id===e)).map(u=>`<option value="${u.id}" ${u.id===cur?'selected':''}>${esc(u.codigo)}</option>`).join('');tarU()}
 function tarU(){$('#nta').value=S.tipos[$('#nca').value]?.tarifa_base||0}
 const nomU=id=>{const u=S.unidades.find(x=>x.id===id);return u?u.edificios.nombre+' · '+u.codigo:''};
-async function confirmarReacomodacion(plan,targetId){
+async function confirmarReacomodacion(plan,targetId,manual=false){
  const ids=[...new Set((plan||[]).map(x=>x.reserva_id).filter(Boolean))],faltan=ids.filter(id=>!S.res.some(r=>r.id===id));
  let extra=[];
  if(faltan.length){
@@ -551,7 +551,7 @@ async function confirmarReacomodacion(plan,targetId){
  const aviso=cambios.length
   ? '⚠ El plan requiere '+cambios.length+' cambio'+(cambios.length>1?'s':'')+' de categoría (upgrade). La tarifa de las reservas movidas se mantiene sin cambios.'
   : 'El plan mantiene la categoría de las reservas que se mueven.';
- return confirm('No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value+'.\n\n'+aviso+'\nNinguna reserva en casa puede ser movida.\n\nMovimientos que se ejecutarán:\n'+movs+'\n\nDestino de la nueva reserva: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación automática?');
+ return confirm((manual?'No hay disponibilidad directa para la unidad seleccionada':'No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value)+'.\n\n'+aviso+'\nNinguna reserva en casa, bloqueo ni reserva marcada como “No mover” puede ser movida automáticamente.\n\nMovimientos que se ejecutarán:\n'+movs+'\n\nDestino: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación?');
 }
 async function elegirUnidad(fe,fs){
  const v=$('#nu').value;if(v){N.plan=[];N.reacomodacion=null;return v}
@@ -675,7 +675,7 @@ async function abrirDr(id){
  <div class="sec c2"><h4 class="st">👥 Acompañantes</h4>${(a.data||[]).map(x=>`<div class="pg">${esc(x.nombre_completo)} <span class="mu">${esc(x.numero_documento||(x.es_menor?'menor':'sin doc.'))}</span> <a href="#" onclick="delAc('${x.id}');return false">✕</a></div>`).join('')}
  <div class="g2" style="margin-top:8px">${F('an','Nombre')}${F('ad','N° documento')}</div><label style="flex-direction:row;display:flex;gap:6px;margin:6px 0"><input type="checkbox" id="am"> Menor</label><button onclick="addAc()">Agregar acompañante</button></div>
  <div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('rh1','Llegada aprox.',r.hora_llegada_aprox,'time')}${F('rh2','Salida aprox.',r.hora_salida_aprox,'time')}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('ri','IVA total',cgs.filter(x=>x.descripcion==='__PMS_IVA__').reduce((a,x)=>a+(+x.total||0),0),'number').replace('<label>','<label class="dinero">')}${F('ro2','Otro total',cgs.filter(x=>x.descripcion==='__PMS_OTRO_PRECIO__').reduce((a,x)=>a+(+x.total||0),0),'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}${F('rcu','Cupo de estacionamiento',r.cupo_estacionamiento,'number')}${F('rnp','Noches con estacionamiento',r.noches_estacionamiento??r.noches??0,'number')}</div>
- <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:8px">Guardar reserva</button></div>
+ <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="rnm" ${r.no_mover_unidad?'checked':''}> No mover de esta unidad automáticamente</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label><button class="p" onclick="guardarR()" style="margin-top:8px">Guardar reserva</button></div>
  </div><div class="dinero">
  ${garHtml(r,gv)}<div class="tot"${dead?' style="grid-template-columns:repeat(4,1fr)"':''}><div>${dead?'Total original':'Total'}<b>${clp(total)}</b></div>${dead?`<div>${r.estado==='cancelada'?'Cargo cancelación':'Cargo no-show'}<b>${clp(cargoCan)}</b></div>`:''}<div>Pagado<b>${clp(pagado)}</b></div><div>Pendiente<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>${dead?`<p class="mu" style="margin:-4px 0 12px">El total original se conserva como referencia. Como la reserva está ${r.estado==='cancelada'?'cancelada':'como no-show'}, solo se cobra el cargo aplicado${pagado>cargoCan?` · el huésped pagó ${clp(pagado-cargoCan)} más que el cargo (a su favor o por devolver)`:''}.</p>`:''}
  <div class="sec c4"><h4 class="st">💳 Pagos <span class="mu">· ${r.estado_pago}</span></h4>${(p.data||[]).map(x=>{const det=pmL.filter(z=>z.pago_id===x.id);const motivos=det.length?det.map(z=>esc(MOTL[z.motivo]||z.motivo)+' '+clp(z.monto_clp)).join(' + '):esc(MOTL[x.motivo]||'Pago');return `<div class="pg">💵 <b>${motivos}</b> · ${x.metodo.replace('_',' ')} · ${x.moneda} ${x.monto_original} = ${clp(x.monto_clp)}${x.anticipado?' · anticipado':''}${x.id_transaccion?`<br><span class="mu">ID: ${esc(x.id_transaccion)}</span>`:''}${x.referencia?`<br><span class="mu">${esc(x.referencia)}</span>`:''}</div>`}).join('')||'<p class="mu" style="margin-top:0">Sin pagos registrados</p>'}
@@ -832,15 +832,17 @@ async function guardarR(){const v=i=>$('#'+i).value||null;
  if(usa&&!dates.length)return msg('Selecciona al menos una fecha con estacionamiento',1);
  if(usa){const u0=S.unidades.find(u=>u.id===S.cur.unidad_id);if(!await avisoCupoFechas(u0?.edificio_id,dates,S.cur.id))return}
  const canal=v('rc'),ref=v('rx');if(canal==='booking'&&!ref)return msg('El código externo es obligatorio para Booking',1);
- const {error}=await sb.from('reservas').update({hora_llegada_aprox:v('rh1'),hora_salida_aprox:v('rh2'),canal,referencia_externa:ref,adultos:+$('#ra').value||1,menores:+$('#rm').value||0,tarifa_noche:+$('#rt').value||0,numero_boleta:v('rb'),usa_estacionamiento:usa,noches_estacionamiento:usa?dates.length:0,modelo_vehiculo:modelo,patente_vehiculo:patente,observaciones:v('ro'),cupo_estacionamiento:usa&&$('#rcu').value?+$('#rcu').value:null}).eq('id',S.cur.id);if(error)return er(error,'Reserva guardada');
+ const {error}=await sb.from('reservas').update({hora_llegada_aprox:v('rh1'),hora_salida_aprox:v('rh2'),canal,referencia_externa:ref,adultos:+$('#ra').value||1,menores:+$('#rm').value||0,tarifa_noche:+$('#rt').value||0,numero_boleta:v('rb'),usa_estacionamiento:usa,noches_estacionamiento:usa?dates.length:0,modelo_vehiculo:modelo,patente_vehiculo:patente,observaciones:v('ro'),cupo_estacionamiento:usa&&$('#rcu').value?+$('#rcu').value:null,no_mover_unidad:$('#rnm').checked}).eq('id',S.cur.id);if(error)return er(error,'Reserva guardada');
  const pe=await guardarFechasParking(S.cur.id,dates);if(pe)return msg('Reserva guardada, pero no se pudieron guardar las fechas de estacionamiento: '+pe.message,1);
  await guardarDesglosePrecio(S.cur.id,+$('#ri').value||0,+$('#ro2').value||0);refrescar()}
 async function guardarG(){const v=i=>$('#'+i).value||null;
  const {error}=await sb.from('huespedes').update({tipo_documento:v('gd'),numero_documento:v('gn'),telefono:v('gt'),nacionalidad:v('gna'),ciudad_origen:v('gc')}).eq('id',S.cur.huesped_id);
- er(error&&(error.code==='23505'?{message:'Ya existe otro huésped con ese documento'}:error),'Huésped guardado')}
+ if(error)return error.code==='23505'?msg('Ya existe otro huésped con ese documento',1):msg(errTxt(error),1);
+ msg('Huésped guardado');return null}
+async function guardarGSiHayCambios(){const e=await guardarG();return !e}
 async function notaNueva(){const n=prompt('Nota para el perfil del huésped:');if(!n)return;const {error}=await sb.from('notas_huesped').insert({huesped_id:S.cur.huesped_id,reserva_id:S.cur.id,nota:n});er(error,'Nota guardada');if(!error)abrirDr(S.cur.id)}
-async function addAc(){const n=$('#an').value.trim();if(!n)return msg('Falta el nombre',1);const {error}=await sb.from('acompanantes').insert({reserva_id:S.cur.id,nombre_completo:n,numero_documento:$('#ad').value||null,es_menor:$('#am').checked});er(error,'Acompañante agregado');if(!error)abrirDr(S.cur.id)}
-async function delAc(id){await sb.from('acompanantes').delete().eq('id',id);abrirDr(S.cur.id)}
+async function addAc(){if(!await guardarGSiHayCambios())return;const n=$('#an').value.trim();if(!n)return msg('Falta el nombre',1);const {error}=await sb.from('acompanantes').insert({reserva_id:S.cur.id,nombre_completo:n,numero_documento:$('#ad').value||null,es_menor:$('#am').checked});er(error,'Acompañante agregado');if(!error)abrirDr(S.cur.id)}
+async function delAc(id){if(!await guardarGSiHayCambios())return;await sb.from('acompanantes').delete().eq('id',id);abrirDr(S.cur.id)}
 function defCargo(){const t=$('#ct').value,c=S.cfg,m={check_in_temprano:[c.tarifa_hora_extra,1],check_out_tardio:[c.tarifa_hora_extra,1],estacionamiento:[c.tarifa_estacionamiento_noche,S.cur.noches]}[t]||[0,1];$('#cm').value=m[0];$('#cq').value=m[1]}
 async function addCargo(){
  const t=$('#ct').value,q=+$('#cq').value,m=+$('#cm').value,c=S.cfg;
@@ -1080,25 +1082,44 @@ function preguntarTarifa(act,nue){return new Promise(res=>{
  const f=v=>{PT=null;$('#mo').style.display='none';res(v)};$('#tq1').onclick=()=>f(act);$('#tq2').onclick=()=>f(nue);$('#tq3').onclick=()=>f(null)})}
 async function moverReserva(r,uid,ent,sal){
  if(r.estado==='en_casa'){msg('Una reserva en casa nunca puede ser movida de unidad',1);return}
+ if(r.estado==='bloqueado'){msg('Los bloqueos no se pueden mover mediante movimiento automático',1);return}
+ if(r.no_mover_unidad&&!confirm('⚠ Esta reserva está marcada como “No mover de esta unidad”.\\n\\nEl movimiento manual que estás realizando puede moverla igualmente.\\n\\n¿Confirmas que deseas moverla?')){dibujar();return}
+ if(uid===r.unidad_id)return;
  let tar=null;const uo=S.unidades.find(x=>x.id===r.unidad_id),un=S.unidades.find(x=>x.id===uid);
- if(r.estado!=='bloqueado'&&uid!==r.unidad_id){const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
-  if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}}
+ const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
+ if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}
  const {data:oldPark}=await sb.from('estacionamiento_reserva_fechas').select('fecha').eq('reserva_id',r.id).order('fecha');
  const {error}=await sb.rpc('mover_reserva',{p_reserva_id:r.id,p_unidad_id:uid,p_entrada:ent,p_salida:sal,p_tarifa:tar});
  if(error){msg(errTxt(error),1);dibujar();return}
  if(r.usa_estacionamiento){const oldDates=fechasParkingReserva(r,oldPark||[]),shift=diff(r.fecha_entrada,ent),newDates=oldDates.map(d=>addD(d,shift)).filter(d=>d>=ent&&d<sal);const pe=await guardarFechasParking(r.id,newDates);if(pe)return msg('La reserva se movió, pero no se pudieron actualizar sus fechas de estacionamiento: '+pe.message,1);await sb.from('reservas').update({noches_estacionamiento:newDates.length}).eq('id',r.id)}
- msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo:'')+' · '+fm(ent)+' → '+fm(sal));
+ msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo)+' · '+fm(ent)+' → '+fm(sal));
  await cargar();if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)abrirDr(r.id)}
 async function abrirCambioUnidad(){
- const r=S.cur,{data,error}=await sb.from('reservas').select('unidad_id').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.estado==='en_casa'&&r.fecha_entrada<hoyStr()?hoyStr():r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']).neq('id',r.id);
- if(error)return msg(error.message,1);const oc=new Set((data||[]).map(x=>x.unidad_id));let ed=null,h='';
- for(const u of S.unidades){if(u.id===r.unidad_id)continue;const libre=!oc.has(u.id);
-  if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<h4 style="grid-column:1/-1;margin:8px 0 0">${esc(u.edificios.nombre)}</h4>`}
-  h+=`<button class="cand" style="text-align:left;${libre?'':'opacity:.4'}" ${libre?'':'disabled'} onclick="cambiarUnidad('${u.id}')"><b>${esc(u.codigo)}</b> <span class="mu">${esc(u.tipos_unidad?.nombre||'')}</span><div class="dinero mu">${clp(u.tipos_unidad?.tarifa_base)} por noche${libre?'':' · ocupada'}</div></button>`}
- $('#mo').innerHTML=`<div style="width:760px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⇄ Cambiar de unidad</h3><button onclick="cerrar()">✕</button></div><p class="mu">Actual: ${esc(nomU(r.unidad_id))} · ${fm(r.fecha_entrada)} → ${fm(r.fecha_salida)}. Solo se pueden elegir unidades libres en esas fechas.</p><div class="cg" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${h}</div></div>`;
+ const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);
+ const {data,error}=await sb.from('reservas').select('id,unidad_id,uid_reserva,huesped_nombre_copia,fecha_entrada,fecha_salida,estado,no_mover_unidad').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']).neq('id',r.id);
+ if(error)return msg(error.message,1);
+ const ocupadas=(data||[]).reduce((m,x)=>(m[x.unidad_id]=[...(m[x.unidad_id]||[]),x],m),{});let ed=null,h='';
+ for(const u of S.unidades){if(u.id===r.unidad_id)continue;const occ=ocupadas[u.id]||[],libre=!occ.length;
+  if(u.edificio_id!==ed){ed=u.edificio_id;h+='<h4 style="grid-column:1/-1;margin:8px 0 0">'+esc(u.edificios.nombre)+'</h4>'}
+  const txt=libre?'Libre':'Ocupada · reacomodación inteligente';
+  h+='<button class="cand" style="text-align:left;'+(libre?'':'border-style:dashed')+'" onclick="cambiarUnidad(\''+u.id+'\')"><b>'+esc(u.codigo)+'</b> <span class="mu">'+esc(u.tipos_unidad?.nombre||'')+'</span><div class="dinero mu">'+clp(u.tipos_unidad?.tarifa_base)+' por noche · '+txt+'</div></button>'}
+ $('#mo').innerHTML='<div style="width:780px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⇄ Cambiar de unidad</h3><button onclick="cerrar()">✕</button></div><p class="mu">Actual: '+esc(nomU(r.unidad_id))+' · '+fm(r.fecha_entrada)+' → '+fm(r.fecha_salida)+'. Las unidades ocupadas se intentarán liberar mediante reacomodación inteligente.</p><div class="cg" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">'+h+'</div></div>';
  $('#mo').style.display='grid'}
-async function cambiarUnidad(uid){const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);cerrar();await moverReserva(r,uid,r.fecha_entrada,r.fecha_salida)}
-
+async function cambiarUnidad(uid){
+ const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);
+ const {data:planObj,error}=await sb.rpc('buscar_reacomodacion_cambio_unidad',{p_unidad_destino:uid,p_reserva_id:r.id,p_entrada:r.fecha_entrada,p_salida:r.fecha_salida});
+ if(error)return msg('No se pudo calcular la reacomodación: '+errTxt(error),1);
+ const plan=Array.isArray(planObj?.plan)?planObj.plan:[];
+ const ocup=await sb.from('reservas').select('id').eq('unidad_id',uid).neq('id',r.id).lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
+ if(ocup.error)return msg(ocup.error.message,1);
+ if(ocup.data?.length){
+  if(!plan.length)return msg('La unidad está ocupada y no existe una cadena de reacomodación válida. No se puede cambiar a esa unidad.',1);
+  if(!await confirmarReacomodacion(plan,uid,true))return;
+ }
+ cerrar();
+ if(plan.length){const {error:ee}=await sb.rpc('ejecutar_reacomodacion_cambio_unidad',{p_reserva_id:r.id,p_unidad_destino:uid,p_entrada:r.fecha_entrada,p_salida:r.fecha_salida,p_plan:plan});if(ee)return msg('No se pudo ejecutar la reacomodación: '+errTxt(ee),1)}
+ await moverReserva(r,uid,r.fecha_entrada,r.fecha_salida);
+}
 // ---------- Admin: garantías por fecha y unidad ----------
 async function pGar(){
  const hoy=hoyStr(),{data,error}=await sb.from('garantia_fechas').select('unidad_id,fecha').gte('fecha',hoy).order('fecha').limit(5000);
