@@ -1124,19 +1124,76 @@ async function abrirCambioUnidad(){
  $('#mo').style.display='grid';
 }
 async function cambiarUnidad(uid){
- const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);
- const {data:planObj,error}=await sb.rpc('buscar_reacomodacion_cambio_unidad',{p_unidad_destino:uid,p_reserva_id:r.id,p_entrada:r.fecha_entrada,p_salida:r.fecha_salida});
+ const r=S.cur;
+ if(r.estado==='en_casa')return msg('Una persona que ya está en casa nunca puede ser movida de unidad',1);
+ if(r.estado==='bloqueado')return msg('Los bloqueos no se pueden mover mediante movimiento automático',1);
+
+ const {data:planObj,error}=await sb.rpc('buscar_reacomodacion_cambio_unidad',{
+  p_unidad_destino:uid,
+  p_reserva_id:r.id,
+  p_entrada:r.fecha_entrada,
+  p_salida:r.fecha_salida
+ });
  if(error)return msg('No se pudo calcular la reacomodación: '+errTxt(error),1);
+
  const plan=Array.isArray(planObj?.plan)?planObj.plan:[];
- const ocup=await sb.from('reservas').select('id').eq('unidad_id',uid).neq('id',r.id).lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
+
+ const ocup=await sb.from('reservas')
+  .select('id')
+  .eq('unidad_id',uid)
+  .neq('id',r.id)
+  .lt('fecha_entrada',r.fecha_salida)
+  .gt('fecha_salida',r.fecha_entrada)
+  .in('estado',['tentativa','confirmada','en_casa','bloqueado']);
+
  if(ocup.error)return msg(ocup.error.message,1);
+
  if(ocup.data?.length){
   if(!plan.length)return msg('La unidad está ocupada y no existe una cadena de reacomodación válida. No se puede cambiar a esa unidad.',1);
   if(!await confirmarReacomodacion(plan,uid,true))return;
  }
+
+ if(r.no_mover_unidad&&!confirm(
+  '⚠ Esta reserva está marcada como “No mover de esta unidad”.\\n\\n'+
+  'El cambio de unidad que estás realizando puede moverla igualmente.\\n\\n'+
+  '¿Confirmas que deseas moverla?'
+ ))return;
+
+ const uo=S.unidades.find(x=>x.id===r.unidad_id);
+ const un=S.unidades.find(x=>x.id===uid);
+ const bo=uo?.tipos_unidad?.tarifa_base||0;
+ const bn=un?.tipos_unidad?.tarifa_base||0;
+ let tar=null;
+
+ if(bo!==bn){
+  const v=await preguntarTarifa(r.tarifa_noche,bn);
+  if(v===null)return;
+  tar=v===r.tarifa_noche?null:v;
+ }
+
  cerrar();
- if(plan.length){const {error:ee}=await sb.rpc('ejecutar_reacomodacion_cambio_unidad',{p_reserva_id:r.id,p_unidad_destino:uid,p_entrada:r.fecha_entrada,p_salida:r.fecha_salida,p_plan:plan});if(ee)return msg('No se pudo ejecutar la reacomodación: '+errTxt(ee),1)}
- await moverReserva(r,uid,r.fecha_entrada,r.fecha_salida);
+
+ const {error:ee}=await sb.rpc('ejecutar_reacomodacion_cambio_unidad',{
+  p_reserva_id:r.id,
+  p_unidad_destino:uid,
+  p_entrada:r.fecha_entrada,
+  p_salida:r.fecha_salida,
+  p_plan:plan,
+  p_tarifa:tar
+ });
+
+ if(ee){
+  return msg('No se pudo ejecutar la reacomodación: '+errTxt(ee),1);
+ }
+
+ msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo:'')+
+   ' · '+fm(r.fecha_entrada)+' → '+fm(r.fecha_salida));
+
+ await cargar();
+
+ if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id){
+  abrirDr(r.id);
+ }
 }
 // ---------- Admin: garantías por fecha y unidad ----------
 
