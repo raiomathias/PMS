@@ -856,19 +856,46 @@ async function ejecutarExtensionEstadia(){
 }
 
 async function accion(k){
- const r=S.cur;if(!r)return;
+ const r0=S.cur;if(!r0)return;
  if(k!=='del'&&$('#gname')){
   const ok=await guardarCambiosReservaDetalle({silencioso:true});
   if(!ok)return;
  }
+ // Las acciones críticas deben trabajar con el estado REAL de Supabase,
+ // no con una copia que pudo quedar desactualizada en S.cur.
+ let r=r0;
+ if(k!=='del'){
+  const {data:actual,error:er}=await sb.from('reservas').select('*').eq('id',r0.id).maybeSingle();
+  if(er)return msg('No se pudo verificar el estado actual de la reserva: '+er.message,1);
+  if(!actual)return msg('La reserva ya no existe',1);
+  r=actual;S.cur={...S.cur,...actual};
+ }
  let e;
- if(k==='in')({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
+ if(k==='in'){
+  if(r.estado!=='confirmada'){
+   await abrirDr(r.id);
+   return msg('La reserva no está confirmada. Estado actual: '+String(r.estado||'sin estado').replace('_',' '),1);
+  }
+  ({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
+ }
  if(k==='out')return abrirCheckOut();
- if(k==='can'){const m=prompt('Motivo de la cancelación:');if(!m)return;const x=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:m});e=x.error;if(!e&&x.data)msg('Cancelada. Cargo aplicado: '+clp(x.data))}
- if(k==='conf')({error:e}=await sb.from('reservas').update({estado:'confirmada'}).eq('id',r.id));
- if(k==='ns'){const n=prompt('Nota del no-show (opcional):');if(n===null)return;const x=await sb.rpc('marcar_no_show',{p_reserva_id:r.id,p_nota:n});e=x.error;if(!e)msg('No-show registrado. Cargo aplicado: '+clp(x.data)+'. Se recomienda cobrarlo, pero no es obligatorio.')}
+ if(k==='can'){
+  const m=prompt('Motivo de la cancelación:');if(!m)return;
+  const x=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:m});e=x.error;
+  if(!e&&x.data)msg('Cancelada. Cargo aplicado: '+clp(x.data))
+ }
+ if(k==='conf'){
+  if(r.estado!=='tentativa')return msg('Solo se puede confirmar una reserva en estado tentativa.',1);
+  ({error:e}=await sb.from('reservas').update({estado:'confirmada'}).eq('id',r.id));
+ }
+ if(k==='ns'){
+  const n=prompt('Nota del no-show (opcional):');if(n===null)return;
+  const x=await sb.rpc('marcar_no_show',{p_reserva_id:r.id,p_nota:n});e=x.error;
+  if(!e)msg('No-show registrado. Cargo aplicado: '+clp(x.data)+'. Se recomienda cobrarlo, pero no es obligatorio.')
+ }
  if(k==='del')({error:e}=await sb.from('reservas').delete().eq('id',r.id));
  if(e)return msg(errTxt(e),1);
+ await abrirDr(r.id);
  refrescar();
 }
 
