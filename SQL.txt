@@ -497,10 +497,36 @@ declare
   v_npark integer;
   v_base_total integer;
   v_ajuste integer;
+  v_rol text;
+  v_editor_privilegiado boolean := false;
 begin
   select * into r from reservas where id = p_reserva_id for update;
   if not found then raise exception 'Reserva no encontrada'; end if;
   if v_user is null then raise exception 'Sesión no válida'; end if;
+
+  SELECT lower(
+           regexp_replace(
+             trim(coalesce(p.rol::text,'')),
+             '[\s-]+',
+             '_',
+             'g'
+           )
+         )
+    INTO v_rol
+    FROM public.perfiles p
+   WHERE p.id = v_user;
+
+  v_editor_privilegiado := coalesce(
+    v_rol IN (
+      'recepcion',
+      'administracion',
+      'gerencia',
+      'sysadmin',
+      'system_admin',
+      'systemadmin'
+    ),
+    false
+  );
 
   v_ent := coalesce(p_fecha_entrada,r.fecha_entrada);
   v_sal := coalesce(p_fecha_salida,r.fecha_salida);
@@ -517,7 +543,7 @@ begin
   if v_npark > (v_sal-v_ent) then raise exception 'Las noches con estacionamiento no pueden superar la estadía'; end if;
   if r.estado='en_casa' and v_unit<>r.unidad_id then raise exception 'Una persona que ya está en casa nunca puede ser movida de unidad'; end if;
 
-  if p_huesped_nombre is not null and public.tiene_permiso_edicion(v_user,'guest_name') then
+  if p_huesped_nombre is not null and (v_editor_privilegiado or public.tiene_permiso_edicion(v_user,'guest_name')) then
     update huespedes set nombre_completo=p_huesped_nombre where id=r.huesped_id;
     update reservas set huesped_nombre_copia=p_huesped_nombre where id=r.id;
   end if;
@@ -529,7 +555,7 @@ begin
           numero_documento=coalesce(nullif(trim(p_numero_documento),''),numero_documento)
       where id=r.huesped_id;
   end if;
-  if public.tiene_permiso_edicion(v_user,'guest_contact') then
+  if v_editor_privilegiado or public.tiene_permiso_edicion(v_user,'guest_contact') then
     update huespedes set telefono=coalesce(p_telefono,telefono),correo=coalesce(p_correo,correo),nacionalidad=coalesce(p_nacionalidad,nacionalidad),ciudad_origen=coalesce(p_ciudad_origen,ciudad_origen) where id=r.huesped_id;
   end if;
   if p_estado is not null and public.tiene_permiso_edicion(v_user,'status') then
