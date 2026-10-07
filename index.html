@@ -1495,7 +1495,7 @@ async function estCargar(){
  const ids=new Set(E.eds.map(x=>x.id)),uids=S.unidades.filter(u=>ids.has(u.edificio_id)).map(u=>u.id);
  const {data,error}=await sb.from('reservas').select('id,unidad_id,estado,fecha_entrada,fecha_salida,noches_estacionamiento,huesped_nombre_copia,modelo_vehiculo,patente_vehiculo,cupo_estacionamiento').eq('usa_estacionamiento',true).in('unidad_id',uids).in('estado',['tentativa','confirmada','en_casa','check_out']).gte('fecha_salida',E.s).lte('fecha_entrada',addD(E.s,21));
  if(error){$('#esb').innerHTML=`<p class="mu">${esc(error.message)}. ¿Ya corriste el SQL de estacionamiento?</p>`;return}
- const ids=(data||[]).map(r=>r.id),fd=ids.length?await sb.from('estacionamiento_reserva_fechas').select('reserva_id,fecha').in('reserva_id',ids):{data:[],error:null};
+ const rids=(data||[]).map(r=>r.id),fd=rids.length?await sb.from('estacionamiento_reserva_fechas').select('reserva_id,fecha').in('reserva_id',rids):{data:[],error:null};
  if(fd.error){$('#esb').innerHTML=`<p class="mu">${esc(fd.error.message)}. ¿Ya corriste la migración de fechas de estacionamiento?</p>`;return}
  const by={};(fd.data||[]).forEach(x=>(by[x.reserva_id]=by[x.reserva_id]||[]).push(x.fecha));
  const edDe=Object.fromEntries(S.unidades.map(u=>[u.id,u.edificio_id])),pend=[];
