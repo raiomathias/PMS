@@ -1096,15 +1096,27 @@ async function moverReserva(r,uid,ent,sal){
  await cargar();if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)abrirDr(r.id)}
 async function abrirCambioUnidad(){
  const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);
- const {data,error}=await sb.from('reservas').select('id,unidad_id,uid_reserva,huesped_nombre_copia,fecha_entrada,fecha_salida,estado,no_mover_unidad').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']).neq('id',r.id);
+ const {data,error}=await sb.from('reservas').select('id,unidad_id,uid_reserva,huesped_nombre_copia,fecha_entrada,fecha_salida,estado,no_mover_unidad').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
  if(error)return msg(error.message,1);
- const ocupadas=(data||[]).reduce((m,x)=>(m[x.unidad_id]=[...(m[x.unidad_id]||[]),x],m),{});let ed=null,h='';
- for(const u of S.unidades){if(u.id===r.unidad_id)continue;const occ=ocupadas[u.id]||[],libre=!occ.length;
+ const ocupadas=(data||[]).reduce((m,x)=>(m[x.unidad_id]=[...(m[x.unidad_id]||[]),x],m),{});
+ const candidatos=await Promise.all(S.unidades.filter(u=>u.id!==r.unidad_id).map(async u=>{
+   const occ=ocupadas[u.id]||[];
+   if(!occ.length)return {u,ok:true,plan:[],motivo:'Libre'};
+   const q=await sb.rpc('buscar_reacomodacion_cambio_unidad',{p_unidad_destino:u.id,p_reserva_id:r.id,p_entrada:r.fecha_entrada,p_salida:r.fecha_salida});
+   const plan=Array.isArray(q.data?.plan)?q.data.plan:[];
+   return {u,ok:!q.error&&plan.length>0,plan,motivo:q.error?errTxt(q.error):plan.length?'Reacomodación inteligente posible':'No existe una cadena válida'};
+ }));
+ let ed=null,h='';
+ for(const c of candidatos){
+  const u=c.u;
   if(u.edificio_id!==ed){ed=u.edificio_id;h+='<h4 style="grid-column:1/-1;margin:8px 0 0">'+esc(u.edificios.nombre)+'</h4>'}
-  const txt=libre?'Libre':'Ocupada · reacomodación inteligente';
-  h+='<button class="cand" style="text-align:left;'+(libre?'':'border-style:dashed')+'" onclick="cambiarUnidad(\''+u.id+'\')"><b>'+esc(u.codigo)+'</b> <span class="mu">'+esc(u.tipos_unidad?.nombre||'')+'</span><div class="dinero mu">'+clp(u.tipos_unidad?.tarifa_base)+' por noche · '+txt+'</div></button>'}
- $('#mo').innerHTML='<div style="width:780px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⇄ Cambiar de unidad</h3><button onclick="cerrar()">✕</button></div><p class="mu">Actual: '+esc(nomU(r.unidad_id))+' · '+fm(r.fecha_entrada)+' → '+fm(r.fecha_salida)+'. Las unidades ocupadas se intentarán liberar mediante reacomodación inteligente.</p><div class="cg" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">'+h+'</div></div>';
- $('#mo').style.display='grid'}
+  const libre=!(ocupadas[u.id]||[]).length,disabled=!c.ok;
+  const txt=libre?'Libre':c.ok?'Ocupada · reacomodación inteligente posible':'Ocupada · no se puede liberar automáticamente';
+  h+='<button class="cand" '+(disabled?'disabled':'')+' style="text-align:left;'+(libre?'':c.ok?'border-style:dashed':'opacity:.45;cursor:not-allowed;background:var(--bg)')+'" '+(disabled?'title="'+esc(c.motivo)+'"':'onclick="cambiarUnidad(\''+u.id+'\')"')+'><b>'+esc(u.codigo)+'</b> <span class="mu">'+esc(u.tipos_unidad?.nombre||'')+'</span><div class="dinero mu">'+clp(u.tipos_unidad?.tarifa_base)+' por noche · '+txt+'</div></button>';
+ }
+ $('#mo').innerHTML='<div style="width:860px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0 0 10px">⇄ Cambiar de unidad</h3><button onclick="cerrar()">✕</button></div><p class="mu">Actual: '+esc(nomU(r.unidad_id))+' · '+fm(r.fecha_entrada)+' → '+fm(r.fecha_salida)+'. Solo puedes seleccionar unidades libres o aquellas para las que el sistema encontró una reacomodación completa. Las demás aparecen deshabilitadas.</p><div class="cg" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">'+h+'</div></div>';
+ $('#mo').style.display='grid';
+}
 async function cambiarUnidad(uid){
  const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);
  const {data:planObj,error}=await sb.rpc('buscar_reacomodacion_cambio_unidad',{p_unidad_destino:uid,p_reserva_id:r.id,p_entrada:r.fecha_entrada,p_salida:r.fecha_salida});
@@ -1121,6 +1133,7 @@ async function cambiarUnidad(uid){
  await moverReserva(r,uid,r.fecha_entrada,r.fecha_salida);
 }
 // ---------- Admin: garantías por fecha y unidad ----------
+
 async function pGar(){
  const hoy=hoyStr(),{data,error}=await sb.from('garantia_fechas').select('unidad_id,fecha').gte('fecha',hoy).order('fecha').limit(5000);
  if(error){$('#pc').innerHTML=`<p class="mu">${esc(error.message)}. ¿Ya corriste el script SQL de garantías?</p>`;return}
