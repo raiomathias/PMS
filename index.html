@@ -1479,12 +1479,12 @@ async function abrirEst(){
  $('#est').style.display='flex';estCargar();
 }
 function cerrarEst(){$('#est').style.display='none'}
-// Asigna cada reserva a un cupo (respeta el cupo guardado si no choca). Entrar y salir el mismo día comparten cupo.
+// Asigna cada reserva a un cupo usando las fechas exactas de estacionamiento.
 function estAsignar(rs,cap){
- const pI=r=>r.fecha_entrada,pS=r=>addD(r.fecha_entrada,Math.max(0,Math.min(r.noches_estacionamiento??r.noches??0,diff(r.fecha_entrada,r.fecha_salida)))),so=(a,b)=>pI(a)<pS(b)&&pI(b)<pS(a),por=Array.from({length:cap+1},()=>[]);
+ const so=(a,b)=>{const A=a._pf||[],B=b._pf||[];return A.some(d=>B.includes(d))};
  const ord=(a,b)=>a.fecha_entrada.localeCompare(b.fecha_entrada)||a.id.localeCompare(b.id),val=r=>r.cupo_estacionamiento>=1&&r.cupo_estacionamiento<=cap;
- const poner=(r,c)=>{por[c].push(r);r._c=c},resto=rs.filter(r=>!val(r));
- rs.filter(val).sort(ord).forEach(r=>{const c=r.cupo_estacionamiento;por[c].some(x=>so(x,r))?resto.push(r):poner(r,c)});
+ const por=Array.from({length:cap+1},()=>[]),poner=(r,c)=>{por[c].push(r);r._c=c},resto=rs.filter(r=>!val(r));
+ rs.filter(val).sort(ord).forEach(r=>{const c=r.cupo_estacionamiento;if(por[c].some(x=>so(x,r)))resto.push(r);else poner(r,c)});
  resto.sort(ord).forEach(r=>{let c=1;while(c<=cap&&por[c].some(x=>so(x,r)))c++;if(c<=cap)poner(r,c);else r._c=null});
  return rs.filter(r=>(r._c||null)!==(r.cupo_estacionamiento||null)&&r.estado!=='check_out');
 }
@@ -1493,20 +1493,23 @@ async function estCargar(){
  const ids=new Set(E.eds.map(x=>x.id)),uids=S.unidades.filter(u=>ids.has(u.edificio_id)).map(u=>u.id);
  const {data,error}=await sb.from('reservas').select('id,unidad_id,estado,fecha_entrada,fecha_salida,noches_estacionamiento,huesped_nombre_copia,modelo_vehiculo,patente_vehiculo,cupo_estacionamiento').eq('usa_estacionamiento',true).in('unidad_id',uids).in('estado',['tentativa','confirmada','en_casa','check_out']).gte('fecha_salida',E.s).lte('fecha_entrada',addD(E.s,21));
  if(error){$('#esb').innerHTML=`<p class="mu">${esc(error.message)}. ¿Ya corriste el SQL de estacionamiento?</p>`;return}
+ const ids=(data||[]).map(r=>r.id),fd=ids.length?await sb.from('estacionamiento_reserva_fechas').select('reserva_id,fecha').in('reserva_id',ids):{data:[],error:null};
+ if(fd.error){$('#esb').innerHTML=`<p class="mu">${esc(fd.error.message)}. ¿Ya corriste la migración de fechas de estacionamiento?</p>`;return}
+ const by={};(fd.data||[]).forEach(x=>(by[x.reserva_id]=by[x.reserva_id]||[]).push(x.fecha));
  const edDe=Object.fromEntries(S.unidades.map(u=>[u.id,u.edificio_id])),pend=[];
- data.forEach(r=>r._e=edDe[r.unidad_id]);
- E.eds.forEach(ed=>pend.push(...estAsignar(data.filter(r=>r._e===ed.id&&Math.max(0,Math.min(r.noches_estacionamiento??r.noches??0,diff(r.fecha_entrada,r.fecha_salida)))>0),ed.cupos_estacionamiento)));
+ data.forEach(r=>{r._e=edDe[r.unidad_id];r._pf=by[r.id]||fechasParkingFallback(r)});
+ E.eds.forEach(ed=>pend.push(...estAsignar(data.filter(r=>r._e===ed.id&&r._pf.length),ed.cupos_estacionamiento)));
  E.rs=data;estDibujar();
  if(pend.length)await Promise.all(pend.map(r=>sb.from('reservas').update({cupo_estacionamiento:r._c}).eq('id',r.id)));
 }
 function estDibujar(){
  const hoy=hoyStr(),D=E.f,ed=E.eds.find(x=>x.id===E.ed),cap=ed.cupos_estacionamiento,ah=ahoraHM();
  const fase=D===hoy?(ah>='13:00'?'despues':'antes'):'dia';
- const noche=(eid,d)=>E.rs.filter(r=>r._e===eid&&r.fecha_entrada<=d&&d<addD(r.fecha_entrada,Math.max(0,Math.min(r.noches_estacionamiento??r.noches??0,diff(r.fecha_entrada,r.fecha_salida))))).length;
+ const noche=(eid,d)=>E.rs.filter(r=>r._e===eid&&(r._pf||[]).includes(d)).length;
  const nU=id=>{const u=S.unidades.find(x=>x.id===id);return u?{t:u.edificios.nombre+' · '+u.codigo,c:u.tipos_unidad?.nombre||''}:{t:'—',c:''}};
  const veh=r=>`<div class="pkv">🚗 ${r.modelo_vehiculo?esc(r.modelo_vehiculo):'<span class="pkw">sin modelo</span>'} · <b>${r.patente_vehiculo?esc(r.patente_vehiculo.toUpperCase()):'<span class="pkw">sin patente</span>'}</b></div>`;
  const nx=n=>n?`<div class="pkn">➡ ${D<hoy?'Llegó':'Llega'} a las 13:00: <b>${esc(n.huesped_nombre_copia)}</b> · ${esc(nU(n.unidad_id).t)}${n.patente_vehiculo?' · '+esc(n.patente_vehiculo.toUpperCase()):''}</div>`:'';
- const rsE=E.rs.filter(r=>r._e===ed.id&&r.fecha_entrada<=D&&D<addD(r.fecha_entrada,Math.max(0,Math.min(r.noches_estacionamiento??r.noches??0,diff(r.fecha_entrada,r.fecha_salida)))));let cards='',ocu=0,lib=0;
+ const rsE=E.rs.filter(r=>r._e===ed.id&&(r._pf||[]).includes(D));let cards='',ocu=0,lib=0;
  for(let c=1;c<=cap;c++){
   const L=rsE.filter(r=>r._c===c),out=L.find(r=>r.fecha_salida===D),cur=L.find(r=>r.fecha_entrada<=D&&r.fecha_salida>D),llega=cur&&cur.fecha_entrada===D;
   let main=null,next=null;
