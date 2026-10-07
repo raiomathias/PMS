@@ -951,3 +951,50 @@ BEGIN
   END LOOP;
 END
 $$;
+
+
+-- ============================================================
+-- ESTACIONAMIENTO POR FECHA DE RESERVA
+-- Permite seleccionar noches no consecutivas, por ejemplo:
+-- estadía 05→08, pero estacionamiento solo 06 y 07.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.estacionamiento_reserva_fechas (
+  reserva_id uuid NOT NULL,
+  fecha date NOT NULL,
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT estacionamiento_reserva_fechas_pkey PRIMARY KEY (reserva_id, fecha),
+  CONSTRAINT estacionamiento_reserva_fechas_reserva_id_fkey
+    FOREIGN KEY (reserva_id) REFERENCES public.reservas(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_estacionamiento_reserva_fechas_fecha
+  ON public.estacionamiento_reserva_fechas(fecha);
+
+-- Migración de reservas existentes: antes solo se guardaba la cantidad
+-- de noches, por lo que se reconstruyen como noches consecutivas desde
+-- la entrada. Desde ahora el frontend conserva las fechas exactas.
+INSERT INTO public.estacionamiento_reserva_fechas (reserva_id, fecha)
+SELECT r.id, (r.fecha_entrada + gs.n)::date
+FROM public.reservas r
+CROSS JOIN LATERAL generate_series(
+  0,
+  GREATEST(0, LEAST(COALESCE(r.noches_estacionamiento,0), r.fecha_salida-r.fecha_entrada)-1)
+) AS gs(n)
+WHERE r.usa_estacionamiento
+  AND COALESCE(r.noches_estacionamiento,0) > 0
+ON CONFLICT (reserva_id, fecha) DO NOTHING;
+
+-- Mantener la tabla disponible para Realtime si la publicación existe.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname='supabase_realtime')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_publication_tables
+       WHERE pubname='supabase_realtime'
+         AND schemaname='public'
+         AND tablename='estacionamiento_reserva_fechas'
+     ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.estacionamiento_reserva_fechas;
+  END IF;
+END
+$$;
