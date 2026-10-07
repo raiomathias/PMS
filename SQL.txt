@@ -2544,4 +2544,81 @@ GRANT EXECUTE ON FUNCTION public.ejecutar_extension_estadia(
 ) TO authenticated;
 
 
+-- ============================================================
+-- FIX RLS: GUARDAR FECHAS DE ESTACIONAMIENTO
+-- La tabla estacionamiento_reserva_fechas puede tener RLS activo
+-- sin una policy INSERT/DELETE para el usuario autenticado.
+-- El frontend no escribe directamente: utiliza esta RPC atómica.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.guardar_fechas_estacionamiento(
+  p_reserva_id uuid,
+  p_fechas date[] DEFAULT ARRAY[]::date[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  r reservas%rowtype;
+  v_fechas date[] := COALESCE(p_fechas, ARRAY[]::date[]);
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT *
+    INTO r
+    FROM public.reservas
+   WHERE id = p_reserva_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF NOT public.tiene_permiso_edicion(v_user, 'vehicle') THEN
+    RAISE EXCEPTION 'No tienes permiso para editar el estacionamiento de esta reserva';
+  END IF;
+
+  IF NOT r.usa_estacionamiento AND COALESCE(array_length(v_fechas, 1), 0) > 0 THEN
+    RAISE EXCEPTION 'La reserva no tiene estacionamiento habilitado';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM unnest(v_fechas) AS x(fecha)
+     WHERE x.fecha < r.fecha_entrada
+        OR x.fecha >= r.fecha_salida
+  ) THEN
+    RAISE EXCEPTION 'Las fechas de estacionamiento deben estar dentro de la estadía';
+  END IF;
+
+  IF (
+    SELECT count(*)
+      FROM unnest(v_fechas) AS x(fecha)
+  ) <> (
+    SELECT count(DISTINCT x.fecha)
+      FROM unnest(v_fechas) AS x(fecha)
+  ) THEN
+    RAISE EXCEPTION 'Hay fechas de estacionamiento duplicadas';
+  END IF;
+
+  DELETE FROM public.estacionamiento_reserva_fechas
+   WHERE reserva_id = p_reserva_id;
+
+  INSERT INTO public.estacionamiento_reserva_fechas(reserva_id, fecha)
+  SELECT p_reserva_id, x.fecha
+    FROM unnest(v_fechas) AS x(fecha)
+   ORDER BY x.fecha;
+
+  UPDATE public.reservas
+     SET noches_estacionamiento = COALESCE(array_length(v_fechas, 1), 0)
+   WHERE id = p_reserva_id;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento(uuid, date[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(uuid, date[]) TO authenticated;
 
