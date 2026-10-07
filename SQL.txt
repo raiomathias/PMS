@@ -507,7 +507,7 @@ begin
   v_unit := coalesce(p_unidad_id,r.unidad_id);
   v_iva := greatest(0,coalesce(p_iva_total,0));
   v_otro := greatest(0,coalesce(p_otro_precio,0));
-  v_npark := greatest(0,coalesce(p_noches_estacionamiento,
+  v_npark := greatest(0,coalesce(p_noches_estacionamiento,r.noches_estacionamiento,
     case when r.usa_estacionamiento then (r.fecha_salida-r.fecha_entrada) else 0 end));
 
   if v_sal <= v_ent then raise exception 'La salida debe ser posterior a la entrada'; end if;
