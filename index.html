@@ -230,7 +230,7 @@ const rolVeTodosEdificios=()=>ED_ROLES_TODOS.includes(S.perfil?.rol);
 const puedeVerEdificio=id=>!!id&&(rolVeTodosEdificios()||S.permisosEdificios.has(id));
 const puedeVerEdificioNombre=n=>!!n&&S.edificiosPermitidos.some(e=>e.nombre===n);
 const EDIT_FIELDS=[['guest_name','Nombre del huésped'],['guest_document','Documento / DNI'],['guest_contact','Teléfono, correo y nacionalidad'],['status','Estado de reserva'],['dates','Fechas de entrada / salida'],['building_category_unit','Edificio, categoría y unidad'],['rate','Tarifa por noche'],['price_iva','IVA del precio'],['price_other','Otro del precio'],['total','Total de la reserva'],['parking_nights','Noches con estacionamiento'],['channel','Canal y código externo'],['occupancy','Adultos y menores'],['vehicle','Vehículo y estacionamiento'],['observations','Observaciones']];
-const puedeEditarCampo=k=>ADM.includes(S.perfil?.rol)||S.permisosEdicion.has(k);
+const puedeEditarCampo=k=>ADM.includes(S.perfil?.rol)||S.perfil?.rol==='recepcion'||S.permisosEdicion.has(k);
 const errTxt=e=>e.code==='23P01'?'La unidad ya está ocupada en esas fechas':e.message;
 const er=(e,ok)=>e?msg(errTxt(e),1):msg(ok);
 const F=(id,l,v='',t='text')=>`<label>${l}<input id="${id}" type="${t}" value="${esc(v)}"></label>`;
@@ -350,7 +350,7 @@ function nombreRol(rol){return ROL_NOMBRES[rol]||rol||'—'}
 function abrirMiPerfil(){
  const p=S.perfil;if(!p)return;
  const edificios=rolVeTodosEdificios()?'Todos los edificios':S.edificiosPermitidos.map(x=>x.nombre).join(', ')||'Ningún edificio asignado';
- const permisos=ADM.includes(p.rol)?'Acceso completo a edición':EDIT_FIELDS.filter(x=>S.permisosEdicion.has(x[0])).map(x=>x[1]).join(' · ')||'Sin permisos de edición especiales';
+ const permisos=(ADM.includes(p.rol)||p.rol==='recepcion')?'Acceso completo a edición':EDIT_FIELDS.filter(x=>S.permisosEdicion.has(x[0])).map(x=>x[1]).join(' · ')||'Sin permisos de edición especiales';
  $('#mo').innerHTML=`<div style="width:620px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">👤 Mi perfil</h3><button onclick="cerrar()">✕</button></div><div class="sec c1" style="margin-top:14px"><h4 class="st">Información de acceso</h4><div class="g2"><div><span class="mu">Nombre</span><br><b>${esc(p.nombre_completo)}</b></div><div><span class="mu">Cargo / nivel de permisos</span><br><b>${esc(nombreRol(p.rol))}</b></div></div><div style="margin-top:12px"><span class="mu">Edificios que puedes ver</span><br><b>${esc(edificios)}</b></div><div style="margin-top:12px"><span class="mu">Permisos de edición</span><br><span class="mu">${esc(permisos)}</span></div></div><div class="sec c2"><h4 class="st">🔑 Contraseña</h4><p style="margin-top:0">Puedes establecer una nueva contraseña mientras tu sesión esté activa.</p><button class="p" onclick="abrirCambiarClave()">Restablecer contraseña</button></div></div>`;
  $('#mo').style.display='grid';
 }
@@ -393,7 +393,7 @@ async function cargarPermisosEdificios(){
 
 
 async function cargarPermisosEdicion(){
- if(ADM.includes(S.perfil?.rol)){S.permisosEdicion=new Set(EDIT_FIELDS.map(x=>x[0]));return true}
+ if(ADM.includes(S.perfil?.rol)||S.perfil?.rol==='recepcion'){S.permisosEdicion=new Set(EDIT_FIELDS.map(x=>x[0]));return true}
  const {data,error}=await sb.from('perfiles_permisos_edicion').select('campo').eq('perfil_id',S.perfil.id).eq('permitido',true);
  if(error){msg('Falta crear la tabla de permisos de edición: '+error.message,1);return false}
  S.permisosEdicion=new Set((data||[]).map(x=>x.campo));return true;
