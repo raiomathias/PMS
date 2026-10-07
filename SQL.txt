@@ -1443,11 +1443,11 @@ BEGIN
     END IF;
 
     PERFORM public.mover_reserva(
-      p_reserva_id,
-      v_target,
-      p_entrada,
-      p_salida,
-      p_tarifa
+      p_reserva_id => p_reserva_id,
+      p_unidad_id => v_target,
+      p_entrada => p_entrada,
+      p_salida => p_salida,
+      p_tarifa => p_tarifa
     );
 
     RETURN;
@@ -1585,11 +1585,11 @@ BEGIN
   -- ----------------------------------------------------------
 
   PERFORM public.mover_reserva(
-    p_reserva_id,
-    v_target,
-    p_entrada,
-    p_salida,
-    p_tarifa
+    p_reserva_id => p_reserva_id,
+    p_unidad_id => v_target,
+    p_entrada => p_entrada,
+    p_salida => p_salida,
+    p_tarifa => p_tarifa
   );
 
 
