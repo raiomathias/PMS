@@ -781,15 +781,15 @@ async function abrirExtensionEstadia(){
  S.extensionEstadia=null;
  $('#mo').innerHTML=`<div style="width:720px;max-width:94vw">
   <div style="display:flex;justify-content:space-between;align-items:center">
-   <div><h3 style="margin:0">↔ Extender estadía</h3><span class="mu">\${esc(r.uid_reserva||'')} · \${esc(nomU(r.unidad_id))}</span></div>
+   <div><h3 style="margin:0">↔ Extender estadía</h3><span class="mu">${esc(r.uid_reserva||'')} · ${esc(nomU(r.unidad_id))}</span></div>
    <button onclick="cerrar()">✕</button>
   </div>
   <div class="sec c2" style="margin-top:14px">
    <h4 class="st">📅 Nueva estadía</h4>
-   <p style="margin-top:0">Actual: <b>\${r.fecha_entrada}</b> → <b>\${r.fecha_salida}</b> · \${r.noches} noches.</p>
+   <p style="margin-top:0">Actual: <b>${r.fecha_entrada}</b> → <b>${r.fecha_salida}</b> · ${r.noches} noches.</p>
    <div class="g2">
-    <label>Nueva entrada<input id="ext_ent" type="date" value="\${r.fecha_entrada}"></label>
-    <label>Nueva salida<input id="ext_sal" type="date" value="\${r.fecha_salida}"></label>
+    <label>Nueva entrada<input id="ext_ent" type="date" value="${r.fecha_entrada}"></label>
+    <label>Nueva salida<input id="ext_sal" type="date" value="${r.fecha_salida}"></label>
    </div>
    <p class="mu" style="margin-bottom:0">Puedes ampliar hacia atrás, hacia adelante o ambos lados. Las fechas actuales deben quedar completamente contenidas en la nueva estadía.</p>
   </div>
@@ -807,13 +807,13 @@ function extRenderPlan(plan,nuevaEntrada,nuevaSalida){
  const by=Object.fromEntries(S.res.map(x=>[x.id,x]));
  const lines=(plan||[]).slice().sort((a,b)=>(b.profundidad||0)-(a.profundidad||0)).map(x=>{
   const q=by[x.reserva_id];
-  return `<div class="pg">• <b>\${esc(q?.uid_reserva||'Reserva')}</b> · \${esc(q?.huesped_nombre_copia||'Huésped')} · \${esc(lab(x.unidad_origen))} → <b>\${esc(lab(x.unidad_destino))}</b> · \${x.fecha_entrada||q?.fecha_entrada||'—'} → \${x.fecha_salida||q?.fecha_salida||'—'}</div>`;
+  return `<div class="pg">• <b>${esc(q?.uid_reserva||'Reserva')}</b> · ${esc(q?.huesped_nombre_copia||'Huésped')} · ${esc(lab(x.unidad_origen))} → <b>${esc(lab(x.unidad_destino))}</b> · ${x.fecha_entrada||q?.fecha_entrada||'—'} → ${x.fecha_salida||q?.fecha_salida||'—'}</div>`;
  }).join('');
  const noches=diff(nuevaEntrada,nuevaSalida);
  $('#ext_result').innerHTML=`<div class="sec c3">
   <h4 class="st">Resultado</h4>
-  <p style="margin-top:0">Nueva estadía: <b>\${nuevaEntrada}</b> → <b>\${nuevaSalida}</b> · <b>\${noches}</b> noches.</p>
-  \${plan.length
+  <p style="margin-top:0">Nueva estadía: <b>${nuevaEntrada}</b> → <b>${nuevaSalida}</b> · <b>${noches}</b> noches.</p>
+  ${plan.length
     ? '<p><b>La unidad actual no está libre en todo el nuevo período.</b> Se encontraron las siguientes reacomodaciones:</p>'+lines
     : '<p style="color:#15803d"><b>✓ Hay disponibilidad completa en la unidad actual.</b> No es necesario mover ninguna reserva.</p>'}
   <div style="display:flex;justify-content:flex-end;margin-top:12px">
