@@ -942,7 +942,6 @@ async function guardarCambiosReservaDetalle(op={}){
  const {error}=await sb.rpc('editar_reserva_completa',payload);if(error){msg(errTxt(error),1);return false}
  const {error:em}=await sb.from('reservas').update({no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad}).eq('id',r.id);if(em){msg('La reserva se guardó, pero no se pudo actualizar la regla de movimiento: '+em.message,1);return false}
  const pe=await guardarFechasParking(r.id,dates);if(pe){msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);return false}
- RT.ignoreUntil=Date.now()+1500;
  const pagoErr=await guardarPagoFormulario();if(pagoErr){msg('La reserva se guardó, pero no se pudo registrar el pago: '+errTxt(pagoErr),1);return false}
  const cargoErr=await guardarCargoFormulario();if(cargoErr){msg('La reserva se guardó, pero no se pudo registrar el cargo: '+errTxt(cargoErr),1);return false}
  for(const row of [...document.querySelectorAll('#acEditList .ac-edit-row')]){
@@ -953,6 +952,7 @@ async function guardarCambiosReservaDetalle(op={}){
   if(id){const {error:e}=await sb.from('acompanantes').update({nombre_completo:name,numero_documento:doc,es_menor:minor}).eq('id',id);if(e){msg(errTxt(e),1);return false}}
   else{const {error:e}=await sb.from('acompanantes').insert({reserva_id:r.id,nombre_completo:name,numero_documento:doc,es_menor:minor});if(e){msg(errTxt(e),1);return false}}
  }
+ RT.ignoreUntil=Date.now()+2500;
  const nuevo={...r,fecha_entrada:payload.p_fecha_entrada,fecha_salida:payload.p_fecha_salida,canal:payload.p_canal,referencia_externa:payload.p_referencia_externa,adultos:payload.p_adultos,menores:payload.p_menores,tarifa_noche:payload.p_tarifa_noche,modelo_vehiculo:payload.p_modelo_vehiculo,patente_vehiculo:payload.p_patente_vehiculo,cupo_estacionamiento:payload.p_cupo_estacionamiento,usa_estacionamiento:payload.p_usa_estacionamiento,noches_estacionamiento:payload.p_noches_estacionamiento,observaciones:payload.p_observaciones,no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad,noches:diff(payload.p_fecha_entrada,payload.p_fecha_salida)};
  S.cur=nuevo;const ri=S.res.findIndex(x=>x.id===r.id);if(ri>=0)S.res[ri]={...S.res[ri],...nuevo};
  if(!op.silencioso)await abrirDr(r.id);
