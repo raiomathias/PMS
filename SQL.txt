@@ -2970,3 +2970,54 @@ ON CONFLICT (perfil_id, campo)
 DO UPDATE SET permitido = true, actualizado_en = now();
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- CHECK-IN: versión robusta
+-- Reemplaza cualquier validación antigua que pueda rechazar
+-- una reserva que realmente está en estado confirmada.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.hacer_check_in(p_reserva_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_estado estado_reserva;
+  v_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT estado
+    INTO v_estado
+    FROM public.reservas
+   WHERE id = p_reserva_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF v_estado <> 'confirmada'::estado_reserva THEN
+    RAISE EXCEPTION 'La reserva no esta confirmada';
+  END IF;
+
+  UPDATE public.reservas
+     SET estado = 'en_casa'::estado_reserva,
+         entrada_real = COALESCE(entrada_real, now())
+   WHERE id = p_reserva_id
+     AND estado = 'confirmada'::estado_reserva
+   RETURNING id INTO v_id;
+
+  IF v_id IS NULL THEN
+    RAISE EXCEPTION 'La reserva cambió de estado antes de completar el check-in';
+  END IF;
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.hacer_check_in(uuid) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
