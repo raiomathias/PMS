@@ -2826,8 +2826,9 @@ BEGIN
              AND r.estado NOT IN ('cancelada','no_show','bloqueado')),0) ingresos_entradas
         FROM generate_series(p_desde,p_hasta,'1 day') d
         LEFT JOIN reservas r ON r.fecha_entrada<=d::date AND r.fecha_salida>d::date
+          AND r.estado NOT IN ('cancelada','no_show','bloqueado')
         LEFT JOIN unidades u ON u.id=r.unidad_id
-          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+        WHERE (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
           AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
         GROUP BY d
       ) x
