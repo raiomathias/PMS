@@ -1303,21 +1303,169 @@ CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
   p_salida date,
   p_plan jsonb DEFAULT '[]'::jsonb
 )
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
-DECLARE x jsonb;r reservas%rowtype;v_target uuid:=p_unidad_destino;
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public AS $$
+DECLARE
+  x jsonb;
+  r reservas%rowtype;
+  v_target uuid := p_unidad_destino;
+  v_ids uuid[];
+  v_count integer;
 BEGIN
- IF NOT EXISTS(SELECT 1 FROM unidades WHERE id=v_target AND activo) THEN RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';END IF;
- IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=v_target AND q.id<>p_reserva_id AND q.fecha_entrada<p_salida AND q.fecha_salida>p_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN
-   IF p_plan IS NULL OR jsonb_typeof(p_plan)<>'array' OR jsonb_array_length(p_plan)=0 THEN RAISE EXCEPTION 'La unidad de destino sigue ocupada y no hay una reacomodación válida';END IF;
- END IF;
- IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
-  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
-   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
-   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
-   IF r.estado IN ('en_casa','bloqueado') THEN RAISE EXCEPTION 'La cadena contiene una reserva que no puede ser movida';END IF;
-   IF COALESCE(r.no_mover_unidad,false) THEN RAISE EXCEPTION 'La cadena contiene una reserva marcada para no mover de unidad';END IF;
-   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
-   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM unidades
+    WHERE id=v_target
+      AND activo
+  ) THEN
+    RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';
+  END IF;
+
+  /*
+   * El plan solo contiene las reservas que deben salir del destino.
+   * La reserva principal (p_reserva_id) permanece temporalmente en su
+   * unidad actual mientras se hace el intercambio, por lo que también
+   * debe considerarse parte del estado temporal del cambio.
+   */
+  IF p_plan IS NULL
+     OR jsonb_typeof(p_plan)<>'array'
+     OR jsonb_array_length(p_plan)=0 THEN
+    IF EXISTS (
+      SELECT 1
+      FROM reservas q
+      WHERE q.unidad_id=v_target
+        AND q.id<>p_reserva_id
+        AND q.fecha_entrada<p_salida
+        AND q.fecha_salida>p_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+    ) THEN
+      RAISE EXCEPTION 'La unidad de destino sigue ocupada y no hay una reacomodación válida';
+    END IF;
+    RETURN;
+  END IF;
+
+  /*
+   * Identificar y bloquear todas las reservas del plan antes de validar
+   * sus destinos. Esto evita decisiones inconsistentes si otro usuario
+   * modifica una de ellas durante la operación.
+   */
+  SELECT COALESCE(array_agg((value->>'reserva_id')::uuid),ARRAY[]::uuid[])
+  INTO v_ids
+  FROM jsonb_array_elements(p_plan);
+
+  SELECT count(*)
+  INTO v_count
+  FROM (
+    SELECT DISTINCT value->>'reserva_id' AS reserva_id
+    FROM jsonb_array_elements(p_plan)
+  ) q;
+
+  IF v_count<>jsonb_array_length(p_plan) THEN
+    RAISE EXCEPTION 'La cadena de reacomodación contiene reservas duplicadas';
+  END IF;
+
+  PERFORM 1
+  FROM reservas
+  WHERE id=ANY(v_ids)
+  FOR UPDATE;
+
+  IF (SELECT count(*) FROM reservas WHERE id=ANY(v_ids))<>v_count THEN
+    RAISE EXCEPTION 'Reserva del plan no encontrada';
+  END IF;
+
+  /*
+   * Validación contra el estado actual:
+   * - la reserva no puede haberse movido desde que se calculó el plan;
+   * - nunca se mueve en_casa, bloqueado o no_mover_unidad;
+   * - el destino de una reserva puede estar ocupado actualmente por
+   *   otra reserva del propio plan o por p_reserva_id: ambas forman
+   *   parte del intercambio y se mueven/liberan dentro de esta operación;
+   * - ninguna reserva ajena al intercambio puede ocupar ese destino.
+   */
+  FOR x IN
+    SELECT value
+    FROM jsonb_array_elements(p_plan)
+  LOOP
+    SELECT *
+    INTO r
+    FROM reservas
+    WHERE id=(x->>'reserva_id')::uuid;
+
+    IF r.unidad_id<>(x->>'unidad_origen')::uuid THEN
+      RAISE EXCEPTION 'La cadena ya no es válida: la reserva % cambió de unidad',r.uid_reserva;
+    END IF;
+
+    IF r.estado IN ('en_casa','bloqueado') THEN
+      RAISE EXCEPTION 'La cadena contiene una reserva que no puede ser movida';
+    END IF;
+
+    IF COALESCE(r.no_mover_unidad,false) THEN
+      RAISE EXCEPTION 'La cadena contiene una reserva marcada para no mover de unidad';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM unidades
+      WHERE id=(x->>'unidad_destino')::uuid
+        AND activo
+    ) THEN
+      RAISE EXCEPTION 'La unidad de destino de la reserva % no existe o está inactiva',r.uid_reserva;
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM reservas q
+      WHERE q.unidad_id=(x->>'unidad_destino')::uuid
+        AND q.id<>r.id
+        AND q.id<>p_reserva_id
+        AND NOT (q.id=ANY(v_ids))
+        AND q.fecha_entrada<r.fecha_salida
+        AND q.fecha_salida>r.fecha_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+    ) THEN
+      RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';
+    END IF;
   END LOOP;
- END IF;
+
+  /*
+   * Todos los movimientos del plan se aplican simultáneamente desde
+   * el punto de vista del estado de la tabla. Así un intercambio como:
+   *
+   *   R1 A→B
+   *   R2 A→B
+   *   R3 B→A   (se ejecuta después en moverReserva)
+   *
+   * no falla porque R3 todavía esté físicamente en B durante esta fase.
+   */
+  UPDATE reservas r
+  SET
+    unidad_id=p.unidad_destino_plan,
+    actualizado_en=now()
+  FROM (
+    SELECT
+      (value->>'reserva_id')::uuid AS reserva_id,
+      (value->>'unidad_destino')::uuid AS unidad_destino_plan
+    FROM jsonb_array_elements(p_plan)
+  ) p
+  WHERE r.id=p.reserva_id;
+
+  /*
+   * Verificación final: todas las reservas del plan quedaron en la
+   * unidad que el plan especificaba.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT
+        (value->>'reserva_id')::uuid AS reserva_id,
+        (value->>'unidad_destino')::uuid AS unidad_destino
+      FROM jsonb_array_elements(p_plan)
+    ) p
+    JOIN reservas r ON r.id=p.reserva_id
+    WHERE r.unidad_id<>p.unidad_destino
+  ) THEN
+    RAISE EXCEPTION 'No se pudo completar la reacomodación';
+  END IF;
 END $$;
