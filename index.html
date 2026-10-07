@@ -980,6 +980,34 @@ async function guardarCambiosReservaDetalle(op={}){
  const pe=await guardarFechasParking(r.id,dates);if(pe){msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);return false}
  const pagoErr=await guardarPagoFormulario();if(pagoErr){msg('La reserva se guardó, pero no se pudo registrar el pago: '+errTxt(pagoErr),1);return false}
  const cargoErr=await guardarCargoFormulario();if(cargoErr){msg('La reserva se guardó, pero no se pudo registrar el cargo: '+errTxt(cargoErr),1);return false}
+
+ // Verificación final: no cerramos la ficha ni mostramos "guardado" hasta
+ // comprobar que Supabase realmente conservó los valores enviados.
+ const vr=await sb.from('reservas').select('id,fecha_entrada,fecha_salida,canal,referencia_externa,adultos,menores,tarifa_noche,modelo_vehiculo,patente_vehiculo,cupo_estacionamiento,usa_estacionamiento,noches_estacionamiento,observaciones,no_mover_unidad,huesped_nombre_copia').eq('id',r.id).maybeSingle();
+ if(vr.error||!vr.data)return msg('Los cambios no pudieron verificarse en Supabase: '+errTxt(vr.error||new Error('Reserva no encontrada después de guardar')),1),false;
+ const vv=vr.data, same=(a,b)=>String(a??'')===String(b??'');
+ const checks=[
+  ['entrada',payload.p_fecha_entrada,vv.fecha_entrada],
+  ['salida',payload.p_fecha_salida,vv.fecha_salida],
+  ['canal',payload.p_canal,vv.canal],
+  ['código externo',payload.p_referencia_externa,vv.referencia_externa],
+  ['adultos',payload.p_adultos,vv.adultos],
+  ['menores',payload.p_menores,vv.menores],
+  ['tarifa',payload.p_tarifa_noche,vv.tarifa_noche],
+  ['vehículo',payload.p_modelo_vehiculo,vv.modelo_vehiculo],
+  ['patente',payload.p_patente_vehiculo,vv.patente_vehiculo],
+  ['cupo estacionamiento',payload.p_cupo_estacionamiento,vv.cupo_estacionamiento],
+  ['usa estacionamiento',payload.p_usa_estacionamiento,vv.usa_estacionamiento],
+  ['noches estacionamiento',payload.p_noches_estacionamiento,vv.noches_estacionamiento],
+  ['observaciones',payload.p_observaciones,vv.observaciones],
+  ['no mover unidad',$('#rnm')?.checked??r.no_mover_unidad,vv.no_mover_unidad]
+ ];
+ const bad=checks.find(x=>!same(x[1],x[2]));
+ if(bad)return msg('El cambio de '+bad[0]+' no quedó guardado en Supabase. El sistema no cerró la ficha para evitar que pierdas el cambio.',1),false;
+ if(puedeEditarCampo('guest_name')){
+  const hg=await sb.from('huespedes').select('nombre_completo').eq('id',r.huesped_id).maybeSingle();
+  if(hg.error||!hg.data||!same(payload.p_huesped_nombre,hg.data.nombre_completo))return msg('El nombre del huésped no quedó guardado en Supabase. El sistema no cerró la ficha.',1),false;
+ }
  for(const row of [...document.querySelectorAll('#acEditList .ac-edit-row')]){
   const id=row.dataset.id;
   if(row.dataset.deleted==='1'&&id){const {error:e}=await sb.from('acompanantes').delete().eq('id',id);if(e){msg(errTxt(e),1);return false}continue}
