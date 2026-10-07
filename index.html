@@ -876,7 +876,16 @@ async function accion(k){
    await abrirDr(r.id);
    return msg('La reserva no está confirmada. Estado actual: '+String(r.estado||'sin estado').replace('_',' '),1);
   }
-  ({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
+  const ck=await sb.rpc('hacer_check_in',{p_reserva_id:r.id});
+  e=ck.error;
+  // Compatibilidad con instalaciones donde el RPC antiguo quedó desactualizado.
+  // Si Supabase confirma que la reserva REAL está confirmada, ejecutamos el cambio
+  // directamente para no bloquear el check-in por una validación defectuosa del RPC.
+  if(e && /reserva no (está|esta) confirmada/i.test(e.message||'') && r.estado==='confirmada'){
+    const fb=await sb.from('reservas').update({estado:'en_casa',entrada_real:new Date().toISOString()}).eq('id',r.id).eq('estado','confirmada').select('id').maybeSingle();
+    e=fb.error;
+    if(!e&&!fb.data)e=new Error('La reserva cambió de estado antes de completar el check-in');
+  }
  }
  if(k==='out')return abrirCheckOut();
  if(k==='can'){
