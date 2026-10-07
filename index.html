@@ -548,10 +548,16 @@ async function confirmarReacomodacion(plan,targetId,manual=false){
   const a=byId[x.reserva_id];
   return '• '+(a?.uid_reserva||'Reserva')+' · '+(a?.huesped_nombre_copia||'Huésped')+' · '+lab(x.unidad_origen)+' → '+lab(x.unidad_destino)+' · '+(a?.fecha_entrada||'')+' → '+(a?.fecha_salida||'');
  }).join('\n');
+ const principal=manual&&S.cur
+  ? '• '+(S.cur.uid_reserva||'Reserva')+' · '+(S.cur.huesped_nombre_copia||'Huésped')+' · '+lab(S.cur.unidad_id)+' → '+lab(targetId)+' · '+(S.cur.fecha_entrada||'')+' → '+(S.cur.fecha_salida||'')
+  : '';
+ const detalle=manual&&principal
+  ? principal+'\n\nReacomodaciones necesarias:\n'+movs
+  : movs;
  const aviso=cambios.length
   ? '⚠ El plan requiere '+cambios.length+' cambio'+(cambios.length>1?'s':'')+' de categoría (upgrade). La tarifa de las reservas movidas se mantiene sin cambios.'
   : 'El plan mantiene la categoría de las reservas que se mueven.';
- return confirm((manual?'No hay disponibilidad directa para la unidad seleccionada':'No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value)+'.\n\n'+aviso+'\nNinguna reserva en casa, bloqueo ni reserva marcada como “No mover” puede ser movida automáticamente.\n\nMovimientos que se ejecutarán:\n'+movs+'\n\nDestino: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación?');
+ return confirm((manual?'No hay disponibilidad directa para la unidad seleccionada':'No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value)+'.\n\n'+aviso+'\nNinguna reserva en casa, bloqueo ni reserva marcada como “No mover” puede ser movida automáticamente.\n\nMovimientos que se ejecutarán:\n'+detalle+'\n\nDestino: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación?');
 }
 async function elegirUnidad(fe,fs){
  const v=$('#nu').value;if(v){N.plan=[];N.reacomodacion=null;return v}
