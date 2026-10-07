@@ -992,6 +992,19 @@ async function guardarCambiosReservaDetalle(op={}){
  const payload={p_reserva_id:r.id,p_huesped_nombre:v('gname'),p_tipo_documento:v('gd'),p_numero_documento:v('gn'),p_telefono:v('gt'),p_correo:null,p_nacionalidad:v('gna'),p_ciudad_origen:v('gc'),p_estado:null,p_fecha_entrada:v('rhent'),p_fecha_salida:v('rhsal'),p_unidad_id:null,p_canal:v('rc'),p_referencia_externa:v('rx'),p_adultos:n('ra'),p_menores:n('rm'),p_tarifa_noche:n('rt'),p_total_manual:null,p_modelo_vehiculo:usa?v('rv'):null,p_patente_vehiculo:usa?v('rp'):null,p_cupo_estacionamiento:usa?n('rcu'):null,p_usa_estacionamiento:usa,p_observaciones:v('ro'),p_iva_total:n('ri'),p_otro_precio:n('ro2'),p_noches_estacionamiento:dates.length};
  if(payload.p_fecha_salida<=payload.p_fecha_entrada){msg('La salida debe ser posterior a la entrada',1);return false}
  const {error}=await sb.rpc('editar_reserva_completa',payload);if(error){msg(errTxt(error),1);return false}
+ // Los datos del huésped viven en una tabla distinta a reservas. Guardarlos
+ // explícitamente aquí evita que una configuración de permisos del RPC deje
+ // el documento aparentemente guardado y luego lo revierta al recargar.
+ const guestUpdate={
+  nombre_completo:payload.p_huesped_nombre,
+  tipo_documento:payload.p_tipo_documento,
+  numero_documento:payload.p_numero_documento,
+  telefono:payload.p_telefono,
+  nacionalidad:payload.p_nacionalidad,
+  ciudad_origen:payload.p_ciudad_origen
+ };
+ const {error:gue}=await sb.from('huespedes').update(guestUpdate).eq('id',r.huesped_id);
+ if(gue){msg('No se pudieron guardar los datos del huésped: '+errTxt(gue),1);return false}
  const {error:em}=await sb.from('reservas').update({no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad}).eq('id',r.id);if(em){msg('La reserva se guardó, pero no se pudo actualizar la regla de movimiento: '+em.message,1);return false}
  const pe=await guardarFechasParking(r.id,dates);if(pe){msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);return false}
  const pagoErr=await guardarPagoFormulario();if(pagoErr){msg('La reserva se guardó, pero no se pudo registrar el pago: '+errTxt(pagoErr),1);return false}
