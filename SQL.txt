@@ -1653,6 +1653,1661 @@ DROP FUNCTION IF EXISTS public.pms_plan_extension_move(
   uuid, uuid, integer, uuid[], uuid[]
 );
 
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.perfiles (
+  id uuid NOT NULL,
+  nombre_completo text NOT NULL,
+  rol USER-DEFINED NOT NULL DEFAULT 'recepcion'::rol_usuario,
+  activo boolean NOT NULL DEFAULT true,
+  creado_en timestamp with time zone DEFAULT now(),
+  usuario text NOT NULL,
+  CONSTRAINT perfiles_pkey PRIMARY KEY (id),
+  CONSTRAINT perfiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.configuracion (
+  clave text NOT NULL,
+  valor text NOT NULL,
+  descripcion text,
+  actualizado_por uuid,
+  actualizado_en timestamp with time zone DEFAULT now(),
+  CONSTRAINT configuracion_pkey PRIMARY KEY (clave),
+  CONSTRAINT configuracion_actualizado_por_fkey FOREIGN KEY (actualizado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.edificios (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  direccion text,
+  acceso_remoto boolean NOT NULL DEFAULT false,
+  requiere_documento boolean NOT NULL DEFAULT true,
+  cupos_estacionamiento integer NOT NULL DEFAULT 0,
+  activo boolean NOT NULL DEFAULT true,
+  orden integer NOT NULL DEFAULT 0,
+  instrucciones_acceso text,
+  CONSTRAINT edificios_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.tipos_unidad (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  max_adultos integer NOT NULL DEFAULT 2,
+  max_menores integer NOT NULL DEFAULT 0,
+  tarifa_base integer NOT NULL DEFAULT 0,
+  descripcion text,
+  camas integer,
+  detalle_camas text,
+  fotos ARRAY NOT NULL DEFAULT '{}'::text[],
+  edificio_id uuid,
+  CONSTRAINT tipos_unidad_pkey PRIMARY KEY (id),
+  CONSTRAINT tipos_unidad_edificio_id_fkey FOREIGN KEY (edificio_id) REFERENCES public.edificios(id)
+);
+CREATE TABLE public.unidades (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  edificio_id uuid NOT NULL,
+  tipo_unidad_id uuid,
+  codigo text NOT NULL,
+  piso text,
+  activo boolean NOT NULL DEFAULT true,
+  orden integer NOT NULL DEFAULT 0,
+  nombre text,
+  notas text,
+  CONSTRAINT unidades_pkey PRIMARY KEY (id),
+  CONSTRAINT unidades_edificio_id_fkey FOREIGN KEY (edificio_id) REFERENCES public.edificios(id),
+  CONSTRAINT unidades_tipo_unidad_id_fkey FOREIGN KEY (tipo_unidad_id) REFERENCES public.tipos_unidad(id)
+);
+CREATE TABLE public.huespedes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  uid_huesped text NOT NULL DEFAULT ('H-'::text || upper(substr(md5((random())::text), 1, 6))) UNIQUE,
+  nombre_completo text NOT NULL,
+  tipo_documento text,
+  numero_documento text,
+  documento_normalizado text DEFAULT upper(regexp_replace(COALESCE(numero_documento, ''::text), '[^0-9A-Za-z]'::text, ''::text, 'g'::text)),
+  telefono text,
+  correo text,
+  nacionalidad text,
+  ciudad_origen text,
+  fecha_nacimiento date,
+  es_vip boolean NOT NULL DEFAULT false,
+  creado_en timestamp with time zone DEFAULT now(),
+  creado_por uuid DEFAULT auth.uid(),
+  CONSTRAINT huespedes_pkey PRIMARY KEY (id),
+  CONSTRAINT huespedes_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.lista_negra (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nombre_completo text NOT NULL,
+  tipo_documento text,
+  numero_documento text,
+  documento_normalizado text DEFAULT upper(regexp_replace(COALESCE(numero_documento, ''::text), '[^0-9A-Za-z]'::text, ''::text, 'g'::text)),
+  motivo text NOT NULL,
+  activo boolean NOT NULL DEFAULT true,
+  agregado_por uuid DEFAULT auth.uid(),
+  agregado_en timestamp with time zone DEFAULT now(),
+  nombre_normalizado text,
+  CONSTRAINT lista_negra_pkey PRIMARY KEY (id),
+  CONSTRAINT lista_negra_agregado_por_fkey FOREIGN KEY (agregado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.reservas (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  uid_reserva text NOT NULL DEFAULT ('R-'::text || upper(substr(md5((random())::text), 1, 7))) UNIQUE,
+  huesped_id uuid,
+  unidad_id uuid NOT NULL,
+  estado USER-DEFINED NOT NULL DEFAULT 'confirmada'::estado_reserva,
+  canal USER-DEFINED NOT NULL DEFAULT 'directo'::canal_reserva,
+  referencia_externa text,
+  fecha_entrada date NOT NULL,
+  fecha_salida date NOT NULL,
+  hora_llegada_aprox time without time zone,
+  hora_salida_aprox time without time zone,
+  entrada_real timestamp with time zone,
+  salida_real timestamp with time zone,
+  noches integer DEFAULT (fecha_salida - fecha_entrada),
+  adultos integer NOT NULL DEFAULT 1,
+  menores integer NOT NULL DEFAULT 0,
+  usa_estacionamiento boolean NOT NULL DEFAULT false,
+  modelo_vehiculo text,
+  patente_vehiculo text,
+  huesped_nombre_copia text,
+  huesped_documento_copia text,
+  huesped_telefono_copia text,
+  tarifa_noche integer NOT NULL DEFAULT 0,
+  estado_pago USER-DEFINED NOT NULL DEFAULT 'pendiente'::estado_pago,
+  garantia_monto integer NOT NULL DEFAULT 0,
+  garantia_devuelta boolean NOT NULL DEFAULT false,
+  cancelada_en timestamp with time zone,
+  cancelada_por uuid,
+  motivo_cancelacion text,
+  observaciones text,
+  creado_por uuid DEFAULT auth.uid(),
+  creado_en timestamp with time zone DEFAULT now(),
+  actualizado_en timestamp with time zone DEFAULT now(),
+  numero_boleta text,
+  garantia_omitida boolean NOT NULL DEFAULT false,
+  garantia_omitida_motivo text,
+  garantia_omitida_por uuid,
+  garantia_omitida_por_nombre text,
+  garantia_omitida_en timestamp with time zone,
+  no_show_en timestamp with time zone,
+  no_show_por uuid,
+  no_show_nota text,
+  cupo_estacionamiento smallint,
+  noches_estacionamiento integer,
+  CONSTRAINT reservas_pkey PRIMARY KEY (id),
+  CONSTRAINT reservas_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id),
+  CONSTRAINT reservas_huesped_id_fkey FOREIGN KEY (huesped_id) REFERENCES public.huespedes(id),
+  CONSTRAINT reservas_unidad_id_fkey FOREIGN KEY (unidad_id) REFERENCES public.unidades(id),
+  CONSTRAINT reservas_cancelada_por_fkey FOREIGN KEY (cancelada_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.notas_huesped (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  huesped_id uuid NOT NULL,
+  reserva_id uuid,
+  nota text NOT NULL,
+  categoria text NOT NULL DEFAULT 'general'::text,
+  gravedad smallint NOT NULL DEFAULT 0,
+  creado_por uuid DEFAULT auth.uid(),
+  creado_en timestamp with time zone DEFAULT now(),
+  CONSTRAINT notas_huesped_pkey PRIMARY KEY (id),
+  CONSTRAINT notas_huesped_huesped_id_fkey FOREIGN KEY (huesped_id) REFERENCES public.huespedes(id),
+  CONSTRAINT notas_huesped_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
+  CONSTRAINT notas_huesped_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.acompanantes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reserva_id uuid NOT NULL,
+  nombre_completo text NOT NULL,
+  tipo_documento text,
+  numero_documento text,
+  documento_normalizado text DEFAULT upper(regexp_replace(COALESCE(numero_documento, ''::text), '[^0-9A-Za-z]'::text, ''::text, 'g'::text)),
+  es_menor boolean NOT NULL DEFAULT false,
+  huesped_id uuid,
+  creado_en timestamp with time zone DEFAULT now(),
+  CONSTRAINT acompanantes_pkey PRIMARY KEY (id),
+  CONSTRAINT acompanantes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
+  CONSTRAINT acompanantes_huesped_id_fkey FOREIGN KEY (huesped_id) REFERENCES public.huespedes(id)
+);
+CREATE TABLE public.cargos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reserva_id uuid NOT NULL,
+  tipo USER-DEFINED NOT NULL,
+  descripcion text,
+  cantidad numeric NOT NULL DEFAULT 1,
+  monto_unitario integer NOT NULL,
+  total integer DEFAULT (round((cantidad * (monto_unitario)::numeric)))::integer,
+  creado_por uuid DEFAULT auth.uid(),
+  creado_en timestamp with time zone DEFAULT now(),
+  CONSTRAINT cargos_pkey PRIMARY KEY (id),
+  CONSTRAINT cargos_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
+  CONSTRAINT cargos_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.pagos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reserva_id uuid NOT NULL,
+  metodo USER-DEFINED NOT NULL,
+  moneda character NOT NULL DEFAULT 'CLP'::bpchar CHECK (moneda = ANY (ARRAY['CLP'::bpchar, 'USD'::bpchar])),
+  monto_original numeric NOT NULL,
+  tipo_cambio numeric,
+  monto_clp integer NOT NULL,
+  referencia text,
+  anticipado boolean NOT NULL DEFAULT false,
+  pagado_en timestamp with time zone DEFAULT now(),
+  turno_caja_id uuid,
+  creado_por uuid DEFAULT auth.uid(),
+  motivo text NOT NULL DEFAULT 'estadia'::text CHECK (motivo = ANY (ARRAY['estadia'::text, 'estacionamiento'::text, 'horario_extra'::text, 'penalizacion'::text, 'consumos'::text, 'garantia'::text, 'otro'::text])),
+  id_transaccion text,
+  CONSTRAINT pagos_pkey PRIMARY KEY (id),
+  CONSTRAINT pagos_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
+  CONSTRAINT pagos_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.limpieza (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  unidad_id uuid NOT NULL,
+  reserva_id uuid,
+  estado USER-DEFINED NOT NULL DEFAULT 'sucia'::estado_limpieza,
+  asignado_a uuid,
+  observacion_recepcion text,
+  observacion_limpieza text,
+  creado_en timestamp with time zone DEFAULT now(),
+  iniciado_en timestamp with time zone,
+  terminado_en timestamp with time zone,
+  actualizado_por uuid,
+  CONSTRAINT limpieza_pkey PRIMARY KEY (id),
+  CONSTRAINT limpieza_unidad_id_fkey FOREIGN KEY (unidad_id) REFERENCES public.unidades(id),
+  CONSTRAINT limpieza_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
+  CONSTRAINT limpieza_asignado_a_fkey FOREIGN KEY (asignado_a) REFERENCES public.perfiles(id),
+  CONSTRAINT limpieza_actualizado_por_fkey FOREIGN KEY (actualizado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.auditoria (
+  id bigint NOT NULL DEFAULT nextval('auditoria_id_seq'::regclass),
+  tabla text,
+  registro_id uuid,
+  accion text,
+  datos_anteriores jsonb,
+  datos_nuevos jsonb,
+  usuario_id uuid,
+  fecha timestamp with time zone DEFAULT now(),
+  CONSTRAINT auditoria_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.garantia_fechas (
+  unidad_id uuid NOT NULL,
+  fecha date NOT NULL,
+  creado_por uuid DEFAULT auth.uid(),
+  creado_en timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT garantia_fechas_pkey PRIMARY KEY (unidad_id, fecha),
+  CONSTRAINT garantia_fechas_unidad_id_fkey FOREIGN KEY (unidad_id) REFERENCES public.unidades(id)
+);
+CREATE TABLE public.perfiles_edificios (
+  perfil_id uuid NOT NULL,
+  edificio_id uuid NOT NULL,
+  creado_en timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT perfiles_edificios_pkey PRIMARY KEY (perfil_id, edificio_id),
+  CONSTRAINT perfiles_edificios_perfil_id_fkey FOREIGN KEY (perfil_id) REFERENCES public.perfiles(id),
+  CONSTRAINT perfiles_edificios_edificio_id_fkey FOREIGN KEY (edificio_id) REFERENCES public.edificios(id)
+);
+CREATE TABLE public.lista_negra_solicitudes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  huesped_id uuid,
+  nombre_completo text NOT NULL,
+  tipo_documento text,
+  numero_documento text,
+  documento_normalizado text,
+  motivo text NOT NULL,
+  estado text NOT NULL DEFAULT 'pendiente'::text CHECK (estado = ANY (ARRAY['pendiente'::text, 'aprobada'::text, 'rechazada'::text])),
+  solicitado_por uuid,
+  solicitado_en timestamp with time zone NOT NULL DEFAULT now(),
+  revisado_por uuid,
+  revisado_en timestamp with time zone,
+  decision_motivo text,
+  nombre_normalizado text,
+  CONSTRAINT lista_negra_solicitudes_pkey PRIMARY KEY (id),
+  CONSTRAINT lista_negra_solicitudes_huesped_id_fkey FOREIGN KEY (huesped_id) REFERENCES public.huespedes(id),
+  CONSTRAINT lista_negra_solicitudes_solicitado_por_fkey FOREIGN KEY (solicitado_por) REFERENCES public.perfiles(id),
+  CONSTRAINT lista_negra_solicitudes_revisado_por_fkey FOREIGN KEY (revisado_por) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.import_reservas_historicas (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  edificio text,
+  unidad_codigo text,
+  fecha_entrada date,
+  fecha_salida date,
+  huesped_nombre text,
+  codigo_estado text,
+  canal text,
+  modelo_vehiculo text,
+  patente text,
+  observaciones text,
+  fila_origen integer,
+  columna_origen text,
+  procesado boolean DEFAULT false,
+  error text,
+  origen_archivo text,
+  origen_hoja text,
+  origen_hoja_fin text,
+  origen_tramos jsonb,
+  huesped_nombre_normalizado text,
+  canal_codigo_original text,
+  canal_mapeado text,
+  precio_raw text,
+  precio_importado integer,
+  precio_semantica text DEFAULT 'no_determinada'::text,
+  pagado_por_color boolean DEFAULT false,
+  nota_original text,
+  celda_inicio text,
+  celda_fin text,
+  fila_inicio integer,
+  fila_fin integer,
+  columna_inicio text,
+  columna_fin text,
+  reserva_detectada boolean DEFAULT true,
+  posible_duplicado boolean DEFAULT false,
+  posible_conflicto boolean DEFAULT false,
+  conflicto_descripcion text,
+  reserva_id uuid,
+  huesped_id uuid,
+  source_fingerprint text,
+  creado_en timestamp with time zone DEFAULT now(),
+  CONSTRAINT import_reservas_historicas_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.perfiles_permisos_edicion (
+  perfil_id uuid NOT NULL,
+  campo text NOT NULL CHECK (campo = ANY (ARRAY['guest_name'::text, 'guest_document'::text, 'guest_contact'::text, 'status'::text, 'dates'::text, 'building_category_unit'::text, 'rate'::text, 'price_iva'::text, 'price_other'::text, 'total'::text, 'parking_nights'::text, 'channel'::text, 'occupancy'::text, 'vehicle'::text, 'observations'::text])),
+  permitido boolean NOT NULL DEFAULT true,
+  creado_en timestamp with time zone NOT NULL DEFAULT now(),
+  actualizado_en timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT perfiles_permisos_edicion_pkey PRIMARY KEY (perfil_id, campo),
+  CONSTRAINT perfiles_permisos_edicion_perfil_id_fkey FOREIGN KEY (perfil_id) REFERENCES public.perfiles(id)
+);
+CREATE TABLE public.categoria_ranking_edificio (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  edificio_id uuid NOT NULL,
+  tipo_unidad_id uuid NOT NULL,
+  ranking integer NOT NULL,
+  creado_en timestamp with time zone NOT NULL DEFAULT now(),
+  actualizado_en timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT categoria_ranking_edificio_pkey PRIMARY KEY (id),
+  CONSTRAINT categoria_ranking_edificio_edificio_id_fkey FOREIGN KEY (edificio_id) REFERENCES public.edificios(id),
+  CONSTRAINT categoria_ranking_edificio_tipo_unidad_id_fkey FOREIGN KEY (tipo_unidad_id) REFERENCES public.tipos_unidad(id)
+);
+
+-- ================================================================
+-- PMS: CAMBIOS FINALES 2026-10
+-- ================================================================
+CREATE OR REPLACE VIEW public.resumen_huesped AS
+SELECT h.id AS huesped_id,count(r.id) FILTER (WHERE r.estado NOT IN ('cancelada','no_show'))::bigint AS estadias,
+count(r.id) FILTER (WHERE r.estado='cancelada')::bigint AS cancelaciones,count(r.id) FILTER (WHERE r.estado='no_show')::bigint AS no_shows,
+max(r.fecha_salida) FILTER (WHERE r.estado IN ('en_casa','check_out','confirmada')) AS ultima_estadia
+FROM huespedes h LEFT JOIN reservas r ON r.huesped_id=h.id GROUP BY h.id;
+
+CREATE OR REPLACE FUNCTION public.revisar_lista_negra(p_documento text DEFAULT NULL,p_nombre text DEFAULT NULL)
+RETURNS TABLE(id uuid,nombre_completo text,motivo text,numero_documento text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+ SELECT l.id,l.nombre_completo,l.motivo,l.numero_documento FROM lista_negra l WHERE l.activo AND
+ ((NULLIF(regexp_replace(COALESCE(p_documento,''),'[^0-9A-Za-z]','','g'),'') IS NOT NULL AND l.documento_normalizado=upper(regexp_replace(p_documento,'[^0-9A-Za-z]','','g')))
+ OR (NULLIF(trim(p_nombre),'') IS NOT NULL AND lower(COALESCE(l.nombre_normalizado,l.nombre_completo))=lower(trim(p_nombre))))
+ ORDER BY l.agregado_en DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.solicitar_lista_negra(p_huesped_id uuid,p_motivo text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE h huespedes%rowtype;v uuid;
+BEGIN
+ IF rol_actual() NOT IN ('recepcion','administracion','gerencia','sysadmin') THEN RAISE EXCEPTION 'Sin permiso'; END IF;
+ SELECT * INTO h FROM huespedes WHERE id=p_huesped_id;IF NOT FOUND THEN RAISE EXCEPTION 'Huésped no encontrado';END IF;
+ INSERT INTO lista_negra_solicitudes(huesped_id,nombre_completo,tipo_documento,numero_documento,documento_normalizado,motivo,solicitado_por)
+ VALUES(h.id,h.nombre_completo,h.tipo_documento,h.numero_documento,h.documento_normalizado,p_motivo,auth.uid()) RETURNING id INTO v;RETURN v;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.resolver_solicitud_lista_negra(p_solicitud_id uuid,p_aprobar boolean,p_decision_motivo text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE s lista_negra_solicitudes%rowtype;
+BEGIN
+ IF rol_actual() NOT IN ('administracion','gerencia','sysadmin') THEN RAISE EXCEPTION 'Solo administración o superior puede resolver solicitudes';END IF;
+ SELECT * INTO s FROM lista_negra_solicitudes WHERE id=p_solicitud_id FOR UPDATE;IF NOT FOUND THEN RAISE EXCEPTION 'Solicitud no encontrada';END IF;
+ IF p_aprobar THEN
+  INSERT INTO lista_negra(nombre_completo,tipo_documento,numero_documento,documento_normalizado,motivo,agregado_por,nombre_normalizado)
+  VALUES(s.nombre_completo,s.tipo_documento,s.numero_documento,s.documento_normalizado,s.motivo,auth.uid(),lower(trim(s.nombre_completo)));
+  UPDATE lista_negra_solicitudes SET estado='aprobada',revisado_por=auth.uid(),revisado_en=now(),decision_motivo=p_decision_motivo WHERE id=s.id;
+ ELSE
+  UPDATE lista_negra_solicitudes SET estado='rechazada',revisado_por=auth.uid(),revisado_en=now(),decision_motivo=p_decision_motivo WHERE id=s.id;
+ END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.limpieza_grilla(p_desde date)
+RETURNS TABLE(unidad_id uuid,estado estado_limpieza,creado_en timestamptz,iniciado_en timestamptz,terminado_en timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+ SELECT l.unidad_id,l.estado,l.creado_en::timestamptz,l.iniciado_en::timestamptz,l.terminado_en::timestamptz FROM limpieza l
+ WHERE rol_actual() IS NOT NULL AND (l.creado_en >= (p_desde::timestamp AT TIME ZONE 'America/Santiago')
+ OR l.id=(SELECT l2.id FROM limpieza l2 WHERE l2.unidad_id=l.unidad_id AND l2.creado_en < (p_desde::timestamp AT TIME ZONE 'America/Santiago') ORDER BY l2.creado_en DESC LIMIT 1))
+ ORDER BY l.unidad_id,l.creado_en;
+$$;
+
+CREATE OR REPLACE FUNCTION public.tablero_limpieza(p_edificio uuid DEFAULT NULL)
+RETURNS TABLE(unidad_id uuid,unidad_codigo text,categoria text,edificio_id uuid,edificio text,fecha_salida date,hora_salida_aprox time,reserva_estado text,hay_ingreso boolean,hora_llegada time,limpieza_id uuid,estado estado_limpieza,observacion_recepcion text,observacion_limpieza text,pendiente_desde timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+WITH hoy AS (SELECT (now() AT TIME ZONE 'America/Santiago')::date d)
+SELECT u.id,u.codigo::text,coalesce(t.nombre,'')::text,e.id,e.nombre::text,s.fecha_salida,s.hora_salida_aprox::time,s.estado::text,(i.unidad_id IS NOT NULL),i.hora_llegada_aprox::time,l.id,l.estado,l.observacion_recepcion,l.observacion_limpieza,CASE WHEN s.unidad_id IS NULL THEN l.creado_en::timestamptz END
+FROM unidades u JOIN edificios e ON e.id=u.edificio_id LEFT JOIN tipos_unidad t ON t.id=u.tipo_unidad_id CROSS JOIN hoy
+LEFT JOIN LATERAL(SELECT r.unidad_id,r.fecha_salida,r.hora_salida_aprox,r.estado FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_salida=hoy.d AND r.estado IN ('en_casa','check_out') ORDER BY r.salida_real DESC NULLS LAST LIMIT 1)s ON true
+LEFT JOIN LATERAL(SELECT r.unidad_id,r.hora_llegada_aprox FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_entrada=hoy.d AND r.estado IN ('confirmada','en_casa') ORDER BY r.hora_llegada_aprox NULLS LAST LIMIT 1)i ON true
+LEFT JOIN LATERAL(SELECT x.* FROM limpieza x WHERE x.unidad_id=u.id ORDER BY x.creado_en DESC LIMIT 1)l ON true
+WHERE rol_actual() IS NOT NULL AND u.activo AND (p_edificio IS NULL OR u.edificio_id=p_edificio) AND (s.unidad_id IS NOT NULL OR l.estado IN ('sucia','en_proceso','defectuosa'))
+ORDER BY e.orden,u.codigo;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion(p_edificio_id uuid,p_tipo_unidad_id uuid,p_entrada date,p_salida date,p_excluir_reserva uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_target uuid;v_blocker reservas%rowtype;v_plan jsonb;
+BEGIN
+ IF p_salida<=p_entrada THEN RETURN '[]'::jsonb;END IF;
+ SELECT u.id INTO v_target FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND NOT EXISTS(SELECT 1 FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show')) ORDER BY u.orden,u.codigo LIMIT 1;
+ IF v_target IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan','[]'::jsonb);END IF;
+ FOR v_target IN SELECT u.id FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND (SELECT count(*) FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show'))=1 ORDER BY u.orden,u.codigo LOOP
+  SELECT r.* INTO v_blocker FROM reservas r WHERE r.unidad_id=v_target AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show') LIMIT 1;
+  IF v_blocker.estado='en_casa' THEN CONTINUE;END IF;
+  WITH RECURSIVE chain AS(
+   SELECT v_blocker.id rid,v_blocker.unidad_id from_uid,c.id to_uid,1 depth,ARRAY[v_blocker.id]::uuid[] seen_r,ARRAY[v_target]::uuid[] seen_u
+   FROM unidades c JOIN unidades src ON src.id=v_blocker.unidad_id LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   WHERE c.activo AND c.edificio_id=src.edificio_id AND c.id<>v_blocker.unidad_id AND c.id<>v_target AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0))
+   UNION ALL
+   SELECT b.id,b.unidad_id,c.id,ch.depth+1,ch.seen_r||b.id,ch.seen_u||c.id
+   FROM chain ch JOIN reservas cur ON cur.id=ch.rid JOIN unidades src ON src.id=cur.unidad_id JOIN unidades c ON c.activo AND c.edificio_id=src.edificio_id AND c.id<>cur.unidad_id
+   LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   LEFT JOIN LATERAL(SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id FROM reservas r WHERE r.unidad_id=c.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<cur.fecha_salida AND r.fecha_salida>cur.fecha_entrada AND r.estado NOT IN ('cancelada','no_show') AND r.id<>ALL(ch.seen_r) LIMIT 1)b ON true
+   WHERE ch.depth<6 AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)) AND c.id<>ALL(ch.seen_u) AND (b.id IS NULL OR b.estado<>'en_casa')
+  ),terminals AS(
+   SELECT ch.* FROM chain ch JOIN reservas cur ON cur.id=ch.rid WHERE NOT EXISTS(SELECT 1 FROM reservas b WHERE b.unidad_id=ch.to_uid AND b.id IS DISTINCT FROM p_excluir_reserva AND b.fecha_entrada<cur.fecha_salida AND b.fecha_salida>cur.fecha_entrada AND b.estado NOT IN ('cancelada','no_show'))
+  )
+  SELECT jsonb_agg(jsonb_build_object('reserva_id',rid,'unidad_origen',from_uid,'unidad_destino',to_uid,'profundidad',depth) ORDER BY depth DESC) INTO v_plan FROM terminals;
+  IF v_plan IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan',v_plan);END IF;
+ END LOOP;RETURN '[]'::jsonb;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.crear_reserva_con_reacomodacion(p_reserva jsonb,p_plan jsonb DEFAULT '[]'::jsonb,p_iva integer DEFAULT 0,p_otro integer DEFAULT 0)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE x jsonb;r reservas%rowtype;v_id uuid;
+BEGIN
+ IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
+  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
+   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
+   IF r.estado='en_casa' THEN RAISE EXCEPTION 'No se puede mover una reserva que está en casa';END IF;
+   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
+   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  END LOOP;
+ END IF;
+ INSERT INTO reservas(huesped_id,unidad_id,fecha_entrada,fecha_salida,estado,canal,referencia_externa,adultos,menores,tarifa_noche,usa_estacionamiento,noches_estacionamiento,modelo_vehiculo,patente_vehiculo)
+ VALUES((p_reserva->>'huesped_id')::uuid,(p_reserva->>'unidad_id')::uuid,(p_reserva->>'fecha_entrada')::date,(p_reserva->>'fecha_salida')::date,(p_reserva->>'estado')::estado_reserva,(p_reserva->>'canal')::canal_reserva,NULLIF(p_reserva->>'referencia_externa',''),COALESCE((p_reserva->>'adultos')::int,1),COALESCE((p_reserva->>'menores')::int,0),COALESCE((p_reserva->>'tarifa_noche')::int,0),COALESCE((p_reserva->>'usa_estacionamiento')::boolean,false),COALESCE((p_reserva->>'noches_estacionamiento')::int,0),NULLIF(p_reserva->>'modelo_vehiculo',''),NULLIF(p_reserva->>'patente_vehiculo','')) RETURNING id INTO v_id;
+ IF COALESCE(p_iva,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_IVA__',1,p_iva);END IF;
+ IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
+ RETURN v_id;
+END $$;
+
+-- ================================================================
+-- FIX: editar_reserva_completa / canal_reserva
+-- p_canal es text en la firma RPC, pero reservas.canal es canal_reserva.
+-- ================================================================
+CREATE OR REPLACE FUNCTION public.editar_reserva_completa(
+  p_reserva_id uuid,
+  p_huesped_nombre text DEFAULT NULL::text,
+  p_tipo_documento text DEFAULT NULL::text,
+  p_numero_documento text DEFAULT NULL::text,
+  p_telefono text DEFAULT NULL::text,
+  p_correo text DEFAULT NULL::text,
+  p_nacionalidad text DEFAULT NULL::text,
+  p_ciudad_origen text DEFAULT NULL::text,
+  p_estado text DEFAULT NULL::text,
+  p_fecha_entrada date DEFAULT NULL::date,
+  p_fecha_salida date DEFAULT NULL::date,
+  p_unidad_id uuid DEFAULT NULL::uuid,
+  p_canal text DEFAULT NULL::text,
+  p_referencia_externa text DEFAULT NULL::text,
+  p_adultos integer DEFAULT NULL::integer,
+  p_menores integer DEFAULT NULL::integer,
+  p_tarifa_noche integer DEFAULT NULL::integer,
+  p_total_manual integer DEFAULT NULL::integer,
+  p_modelo_vehiculo text DEFAULT NULL::text,
+  p_patente_vehiculo text DEFAULT NULL::text,
+  p_cupo_estacionamiento integer DEFAULT NULL::integer,
+  p_usa_estacionamiento boolean DEFAULT NULL::boolean,
+  p_observaciones text DEFAULT NULL::text,
+  p_iva_total integer DEFAULT NULL::integer,
+  p_otro_precio integer DEFAULT NULL::integer,
+  p_noches_estacionamiento integer DEFAULT NULL::integer
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+declare
+  r reservas%rowtype;
+  v_user uuid := auth.uid();
+  v_ent date;
+  v_sal date;
+  v_unit uuid;
+  v_iva integer;
+  v_otro integer;
+  v_npark integer;
+  v_base_total integer;
+  v_ajuste integer;
+begin
+  select * into r from reservas where id = p_reserva_id for update;
+  if not found then raise exception 'Reserva no encontrada'; end if;
+  if v_user is null then raise exception 'Sesión no válida'; end if;
+
+  v_ent := coalesce(p_fecha_entrada,r.fecha_entrada);
+  v_sal := coalesce(p_fecha_salida,r.fecha_salida);
+  v_unit := coalesce(p_unidad_id,r.unidad_id);
+  v_iva := greatest(0,coalesce(p_iva_total,0));
+  v_otro := greatest(0,coalesce(p_otro_precio,0));
+  v_npark := greatest(0,coalesce(p_noches_estacionamiento,r.noches_estacionamiento,
+    case when r.usa_estacionamiento then (r.fecha_salida-r.fecha_entrada) else 0 end));
+
+  if v_sal <= v_ent then raise exception 'La salida debe ser posterior a la entrada'; end if;
+  if p_canal is not null and p_canal='booking' and nullif(trim(coalesce(p_referencia_externa,'')),'') is null
+     and public.tiene_permiso_edicion(v_user,'channel')
+  then raise exception 'El código externo es obligatorio para Booking'; end if;
+  if v_npark > (v_sal-v_ent) then raise exception 'Las noches con estacionamiento no pueden superar la estadía'; end if;
+  if r.estado='en_casa' and v_unit<>r.unidad_id then raise exception 'Una persona que ya está en casa nunca puede ser movida de unidad'; end if;
+
+  if p_huesped_nombre is not null and public.tiene_permiso_edicion(v_user,'guest_name') then
+    update huespedes set nombre_completo=p_huesped_nombre where id=r.huesped_id;
+    update reservas set huesped_nombre_copia=p_huesped_nombre where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'guest_document') then
+    update huespedes set tipo_documento=coalesce(p_tipo_documento,tipo_documento),numero_documento=coalesce(p_numero_documento,numero_documento) where id=r.huesped_id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'guest_contact') then
+    update huespedes set telefono=coalesce(p_telefono,telefono),correo=coalesce(p_correo,correo),nacionalidad=coalesce(p_nacionalidad,nacionalidad),ciudad_origen=coalesce(p_ciudad_origen,ciudad_origen) where id=r.huesped_id;
+  end if;
+  if p_estado is not null and public.tiene_permiso_edicion(v_user,'status') then
+    update reservas set estado=p_estado::estado_reserva where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'channel') then
+    -- FIX: ambos argumentos de COALESCE deben ser canal_reserva.
+    update reservas
+      set canal=coalesce(p_canal::canal_reserva,canal),
+          referencia_externa=case when p_referencia_externa is null then referencia_externa else nullif(trim(p_referencia_externa),'') end
+      where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'occupancy') then
+    update reservas set adultos=coalesce(p_adultos,adultos),menores=coalesce(p_menores,menores) where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'rate') then
+    update reservas set tarifa_noche=coalesce(p_tarifa_noche,tarifa_noche) where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'vehicle') then
+    if coalesce(p_usa_estacionamiento,r.usa_estacionamiento)
+       and nullif(trim(coalesce(p_modelo_vehiculo,r.modelo_vehiculo,'')),'') is null
+       then raise exception 'Para usar estacionamiento debes indicar el modelo del vehículo'; end if;
+    if coalesce(p_usa_estacionamiento,r.usa_estacionamiento)
+       and nullif(trim(coalesce(p_patente_vehiculo,r.patente_vehiculo,'')),'') is null
+       then raise exception 'Para usar estacionamiento debes indicar la patente del vehículo'; end if;
+    update reservas set modelo_vehiculo=coalesce(nullif(trim(p_modelo_vehiculo),''),modelo_vehiculo),patente_vehiculo=coalesce(nullif(trim(p_patente_vehiculo),''),patente_vehiculo),cupo_estacionamiento=p_cupo_estacionamiento,usa_estacionamiento=coalesce(p_usa_estacionamiento,usa_estacionamiento) where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'observations') then
+    update reservas set observaciones=p_observaciones where id=r.id;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'dates') or public.tiene_permiso_edicion(v_user,'building_category_unit') then
+    if public.tiene_permiso_edicion(v_user,'dates') or public.tiene_permiso_edicion(v_user,'building_category_unit') then
+      if r.estado='en_casa' and v_unit<>r.unidad_id then raise exception 'Una persona que ya está en casa nunca puede ser movida de unidad'; end if;
+      if exists(select 1 from reservas x where x.id<>r.id and x.unidad_id=v_unit and x.estado in ('tentativa','confirmada','en_casa','bloqueado') and x.fecha_entrada<v_sal and x.fecha_salida>v_ent) then raise exception 'La unidad ya está ocupada en esas fechas'; end if;
+      update reservas set unidad_id=v_unit,fecha_entrada=v_ent,fecha_salida=v_sal where id=r.id;
+    end if;
+  end if;
+
+  if public.tiene_permiso_edicion(v_user,'price_iva') then
+    delete from cargos where reserva_id=r.id and descripcion='__PMS_IVA__';
+    if v_iva>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_IVA__',1,v_iva); end if;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'price_other') then
+    delete from cargos where reserva_id=r.id and descripcion='__PMS_OTRO_PRECIO__';
+    if v_otro>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_OTRO_PRECIO__',1,v_otro); end if;
+  end if;
+  if public.tiene_permiso_edicion(v_user,'parking_nights') then
+    update reservas set noches_estacionamiento=case when coalesce(p_usa_estacionamiento,r.usa_estacionamiento) then v_npark else 0 end where id=r.id;
+  end if;
+
+  if p_total_manual is not null and public.tiene_permiso_edicion(v_user,'total') then
+    delete from cargos where reserva_id=r.id and tipo='otro' and descripcion='__PMS_AJUSTE_TOTAL_MANUAL__';
+    select ((v_sal-v_ent)*coalesce((select tarifa_noche from reservas where id=r.id),r.tarifa_noche))+coalesce(sum(case when descripcion not in ('__PMS_AJUSTE_TOTAL_MANUAL__') then total else 0 end),0) into v_base_total from cargos where reserva_id=r.id;
+    v_ajuste:=p_total_manual-coalesce(v_base_total,0);
+    if v_ajuste<>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_AJUSTE_TOTAL_MANUAL__',1,v_ajuste); end if;
+  end if;
+end;
+$function$;
+
+
+-- ============================================================
+-- RECLAMOS Y SUGERENCIAS
+-- Una sola ficha por reserva. El mismo botón de la reserva
+-- siempre recupera esta fila y permite editarla.
+-- Ejecutar en Supabase SQL Editor.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.reclamos_sugerencias (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reserva_id uuid NOT NULL,
+  huesped_id uuid,
+  contenido text NOT NULL,
+  creado_por uuid DEFAULT auth.uid(),
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  actualizado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT reclamos_sugerencias_pkey PRIMARY KEY (id),
+  CONSTRAINT reclamos_sugerencias_reserva_id_key UNIQUE (reserva_id),
+  CONSTRAINT reclamos_sugerencias_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id) ON DELETE CASCADE,
+  CONSTRAINT reclamos_sugerencias_huesped_id_fkey FOREIGN KEY (huesped_id) REFERENCES public.huespedes(id),
+  CONSTRAINT reclamos_sugerencias_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id)
+);
+
+CREATE OR REPLACE FUNCTION public.reclamos_sugerencias_set_actualizado_en()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.actualizado_en := now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_reclamos_sugerencias_actualizado_en ON public.reclamos_sugerencias;
+CREATE TRIGGER trg_reclamos_sugerencias_actualizado_en
+BEFORE UPDATE ON public.reclamos_sugerencias
+FOR EACH ROW
+EXECUTE FUNCTION public.reclamos_sugerencias_set_actualizado_en();
+
+-- ============================================================
+-- MIGRACIÓN SEGURA DEL FRONTEND:
+-- El frontend usa INSERT/UPDATE/DELETE/UPSERT directamente
+-- igual que las tablas existentes del PMS.
+-- ============================================================
+
+-- ============================================================
+-- PAGOS: múltiples motivos en un mismo pago
+-- Un pago sigue siendo una sola transacción; sus conceptos se
+-- distribuyen en esta tabla hija. Esto permite, por ejemplo,
+-- Estadía $100.000 + Estacionamiento $20.000 = un pago $120.000.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.pagos_motivos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  pago_id uuid NOT NULL,
+  motivo text NOT NULL CHECK (motivo = ANY (ARRAY[
+    'estadia'::text,
+    'estacionamiento'::text,
+    'horario_extra'::text,
+    'penalizacion'::text,
+    'consumos'::text,
+    'garantia'::text,
+    'otro'::text
+  ])),
+  monto_original numeric NOT NULL CHECK (monto_original > 0),
+  monto_clp integer NOT NULL CHECK (monto_clp > 0),
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT pagos_motivos_pkey PRIMARY KEY (id),
+  CONSTRAINT pagos_motivos_pago_id_fkey FOREIGN KEY (pago_id)
+    REFERENCES public.pagos(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagos_motivos_pago_id
+  ON public.pagos_motivos(pago_id);
+
+-- Migración de pagos existentes:
+-- cada pago antiguo tenía un solo motivo en pagos.motivo, por lo
+-- que lo convertimos a una asignación única. Los pagos nuevos
+-- pueden tener una o varias asignaciones.
+INSERT INTO public.pagos_motivos (pago_id, motivo, monto_original, monto_clp)
+SELECT p.id, p.motivo, p.monto_original, p.monto_clp
+FROM public.pagos p
+WHERE p.motivo = ANY (ARRAY[
+  'estadia'::text,
+  'estacionamiento'::text,
+  'horario_extra'::text,
+  'penalizacion'::text,
+  'consumos'::text,
+  'garantia'::text,
+  'otro'::text
+])
+  AND NOT EXISTS (
+    SELECT 1 FROM public.pagos_motivos pm WHERE pm.pago_id = p.id
+  );
+
+-- ============================================================
+-- IMPORTANTE
+-- El frontend conserva pagos.motivo para compatibilidad con
+-- código/reportes antiguos. pagos_motivos es la fuente detallada
+-- cuando un pago tiene más de un motivo.
+-- ============================================================
+
+
+-- ================================================================
+-- PMS: BORRADO COMPLETO DE USUARIOS
+-- Elimina el perfil y la cuenta de autenticación.
+-- Conserva los registros históricos y elimina sus referencias
+-- al perfil para no romper las claves foráneas.
+-- ================================================================
+
+CREATE OR REPLACE FUNCTION public.eliminar_usuario_completo(
+  p_usuario_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public, auth
+AS $function$
+DECLARE
+  v_actor uuid := auth.uid();
+  v_actor_rol text;
+  v_target_rol text;
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT rol::text
+  INTO v_actor_rol
+  FROM public.perfiles
+  WHERE id = v_actor
+    AND activo = true;
+
+  IF v_actor_rol NOT IN ('gerencia', 'sysadmin') THEN
+    RAISE EXCEPTION 'No tienes permiso para eliminar usuarios';
+  END IF;
+
+  IF p_usuario_id IS NULL THEN
+    RAISE EXCEPTION 'Usuario no especificado';
+  END IF;
+
+  IF p_usuario_id = v_actor THEN
+    RAISE EXCEPTION 'No puedes eliminar tu propio usuario';
+  END IF;
+
+  SELECT rol::text
+  INTO v_target_rol
+  FROM public.perfiles
+  WHERE id = p_usuario_id;
+
+  IF v_target_rol IS NULL THEN
+    RAISE EXCEPTION 'Usuario no encontrado';
+  END IF;
+
+  IF v_target_rol = 'sysadmin' AND v_actor_rol <> 'sysadmin' THEN
+    RAISE EXCEPTION 'Solo un SysAdmin puede eliminar a otro SysAdmin';
+  END IF;
+
+  -- Quitamos las referencias al perfil, pero NO eliminamos
+  -- reservas, pagos, auditoría ni demás historial del PMS.
+  UPDATE public.configuracion
+  SET actualizado_por = NULL
+  WHERE actualizado_por = p_usuario_id;
+
+  UPDATE public.huespedes
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.lista_negra
+  SET agregado_por = NULL
+  WHERE agregado_por = p_usuario_id;
+
+  UPDATE public.reservas
+  SET creado_por = NULL,
+      cancelada_por = NULL
+  WHERE creado_por = p_usuario_id
+     OR cancelada_por = p_usuario_id;
+
+  UPDATE public.notas_huesped
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.cargos
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.pagos
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  UPDATE public.limpieza
+  SET asignado_a = NULL,
+      actualizado_por = NULL
+  WHERE asignado_a = p_usuario_id
+     OR actualizado_por = p_usuario_id;
+
+  UPDATE public.lista_negra_solicitudes
+  SET solicitado_por = NULL,
+      revisado_por = NULL
+  WHERE solicitado_por = p_usuario_id
+     OR revisado_por = p_usuario_id;
+
+  UPDATE public.reclamos_sugerencias
+  SET creado_por = NULL
+  WHERE creado_por = p_usuario_id;
+
+  DELETE FROM public.perfiles_edificios
+  WHERE perfil_id = p_usuario_id;
+
+  DELETE FROM public.perfiles_permisos_edicion
+  WHERE perfil_id = p_usuario_id;
+
+  -- Elimina primero el perfil local.
+  DELETE FROM public.perfiles
+  WHERE id = p_usuario_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No se pudo eliminar el perfil del usuario';
+  END IF;
+
+  -- Elimina la identidad de Supabase Auth.
+  -- Esto invalida el acceso de forma permanente.
+  DELETE FROM auth.users
+  WHERE id = p_usuario_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El perfil fue eliminado, pero no se encontró la cuenta de autenticación';
+  END IF;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.eliminar_usuario_completo(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.eliminar_usuario_completo(uuid) TO authenticated;
+
+
+-- ============================================================
+-- REALTIME GLOBAL DEL PMS
+-- ============================================================
+-- Habilita Postgres Changes para todas las tablas disponibles del PMS.
+-- Las tablas que todavía no existan en la base se omiten, por lo que
+-- esta migración no falla si una funcionalidad aún no fue instalada.
+-- Ejecutar una vez en Supabase SQL Editor.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime'
+  ) THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+
+  FOREACH t IN ARRAY ARRAY[
+    'perfiles',
+    'configuracion',
+    'edificios',
+    'tipos_unidad',
+    'unidades',
+    'huespedes',
+    'lista_negra',
+    'reservas',
+    'notas_huesped',
+    'acompanantes',
+    'cargos',
+    'pagos',
+    'limpieza',
+    'auditoria',
+    'garantia_fechas',
+    'perfiles_edificios',
+    'lista_negra_solicitudes',
+    'import_reservas_historicas',
+    'perfiles_permisos_edicion',
+    'categoria_ranking_edificio',
+    'reclamos_sugerencias',
+    'pagos_motivos'
+  ] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1
+         FROM pg_publication_tables
+         WHERE pubname = 'supabase_realtime'
+           AND schemaname = 'public'
+           AND tablename = t
+       ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    END IF;
+  END LOOP;
+END
+$$;
+
+
+-- ============================================================
+-- MIGRACIÓN CORRECTIVA ACTUAL
+-- Ejecutable por sí sola si la base ya tiene el PMS pero quedó
+-- sin instalar pagos_motivos y/o Realtime.
+-- Es idempotente.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.pagos_motivos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  pago_id uuid NOT NULL,
+  motivo text NOT NULL CHECK (motivo = ANY (ARRAY[
+    'estadia'::text,
+    'estacionamiento'::text,
+    'horario_extra'::text,
+    'penalizacion'::text,
+    'consumos'::text,
+    'garantia'::text,
+    'otro'::text
+  ])),
+  monto_original numeric NOT NULL CHECK (monto_original > 0),
+  monto_clp integer NOT NULL CHECK (monto_clp > 0),
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT pagos_motivos_pkey PRIMARY KEY (id),
+  CONSTRAINT pagos_motivos_pago_id_fkey FOREIGN KEY (pago_id)
+    REFERENCES public.pagos(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagos_motivos_pago_id
+  ON public.pagos_motivos(pago_id);
+
+INSERT INTO public.pagos_motivos (pago_id, motivo, monto_original, monto_clp)
+SELECT p.id, p.motivo, p.monto_original, p.monto_clp
+FROM public.pagos p
+WHERE p.motivo = ANY (ARRAY[
+  'estadia'::text,
+  'estacionamiento'::text,
+  'horario_extra'::text,
+  'penalizacion'::text,
+  'consumos'::text,
+  'garantia'::text,
+  'otro'::text
+])
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.pagos_motivos pm
+    WHERE pm.pago_id = p.id
+  );
+
+DO $$
+DECLARE
+  t text;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime'
+  ) THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+
+  FOREACH t IN ARRAY ARRAY[
+    'perfiles','configuracion','edificios','tipos_unidad','unidades',
+    'huespedes','lista_negra','reservas','notas_huesped','acompanantes',
+    'cargos','pagos','limpieza','auditoria','garantia_fechas',
+    'perfiles_edificios','lista_negra_solicitudes','import_reservas_historicas',
+    'perfiles_permisos_edicion','categoria_ranking_edificio',
+    'reclamos_sugerencias','pagos_motivos'
+  ] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1
+         FROM pg_publication_tables
+         WHERE pubname = 'supabase_realtime'
+           AND schemaname = 'public'
+           AND tablename = t
+       ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    END IF;
+  END LOOP;
+END
+$$;
+
+
+-- ============================================================
+-- ESTACIONAMIENTO POR FECHA DE RESERVA
+-- Permite seleccionar noches no consecutivas, por ejemplo:
+-- estadía 05→08, pero estacionamiento solo 06 y 07.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.estacionamiento_reserva_fechas (
+  reserva_id uuid NOT NULL,
+  fecha date NOT NULL,
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT estacionamiento_reserva_fechas_pkey PRIMARY KEY (reserva_id, fecha),
+  CONSTRAINT estacionamiento_reserva_fechas_reserva_id_fkey
+    FOREIGN KEY (reserva_id) REFERENCES public.reservas(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_estacionamiento_reserva_fechas_fecha
+  ON public.estacionamiento_reserva_fechas(fecha);
+
+-- Migración de reservas existentes: antes solo se guardaba la cantidad
+-- de noches, por lo que se reconstruyen como noches consecutivas desde
+-- la entrada. Desde ahora el frontend conserva las fechas exactas.
+INSERT INTO public.estacionamiento_reserva_fechas (reserva_id, fecha)
+SELECT r.id, (r.fecha_entrada + gs.n)::date
+FROM public.reservas r
+CROSS JOIN LATERAL generate_series(
+  0,
+  GREATEST(0, LEAST(COALESCE(r.noches_estacionamiento,0), r.fecha_salida-r.fecha_entrada)-1)
+) AS gs(n)
+WHERE r.usa_estacionamiento
+  AND COALESCE(r.noches_estacionamiento,0) > 0
+ON CONFLICT (reserva_id, fecha) DO NOTHING;
+
+-- Mantener la tabla disponible para Realtime si la publicación existe.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname='supabase_realtime')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_publication_tables
+       WHERE pubname='supabase_realtime'
+         AND schemaname='public'
+         AND tablename='estacionamiento_reserva_fechas'
+     ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.estacionamiento_reserva_fechas;
+  END IF;
+END
+$$;
+
+
+-- ============================================================
+-- UNIDAD FIJA / NO MOVER AUTOMÁTICAMENTE
+-- ============================================================
+ALTER TABLE public.reservas
+  ADD COLUMN IF NOT EXISTS no_mover_unidad boolean NOT NULL DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_reservas_no_mover_unidad
+  ON public.reservas(no_mover_unidad)
+  WHERE no_mover_unidad = true;
+
+-- El motor automático jamás puede mover bloqueos ni reservas marcadas
+-- como "no mover unidad".
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion(p_edificio_id uuid,p_tipo_unidad_id uuid,p_entrada date,p_salida date,p_excluir_reserva uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_target uuid;v_blocker reservas%rowtype;v_plan jsonb;
+BEGIN
+ IF p_salida<=p_entrada THEN RETURN '[]'::jsonb;END IF;
+ SELECT u.id INTO v_target FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND NOT EXISTS(SELECT 1 FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show')) ORDER BY u.orden,u.codigo LIMIT 1;
+ IF v_target IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan','[]'::jsonb);END IF;
+ FOR v_target IN SELECT u.id FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND (SELECT count(*) FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show'))=1 ORDER BY u.orden,u.codigo LOOP
+  SELECT r.* INTO v_blocker FROM reservas r WHERE r.unidad_id=v_target AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show') LIMIT 1;
+  IF v_blocker.estado='en_casa' OR v_blocker.estado='bloqueado' OR COALESCE(v_blocker.no_mover_unidad,false) THEN CONTINUE;END IF;
+  WITH RECURSIVE chain AS(
+   SELECT v_blocker.id rid,v_blocker.unidad_id from_uid,c.id to_uid,1 depth,ARRAY[v_blocker.id]::uuid[] seen_r,ARRAY[v_target]::uuid[] seen_u
+   FROM unidades c JOIN unidades src ON src.id=v_blocker.unidad_id LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   WHERE c.activo AND c.edificio_id=src.edificio_id AND c.id<>v_blocker.unidad_id AND c.id<>v_target AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0))
+   UNION ALL
+   SELECT b.id,b.unidad_id,c.id,ch.depth+1,ch.seen_r||b.id,ch.seen_u||c.id
+   FROM chain ch JOIN reservas cur ON cur.id=ch.rid JOIN unidades src ON src.id=cur.unidad_id JOIN unidades c ON c.activo AND c.edificio_id=src.edificio_id AND c.id<>cur.unidad_id
+   LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   LEFT JOIN LATERAL(SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id,r.no_mover_unidad FROM reservas r WHERE r.unidad_id=c.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<cur.fecha_salida AND r.fecha_salida>cur.fecha_entrada AND r.estado NOT IN ('cancelada','no_show') AND r.id<>ALL(ch.seen_r) LIMIT 1)b ON true
+   WHERE ch.depth<6 AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)) AND c.id<>ALL(ch.seen_u) AND (b.id IS NULL OR (b.estado<>'en_casa' AND b.estado<>'bloqueado' AND NOT COALESCE(b.no_mover_unidad,false)))
+  ),terminals AS(
+   SELECT ch.* FROM chain ch JOIN reservas cur ON cur.id=ch.rid WHERE NOT EXISTS(SELECT 1 FROM reservas b WHERE b.unidad_id=ch.to_uid AND b.id IS DISTINCT FROM p_excluir_reserva AND b.fecha_entrada<cur.fecha_salida AND b.fecha_salida>cur.fecha_entrada AND b.estado NOT IN ('cancelada','no_show'))
+  )
+  SELECT jsonb_agg(jsonb_build_object('reserva_id',rid,'unidad_origen',from_uid,'unidad_destino',to_uid,'profundidad',depth) ORDER BY depth DESC) INTO v_plan FROM terminals;
+  IF v_plan IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan',v_plan);END IF;
+ END LOOP;RETURN '[]'::jsonb;
+END $$;
+
+-- Reacomodación para "Cambiar Unidad": el destino es una unidad exacta,
+-- no solamente una categoría. Puede mover una cadena de reservas para
+-- liberar esa unidad, pero nunca mueve bloqueos, reservas en casa ni
+-- reservas marcadas como no_mover_unidad.
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion_cambio_unidad(
+  p_unidad_destino uuid,
+  p_reserva_id uuid,
+  p_entrada date,
+  p_salida date
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO public AS $$
+DECLARE
+  v_plan jsonb;
+  v_bloqueadores integer;
+  v_cadenas integer;
+  v_conflicto boolean;
+BEGIN
+  IF p_salida<=p_entrada THEN RETURN '[]'::jsonb; END IF;
+  IF NOT EXISTS (SELECT 1 FROM unidades WHERE id=p_unidad_destino AND activo) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  SELECT count(*) INTO v_bloqueadores
+  FROM reservas r
+  WHERE r.unidad_id=p_unidad_destino
+    AND r.id<>p_reserva_id
+    AND r.fecha_entrada<p_salida
+    AND r.fecha_salida>p_entrada
+    AND r.estado NOT IN ('cancelada','no_show');
+
+  IF v_bloqueadores=0 THEN
+    RETURN jsonb_build_object('unidad_id',p_unidad_destino,'plan','[]'::jsonb);
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM reservas r
+    WHERE r.unidad_id=p_unidad_destino
+      AND r.id<>p_reserva_id
+      AND r.fecha_entrada<p_salida
+      AND r.fecha_salida>p_entrada
+      AND (
+        r.estado IN ('en_casa','bloqueado')
+        OR COALESCE(r.no_mover_unidad,false)
+      )
+  ) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  /*
+   * Cada reserva que bloquea el destino es una raíz independiente.
+   * Primero se intenta el intercambio directo hacia la unidad actual
+   * de la reserva que estamos moviendo. Esto permite, por ejemplo:
+   *
+   *   R1 01→12 : unidad A → unidad C
+   *   R2 12→13 : unidad A → unidad C
+   *   R3 10→13 : unidad C → unidad A
+   *
+   * R1 y R2 pueden compartir C porque sus intervalos no se superponen.
+   *
+   * Si ese intercambio directo no sirve, se buscan cadenas más largas.
+   */
+  WITH RECURSIVE
+  roots AS (
+    SELECT
+      r.id AS rid,
+      r.unidad_id AS from_uid,
+      r.fecha_entrada,
+      r.fecha_salida
+    FROM reservas r
+    WHERE r.unidad_id=p_unidad_destino
+      AND r.id<>p_reserva_id
+      AND r.fecha_entrada<p_salida
+      AND r.fecha_salida>p_entrada
+      AND r.estado NOT IN ('cancelada','no_show')
+  ),
+  chain AS (
+    /* Candidatos iniciales. La unidad actual de la reserva que se mueve
+       tiene prioridad absoluta porque permite un intercambio directo. */
+    SELECT
+      rt.rid AS root_id,
+      rt.rid,
+      rt.from_uid,
+      c.id AS to_uid,
+      1 AS depth,
+      ARRAY[rt.rid]::uuid[] AS seen_r,
+      ARRAY[p_unidad_destino]::uuid[] AS seen_u,
+      CASE WHEN c.id=(SELECT unidad_id FROM reservas WHERE id=p_reserva_id)
+           THEN 0 ELSE 1 END AS prioridad
+    FROM roots rt
+    JOIN unidades src ON src.id=rt.from_uid
+    JOIN unidades c
+      ON c.activo
+      AND c.edificio_id=src.edificio_id
+      AND c.id<>rt.from_uid
+      AND c.id<>p_unidad_destino
+    LEFT JOIN categoria_ranking_edificio rs
+      ON rs.edificio_id=src.edificio_id
+      AND rs.tipo_unidad_id=src.tipo_unidad_id
+    LEFT JOIN categoria_ranking_edificio rc
+      ON rc.edificio_id=c.edificio_id
+      AND rc.tipo_unidad_id=c.tipo_unidad_id
+    WHERE (
+      c.id=(SELECT unidad_id FROM reservas WHERE id=p_reserva_id)
+      OR c.tipo_unidad_id=src.tipo_unidad_id
+      OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)
+    )
+
+    UNION ALL
+
+    SELECT
+      ch.root_id,
+      b.id,
+      b.unidad_id,
+      c.id,
+      ch.depth+1,
+      ch.seen_r||b.id,
+      ch.seen_u||c.id,
+      1 AS prioridad
+    FROM chain ch
+    JOIN reservas cur ON cur.id=ch.rid
+    JOIN unidades src ON src.id=cur.unidad_id
+    JOIN unidades c
+      ON c.activo
+      AND c.edificio_id=src.edificio_id
+      AND c.id<>cur.unidad_id
+    LEFT JOIN categoria_ranking_edificio rs
+      ON rs.edificio_id=src.edificio_id
+      AND rs.tipo_unidad_id=src.tipo_unidad_id
+    LEFT JOIN categoria_ranking_edificio rc
+      ON rc.edificio_id=c.edificio_id
+      AND rc.tipo_unidad_id=c.tipo_unidad_id
+    LEFT JOIN LATERAL (
+      SELECT
+        r.id,
+        r.estado,
+        r.fecha_entrada,
+        r.fecha_salida,
+        r.unidad_id,
+        r.no_mover_unidad
+      FROM reservas r
+      WHERE r.unidad_id=c.id
+        AND r.id<>p_reserva_id
+        AND r.fecha_entrada<cur.fecha_salida
+        AND r.fecha_salida>cur.fecha_entrada
+        AND r.estado NOT IN ('cancelada','no_show')
+        AND r.id<>ALL(ch.seen_r)
+      ORDER BY r.fecha_entrada,r.id
+      LIMIT 1
+    ) b ON true
+    WHERE ch.depth<8
+      AND (
+        c.tipo_unidad_id=src.tipo_unidad_id
+        OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)
+      )
+      AND c.id<>ALL(ch.seen_u)
+      AND (
+        b.id IS NULL
+        OR (
+          b.estado NOT IN ('en_casa','bloqueado')
+          AND NOT COALESCE(b.no_mover_unidad,false)
+        )
+      )
+  ),
+  terminals AS (
+    SELECT ch.*
+    FROM chain ch
+    JOIN reservas cur ON cur.id=ch.rid
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM reservas b
+      WHERE b.unidad_id=ch.to_uid
+        AND b.id<>p_reserva_id
+        AND b.fecha_entrada<cur.fecha_salida
+        AND b.fecha_salida>cur.fecha_entrada
+        AND b.estado NOT IN ('cancelada','no_show')
+        AND b.id<>ALL(ch.seen_r)
+    )
+  ),
+  best AS (
+    SELECT DISTINCT ON (root_id)
+      root_id,rid,from_uid,to_uid,depth
+    FROM terminals
+    ORDER BY root_id,depth,
+      CASE WHEN to_uid=(SELECT unidad_id FROM reservas WHERE id=p_reserva_id)
+           THEN 0 ELSE 1 END,
+      to_uid
+  ),
+  conflicts AS (
+    SELECT 1
+    FROM best a
+    JOIN best b ON a.root_id<b.root_id
+    JOIN reservas ra ON ra.id=a.rid
+    JOIN reservas rb ON rb.id=b.rid
+    WHERE a.to_uid=b.to_uid
+      AND ra.fecha_entrada<rb.fecha_salida
+      AND ra.fecha_salida>rb.fecha_entrada
+    LIMIT 1
+  )
+  SELECT
+    jsonb_agg(
+      jsonb_build_object(
+        'reserva_id',rid,
+        'unidad_origen',from_uid,
+        'unidad_destino',to_uid,
+        'profundidad',depth
+      )
+      ORDER BY depth DESC,root_id
+    ),
+    count(DISTINCT root_id),
+    EXISTS(SELECT 1 FROM conflicts)
+  INTO v_plan,v_cadenas,v_conflicto
+  FROM best;
+
+  IF v_cadenas<>v_bloqueadores THEN RETURN '[]'::jsonb; END IF;
+  IF v_conflicto THEN RETURN '[]'::jsonb; END IF;
+
+  RETURN jsonb_build_object(
+    'unidad_id',p_unidad_destino,
+    'plan',COALESCE(v_plan,'[]'::jsonb)
+  );
+END $$;
+
+-- El RPC que ejecuta la cadena también vuelve a protegerse contra bloqueos
+-- y reservas fijadas, aunque alguien entregue manualmente un plan inválido.
+ contra bloqueos
+-- y reservas fijadas, aunque alguien entregue manualmente un plan inválido.
+CREATE OR REPLACE FUNCTION public.crear_reserva_con_reacomodacion(p_reserva jsonb,p_plan jsonb DEFAULT '[]'::jsonb,p_iva integer DEFAULT 0,p_otro integer DEFAULT 0)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE x jsonb;r reservas%rowtype;v_id uuid;
+BEGIN
+ IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
+  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
+   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
+   IF r.estado='en_casa' THEN RAISE EXCEPTION 'No se puede mover una reserva que está en casa';END IF;
+   IF r.estado='bloqueado' THEN RAISE EXCEPTION 'Un bloqueo de unidad no puede ser movido automáticamente';END IF;
+   IF COALESCE(r.no_mover_unidad,false) THEN RAISE EXCEPTION 'La reserva % está marcada para no mover de unidad',r.uid_reserva;END IF;
+   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
+   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  END LOOP;
+ END IF;
+ INSERT INTO reservas(huesped_id,unidad_id,fecha_entrada,fecha_salida,estado,canal,referencia_externa,adultos,menores,tarifa_noche,usa_estacionamiento,noches_estacionamiento,modelo_vehiculo,patente_vehiculo,no_mover_unidad)
+ VALUES((p_reserva->>'huesped_id')::uuid,(p_reserva->>'unidad_id')::uuid,(p_reserva->>'fecha_entrada')::date,(p_reserva->>'fecha_salida')::date,(p_reserva->>'estado')::estado_reserva,(p_reserva->>'canal')::canal_reserva,NULLIF(p_reserva->>'referencia_externa',''),COALESCE((p_reserva->>'adultos')::int,1),COALESCE((p_reserva->>'menores')::int,0),COALESCE((p_reserva->>'tarifa_noche')::int,0),COALESCE((p_reserva->>'usa_estacionamiento')::boolean,false),COALESCE((p_reserva->>'noches_estacionamiento')::int,0),NULLIF(p_reserva->>'modelo_vehiculo',''),NULLIF(p_reserva->>'patente_vehiculo',''),COALESCE((p_reserva->>'no_mover_unidad')::boolean,false)) RETURNING id INTO v_id;
+ IF COALESCE(p_iva,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_IVA__',1,p_iva);END IF;
+ IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
+ RETURN v_id;
+END $$;
+
+
+-- ============================================================
+-- CAMBIO DE UNIDAD: HACER DIFERIBLE LA RESTRICCIÓN DE NO SOLAPAMIENTO
+-- ============================================================
+-- PostgreSQL verifica las restricciones de exclusión normalmente después
+-- de cada sentencia. Para un intercambio A<->B necesitamos que se validen
+-- al final de la transacción, cuando todas las reservas ya estén en su
+-- unidad final.
+DO $$
+DECLARE
+  c record;
+BEGIN
+  FOR c IN
+    SELECT
+      conname,
+      condeferrable,
+      pg_get_constraintdef(oid, true) AS definicion
+    FROM pg_constraint
+    WHERE conrelid = 'public.reservas'::regclass
+      AND contype = 'x'
+  LOOP
+    IF NOT c.condeferrable THEN
+      EXECUTE format(
+        'ALTER TABLE public.reservas DROP CONSTRAINT %I',
+        c.conname
+      );
+
+      EXECUTE format(
+        'ALTER TABLE public.reservas ADD CONSTRAINT %I %s DEFERRABLE INITIALLY IMMEDIATE',
+        c.conname,
+        c.definicion
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+
+-- ============================================================
+-- EJECUTAR REACOMODACIÓN / CAMBIO DE UNIDAD
+-- TODO EL INTERCAMBIO OCURRE EN UNA SOLA TRANSACCIÓN
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.ejecutar_reacomodacion_cambio_unidad(
+  uuid, uuid, date, date, jsonb
+);
+
+CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
+  p_reserva_id uuid,
+  p_unidad_destino uuid,
+  p_entrada date,
+  p_salida date,
+  p_plan jsonb DEFAULT '[]'::jsonb,
+  p_tarifa integer DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public AS $$
+DECLARE
+  x jsonb;
+  v_reserva reservas%rowtype;
+  v_principal reservas%rowtype;
+  v_target uuid := p_unidad_destino;
+  v_ids uuid[];
+  v_count integer;
+  c record;
+BEGIN
+  -- Bloquear primero la reserva principal para evitar que otra operación
+  -- cambie fechas/unidad mientras se está preparando el intercambio.
+  SELECT *
+  INTO v_principal
+  FROM reservas rr
+  WHERE rr.id = p_reserva_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva principal no encontrada';
+  END IF;
+
+  IF v_principal.fecha_entrada <> p_entrada
+     OR v_principal.fecha_salida <> p_salida
+  THEN
+    RAISE EXCEPTION
+      'La cadena ya no es válida: las fechas de la reserva principal cambiaron';
+  END IF;
+
+  IF v_principal.estado = 'en_casa' THEN
+    RAISE EXCEPTION
+      'Una persona que ya está en casa nunca puede ser movida de unidad';
+  END IF;
+
+  IF v_principal.estado = 'bloqueado' THEN
+    RAISE EXCEPTION
+      'Los bloqueos no se pueden mover mediante movimiento automático';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM unidades u
+    WHERE u.id = v_target
+      AND u.activo
+  ) THEN
+    RAISE EXCEPTION
+      'La unidad de destino no existe o está inactiva';
+  END IF;
+
+  /*
+   * Todas las restricciones EXCLUDE de reservas deben quedar diferidas
+   * durante este RPC. La migración anterior garantiza que sean
+   * DEFERRABLE. Al terminar la función, PostgreSQL las vuelve a validar
+   * al confirmar la transacción completa.
+   */
+  FOR c IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'public.reservas'::regclass
+      AND contype = 'x'
+      AND condeferrable
+  LOOP
+    EXECUTE format(
+      'SET CONSTRAINTS %I DEFERRED',
+      c.conname
+    );
+  END LOOP;
+
+  /*
+   * Sin plan, simplemente usamos el RPC existente mover_reserva dentro
+   * de esta misma transacción.
+   */
+  IF p_plan IS NULL
+     OR jsonb_typeof(p_plan) <> 'array'
+     OR jsonb_array_length(p_plan) = 0
+  THEN
+
+    IF EXISTS (
+      SELECT 1
+      FROM reservas q
+      WHERE q.unidad_id = v_target
+        AND q.id <> p_reserva_id
+        AND q.fecha_entrada < p_salida
+        AND q.fecha_salida > p_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+    ) THEN
+      RAISE EXCEPTION
+        'La unidad de destino sigue ocupada y no hay una reacomodación válida';
+    END IF;
+
+    PERFORM public.mover_reserva(
+      p_reserva_id => p_reserva_id,
+      p_unidad_id => v_target,
+      p_entrada => p_entrada,
+      p_salida => p_salida,
+      p_tarifa => p_tarifa
+    );
+
+    RETURN;
+  END IF;
+
+
+  -- ----------------------------------------------------------
+  -- Obtener y bloquear todas las reservas del plan.
+  -- ----------------------------------------------------------
+
+  SELECT COALESCE(
+    array_agg((value->>'reserva_id')::uuid),
+    ARRAY[]::uuid[]
+  )
+  INTO v_ids
+  FROM jsonb_array_elements(p_plan);
+
+  SELECT count(*)
+  INTO v_count
+  FROM (
+    SELECT DISTINCT value->>'reserva_id' AS reserva_id
+    FROM jsonb_array_elements(p_plan)
+  ) q;
+
+  IF v_count <> jsonb_array_length(p_plan) THEN
+    RAISE EXCEPTION
+      'La cadena de reacomodación contiene reservas duplicadas';
+  END IF;
+
+  IF p_reserva_id = ANY(v_ids) THEN
+    RAISE EXCEPTION
+      'La cadena de reacomodación no puede contener la reserva principal';
+  END IF;
+
+  PERFORM 1
+  FROM reservas rr
+  WHERE rr.id = ANY(v_ids)
+  FOR UPDATE;
+
+  IF (
+    SELECT count(*)
+    FROM reservas rr
+    WHERE rr.id = ANY(v_ids)
+  ) <> v_count
+  THEN
+    RAISE EXCEPTION
+      'Reserva del plan no encontrada';
+  END IF;
+
+
+  -- ----------------------------------------------------------
+  -- Validación completa del plan.
+  -- ----------------------------------------------------------
+
+  FOR x IN
+    SELECT value
+    FROM jsonb_array_elements(p_plan)
+  LOOP
+
+    SELECT *
+    INTO v_reserva
+    FROM reservas rr
+    WHERE rr.id = (x->>'reserva_id')::uuid;
+
+    IF v_reserva.unidad_id <> (x->>'unidad_origen')::uuid THEN
+      RAISE EXCEPTION
+        'La cadena ya no es válida: la reserva % cambió de unidad',
+        v_reserva.uid_reserva;
+    END IF;
+
+    IF v_reserva.estado IN ('en_casa','bloqueado') THEN
+      RAISE EXCEPTION
+        'La cadena contiene una reserva que no puede ser movida';
+    END IF;
+
+    IF COALESCE(v_reserva.no_mover_unidad,false) THEN
+      RAISE EXCEPTION
+        'La cadena contiene una reserva marcada para no mover de unidad';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM unidades u
+      WHERE u.id = (x->>'unidad_destino')::uuid
+        AND u.activo
+    ) THEN
+      RAISE EXCEPTION
+        'La unidad de destino de la reserva % no existe o está inactiva',
+        v_reserva.uid_reserva;
+    END IF;
+
+    /*
+     * Una reserva externa al intercambio sí bloquea el movimiento.
+     * Las reservas del propio plan y p_reserva_id no lo bloquean.
+     */
+    IF EXISTS (
+      SELECT 1
+      FROM reservas q
+      WHERE q.unidad_id = (x->>'unidad_destino')::uuid
+        AND q.id <> v_reserva.id
+        AND q.id <> p_reserva_id
+        AND NOT (q.id = ANY(v_ids))
+        AND q.fecha_entrada < v_reserva.fecha_salida
+        AND q.fecha_salida > v_reserva.fecha_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+    ) THEN
+      RAISE EXCEPTION
+        'La cadena ya no es válida: destino ocupado';
+    END IF;
+
+  END LOOP;
+
+
+  -- ----------------------------------------------------------
+  -- Mover primero las reservas que liberan el destino.
+  -- La restricción EXCLUDE está diferida, por lo que temporalmente
+  -- pueden coexistir con la reserva principal.
+  -- ----------------------------------------------------------
+
+  UPDATE reservas rr
+  SET
+    unidad_id = p.unidad_destino_plan,
+    actualizado_en = now()
+  FROM (
+    SELECT
+      (value->>'reserva_id')::uuid AS reserva_id,
+      (value->>'unidad_destino')::uuid AS unidad_destino_plan
+    FROM jsonb_array_elements(p_plan)
+  ) p
+  WHERE rr.id = p.reserva_id;
+
+
+  -- ----------------------------------------------------------
+  -- Ahora mover la reserva principal dentro de la MISMA transacción.
+  -- ----------------------------------------------------------
+
+  PERFORM public.mover_reserva(
+    p_reserva_id => p_reserva_id,
+    p_unidad_id => v_target,
+    p_entrada => p_entrada,
+    p_salida => p_salida,
+    p_tarifa => p_tarifa
+  );
+
+
+  -- ----------------------------------------------------------
+  -- Verificación final antes del COMMIT.
+  -- ----------------------------------------------------------
+
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT
+        (value->>'reserva_id')::uuid AS reserva_id,
+        (value->>'unidad_destino')::uuid AS unidad_destino
+      FROM jsonb_array_elements(p_plan)
+    ) p
+    JOIN reservas rr
+      ON rr.id = p.reserva_id
+    WHERE rr.unidad_id <> p.unidad_destino
+  ) THEN
+    RAISE EXCEPTION
+      'No se pudo completar la reacomodación';
+  END IF;
+
+  SELECT *
+  INTO v_principal
+  FROM reservas rr
+  WHERE rr.id = p_reserva_id;
+
+  IF v_principal.unidad_id <> v_target THEN
+    RAISE EXCEPTION
+      'No se pudo mover la reserva principal a la unidad de destino';
+  END IF;
+
+END $$;
+
+REVOKE ALL ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
+  uuid, uuid, date, date, jsonb, integer
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
+  uuid, uuid, date, date, jsonb, integer
+) TO authenticated;
+
+
+
+
+-- ============================================================
+-- EXTENSIÓN INTELIGENTE DE ESTADÍA
+--
+-- Permite:
+--   - extender salida
+--   - adelantar entrada
+--   - extender ambos extremos
+--
+-- La reserva principal conserva su unidad siempre que sea posible.
+-- Si nuevas fechas chocan con otras reservas de esa unidad, se
+-- intenta reacomodar esas reservas y sus dependencias.
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.pms_plan_extension_move(
+  uuid, uuid, integer, uuid[], uuid[]
+);
+
 CREATE OR REPLACE FUNCTION public.pms_plan_extension_move(
   p_reserva_id uuid,
   p_unidad_protegida uuid,
@@ -1796,6 +3451,99 @@ BEGIN
       END LOOP;
 
       /*
+       * Caso especial: intercambio directo.
+       *
+       * Si solo una reserva bloquea el candidato y puede ocupar la
+       * unidad actual de esta reserva una vez que esta se vaya, podemos
+       * resolver el movimiento en dos pasos:
+       *
+       *   actual:  A → B
+       *   blocker: B → A
+       *
+       * Esto es especialmente importante para cadenas y swaps.
+       */
+      IF COALESCE(array_length(v_blockers,1),0) = 1 THEN
+
+        SELECT q.*
+        INTO b
+        FROM public.reservas q
+        WHERE q.id = v_blockers[1];
+
+        IF b.estado NOT IN ('en_casa','bloqueado')
+           AND NOT COALESCE(b.no_mover_unidad,false)
+           AND b.id <> ALL(p_path_reservas)
+           AND NOT EXISTS (
+             SELECT 1
+             FROM pms_extension_plan pp
+             WHERE pp.reserva_id = b.id
+           )
+           AND NOT EXISTS (
+             SELECT 1
+             FROM public.reservas q2
+             WHERE q2.unidad_id = v_reserva.unidad_id
+               AND q2.id <> v_reserva.id
+               AND q2.id <> b.id
+               AND q2.fecha_entrada < b.fecha_salida
+               AND q2.fecha_salida > b.fecha_entrada
+               AND q2.estado NOT IN ('cancelada','no_show')
+               AND NOT EXISTS (
+                 SELECT 1
+                 FROM pms_extension_plan pp2
+                 WHERE pp2.reserva_id = q2.id
+               )
+           )
+           AND NOT EXISTS (
+             SELECT 1
+             FROM pms_extension_plan pp3
+             JOIN public.reservas qq3
+               ON qq3.id = pp3.reserva_id
+             WHERE pp3.unidad_destino = v_reserva.unidad_id
+               AND pp3.reserva_id <> b.id
+               AND qq3.fecha_entrada < b.fecha_salida
+               AND qq3.fecha_salida > b.fecha_entrada
+           )
+        THEN
+
+          INSERT INTO pms_extension_plan(
+            reserva_id,
+            unidad_origen,
+            unidad_destino,
+            profundidad,
+            fecha_entrada,
+            fecha_salida
+          )
+          VALUES(
+            b.id,
+            b.unidad_id,
+            v_reserva.unidad_id,
+            p_depth + 1,
+            b.fecha_entrada,
+            b.fecha_salida
+          );
+
+          INSERT INTO pms_extension_plan(
+            reserva_id,
+            unidad_origen,
+            unidad_destino,
+            profundidad,
+            fecha_entrada,
+            fecha_salida
+          )
+          VALUES(
+            v_reserva.id,
+            v_reserva.unidad_id,
+            c.id,
+            p_depth,
+            v_reserva.fecha_entrada,
+            v_reserva.fecha_salida
+          );
+
+          RETURN true;
+        END IF;
+      END IF;
+
+
+      /*
        * Primero liberar todas las reservas que bloquean el candidato.
        */
       FOR b IN
@@ -1893,6 +3641,513 @@ BEGIN
 END;
 $$;
 
+
+DROP FUNCTION IF EXISTS public.buscar_extension_estadia(
+  uuid, date, date
+);
+
+CREATE OR REPLACE FUNCTION public.buscar_extension_estadia(
+  p_reserva_id uuid,
+  p_nueva_entrada date,
+  p_nueva_salida date
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_temp, public
+AS $$
+DECLARE
+  r reservas%rowtype;
+  v_blocker reservas%rowtype;
+  v_plan jsonb;
+  v_count integer;
+BEGIN
+  SELECT *
+  INTO r
+  FROM public.reservas rr
+  WHERE rr.id = p_reserva_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Reserva no encontrada'
+    );
+  END IF;
+
+  IF r.estado IN ('cancelada','no_show','bloqueado','check_out') THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Esta reserva no puede extenderse en su estado actual'
+    );
+  END IF;
+
+  IF p_nueva_entrada >= r.fecha_entrada
+     AND p_nueva_salida <= r.fecha_salida
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Las nuevas fechas no amplían la estadía'
+    );
+  END IF;
+
+  IF p_nueva_entrada > r.fecha_entrada
+     OR p_nueva_salida < r.fecha_salida
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Una extensión no puede reducir ninguno de los extremos actuales'
+    );
+  END IF;
+
+  IF p_nueva_salida <= p_nueva_entrada THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La salida debe ser posterior a la entrada'
+    );
+  END IF;
+
+  IF p_nueva_entrada < r.fecha_entrada
+     AND r.estado = 'en_casa'
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'No se puede ampliar hacia atrás una estadía que ya está en casa'
+    );
+  END IF;
+
+  /*
+   * Si la nueva entrada queda en el pasado respecto del inicio actual
+   * y la reserva ya comenzó, tampoco permitimos retroactividad.
+   */
+  IF p_nueva_entrada < r.fecha_entrada
+     AND r.fecha_entrada < CURRENT_DATE
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La fecha de entrada actual ya quedó en el pasado'
+    );
+  END IF;
+
+  DROP TABLE IF EXISTS pms_extension_plan;
+
+  CREATE TEMP TABLE pms_extension_plan (
+    reserva_id uuid PRIMARY KEY,
+    unidad_origen uuid NOT NULL,
+    unidad_destino uuid NOT NULL,
+    profundidad integer NOT NULL,
+    fecha_entrada date NOT NULL,
+    fecha_salida date NOT NULL
+  ) ON COMMIT DROP;
+
+
+  /*
+   * Buscar todas las reservas que actualmente bloquean cualquier parte
+   * del nuevo intervalo en la unidad original.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+      AND (
+        q.estado IN ('en_casa','bloqueado')
+        OR COALESCE(q.no_mover_unidad,false)
+      )
+  ) THEN
+    SELECT q.*
+    INTO v_blocker
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+      AND (
+        q.estado IN ('en_casa','bloqueado')
+        OR COALESCE(q.no_mover_unidad,false)
+      )
+    ORDER BY q.fecha_entrada
+    LIMIT 1;
+
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La unidad actual tiene una reserva o bloqueo que no puede ser reacomodado',
+      'bloqueador', v_blocker.id
+    );
+  END IF;
+
+
+  /*
+   * Planificar cada blocker del nuevo intervalo.
+   */
+  FOR v_blocker IN
+    SELECT q.*
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+    ORDER BY q.fecha_entrada, q.fecha_salida, q.id
+  LOOP
+
+    IF NOT public.pms_plan_extension_move(
+      v_blocker.id,
+      r.unidad_id,
+      1,
+      ARRAY[r.id]::uuid[],
+      ARRAY[r.unidad_id]::uuid[]
+    ) THEN
+
+      DROP TABLE IF EXISTS pms_extension_plan;
+
+      RETURN jsonb_build_object(
+        'posible', false,
+        'razon', 'No existe una reacomodación completa para liberar la unidad durante toda la extensión'
+      );
+
+    END IF;
+
+  END LOOP;
+
+
+  /*
+   * Validación final del intervalo completo.
+   *
+   * El único ocupante permitido en la unidad original durante las
+   * nuevas fechas debe ser la propia reserva principal. Todos los
+   * demás ocupantes deben formar parte del plan.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pms_extension_plan p
+        WHERE p.reserva_id = q.id
+      )
+  ) THEN
+
+    DROP TABLE IF EXISTS pms_extension_plan;
+
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La unidad actual no puede quedar libre durante toda la extensión'
+    );
+
+  END IF;
+
+
+  SELECT
+    COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'reserva_id', reserva_id,
+          'unidad_origen', unidad_origen,
+          'unidad_destino', unidad_destino,
+          'profundidad', profundidad,
+          'fecha_entrada', fecha_entrada,
+          'fecha_salida', fecha_salida
+        )
+        ORDER BY profundidad DESC, fecha_entrada, reserva_id
+      ),
+      '[]'::jsonb
+    ),
+    count(*)
+  INTO v_plan, v_count
+  FROM pms_extension_plan;
+
+
+  RETURN jsonb_build_object(
+    'posible', true,
+    'reserva_id', r.id,
+    'unidad_id', r.unidad_id,
+    'nueva_entrada', p_nueva_entrada,
+    'nueva_salida', p_nueva_salida,
+    'noches_nuevas', p_nueva_salida - p_nueva_entrada,
+    'reacomodaciones', v_count,
+    'plan', v_plan
+  );
+END;
+$$;
+
+
+DROP FUNCTION IF EXISTS public.ejecutar_extension_estadia(
+  uuid, date, date, jsonb
+);
+
+CREATE OR REPLACE FUNCTION public.ejecutar_extension_estadia(
+  p_reserva_id uuid,
+  p_nueva_entrada date,
+  p_nueva_salida date,
+  p_plan jsonb DEFAULT '[]'::jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public, pg_temp
+AS $$
+DECLARE
+  r reservas%rowtype;
+  x jsonb;
+  v_ids uuid[];
+  v_count integer;
+  c record;
+BEGIN
+
+  SELECT *
+  INTO r
+  FROM public.reservas rr
+  WHERE rr.id = p_reserva_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF r.estado IN ('cancelada','no_show','bloqueado','check_out') THEN
+    RAISE EXCEPTION 'Esta reserva no puede extenderse en su estado actual';
+  END IF;
+
+  IF p_nueva_entrada > r.fecha_entrada
+     OR p_nueva_salida < r.fecha_salida
+  THEN
+    RAISE EXCEPTION 'Las nuevas fechas no pueden reducir la estadía actual';
+  END IF;
+
+  IF p_nueva_salida <= p_nueva_entrada THEN
+    RAISE EXCEPTION 'La salida debe ser posterior a la entrada';
+  END IF;
+
+  IF p_nueva_entrada < r.fecha_entrada
+     AND r.estado = 'en_casa'
+  THEN
+    RAISE EXCEPTION 'No se puede extender hacia atrás una estadía que ya está en casa';
+  END IF;
+
+  IF p_plan IS NULL THEN
+    p_plan := '[]'::jsonb;
+  END IF;
+
+  /*
+   * Diferir todas las restricciones de exclusión existentes.
+   * Esto permite reacomodar primero los blockers y modificar después
+   * la fecha de la reserva principal dentro de la misma transacción.
+   */
+  FOR c IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'public.reservas'::regclass
+      AND contype = 'x'
+      AND condeferrable
+  LOOP
+    EXECUTE format(
+      'SET CONSTRAINTS %I DEFERRED',
+      c.conname
+    );
+  END LOOP;
+
+
+  SELECT COALESCE(
+    array_agg((value->>'reserva_id')::uuid),
+    ARRAY[]::uuid[]
+  )
+  INTO v_ids
+  FROM jsonb_array_elements(p_plan);
+
+
+  SELECT count(*)
+  INTO v_count
+  FROM (
+    SELECT DISTINCT value->>'reserva_id' AS reserva_id
+    FROM jsonb_array_elements(p_plan)
+  ) q;
+
+
+  IF v_count <> jsonb_array_length(p_plan) THEN
+    RAISE EXCEPTION
+      'El plan de reacomodación contiene reservas duplicadas';
+  END IF;
+
+
+  IF p_reserva_id = ANY(v_ids) THEN
+    RAISE EXCEPTION
+      'El plan de reacomodación no puede contener la reserva que se está extendiendo';
+  END IF;
+
+
+  /*
+   * Bloquear las reservas del plan.
+   */
+  PERFORM 1
+  FROM public.reservas rr
+  WHERE rr.id = ANY(v_ids)
+  FOR UPDATE;
+
+
+  IF (
+    SELECT count(*)
+    FROM public.reservas rr
+    WHERE rr.id = ANY(v_ids)
+  ) <> v_count
+  THEN
+    RAISE EXCEPTION 'Reserva del plan no encontrada';
+  END IF;
+
+
+  /*
+   * Validar cada movimiento antes de modificar nada.
+   */
+  FOR x IN
+    SELECT value
+    FROM jsonb_array_elements(p_plan)
+  LOOP
+
+    SELECT *
+    INTO r
+    FROM public.reservas rr
+    WHERE rr.id = (x->>'reserva_id')::uuid;
+
+    IF r.estado IN ('cancelada','no_show') THEN
+      RAISE EXCEPTION 'La reserva % ya no está activa', r.uid_reserva;
+    END IF;
+
+    IF r.estado IN ('en_casa','bloqueado')
+       OR COALESCE(r.no_mover_unidad,false)
+    THEN
+      RAISE EXCEPTION
+        'La reserva % no puede ser reacomodada', r.uid_reserva;
+    END IF;
+
+    IF r.unidad_id <> (x->>'unidad_origen')::uuid THEN
+      RAISE EXCEPTION
+        'La cadena ya no es válida: la reserva % cambió de unidad',
+        r.uid_reserva;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.unidades u
+      WHERE u.id = (x->>'unidad_destino')::uuid
+        AND u.activo
+        AND u.id <> (SELECT unidad_id FROM public.reservas WHERE id=p_reserva_id)
+    ) THEN
+      RAISE EXCEPTION
+        'Una reserva del plan intenta ocupar la unidad de la estadía extendida';
+    END IF;
+
+    /*
+     * Reservas externas al plan siguen siendo obstáculos.
+     */
+    IF EXISTS (
+      SELECT 1
+      FROM public.reservas q
+      WHERE q.unidad_id = (x->>'unidad_destino')::uuid
+        AND q.id <> r.id
+        AND q.id <> p_reserva_id
+        AND NOT (q.id = ANY(v_ids))
+        AND q.fecha_entrada < r.fecha_salida
+        AND q.fecha_salida > r.fecha_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+    ) THEN
+      RAISE EXCEPTION
+        'La reacomodación ya no es válida: una unidad destino quedó ocupada';
+    END IF;
+
+  END LOOP;
+
+
+  /*
+   * Mover todos los blockers.
+   */
+  UPDATE public.reservas rr
+  SET
+    unidad_id = p.unidad_destino,
+    actualizado_en = now()
+  FROM (
+    SELECT
+      (value->>'reserva_id')::uuid AS reserva_id,
+      (value->>'unidad_destino')::uuid AS unidad_destino
+    FROM jsonb_array_elements(p_plan)
+  ) p
+  WHERE rr.id = p.reserva_id;
+
+
+  /*
+   * Extender la reserva principal en la misma transacción.
+   *
+   * Importante:
+   * 'noches' se actualiza explícitamente porque es un valor almacenado
+   * con DEFAULT y no un generated column.
+   */
+  UPDATE public.reservas
+  SET
+    fecha_entrada = p_nueva_entrada,
+    fecha_salida = p_nueva_salida,
+    noches = p_nueva_salida - p_nueva_entrada,
+    actualizado_en = now()
+  WHERE id = p_reserva_id;
+
+
+  /*
+   * Verificación final del plan.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT
+        (value->>'reserva_id')::uuid AS reserva_id,
+        (value->>'unidad_destino')::uuid AS unidad_destino
+      FROM jsonb_array_elements(p_plan)
+    ) p
+    JOIN public.reservas rr
+      ON rr.id = p.reserva_id
+    WHERE rr.unidad_id <> p.unidad_destino
+  ) THEN
+    RAISE EXCEPTION 'No se pudo completar la reacomodación de la extensión';
+  END IF;
+
+
+  SELECT *
+  INTO r
+  FROM public.reservas rr
+  WHERE rr.id = p_reserva_id;
+
+
+  IF r.fecha_entrada <> p_nueva_entrada
+     OR r.fecha_salida <> p_nueva_salida
+  THEN
+    RAISE EXCEPTION 'No se pudo actualizar la nueva estadía';
+  END IF;
+
+END;
+$$;
+
+
+REVOKE ALL ON FUNCTION public.buscar_extension_estadia(
+  uuid, date, date
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.buscar_extension_estadia(
+  uuid, date, date
+) TO authenticated;
+
+
+REVOKE ALL ON FUNCTION public.ejecutar_extension_estadia(
+  uuid, date, date, jsonb
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.ejecutar_extension_estadia(
+  uuid, date, date, jsonb
+) TO authenticated;
 
 DROP FUNCTION IF EXISTS public.buscar_extension_estadia(
   uuid, date, date
