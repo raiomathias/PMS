@@ -674,7 +674,7 @@ async function abrirDr(id){
  gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
  D.innerHTML=top+`<div style="margin:10px 0 4px"><b style="font-size:20px">${esc(r.huesped_nombre_copia)}</b> <span class="tp" style="display:inline">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado.replace('_',' ')} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></div>
- <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="notaNueva()">＋ Nota al perfil</button><button onclick="abrirReclamoReserva()">💬 Reclamo / sugerencia</button>${['tentativa','confirmada','en_casa'].includes(r.estado)&&r.estado!=='en_casa'?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="p big" onclick="abrirEditorReserva()">✏️ Editar reserva completa</button><button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
+ <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="abrirExtensionEstadia()">↔ Extender estadía</button><button onclick="notaNueva()">＋ Nota al perfil</button><button onclick="abrirReclamoReserva()">💬 Reclamo / sugerencia</button>${['tentativa','confirmada','en_casa'].includes(r.estado)&&r.estado!=='en_casa'?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="p big" onclick="abrirEditorReserva()">✏️ Editar reserva completa</button><button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
  ${aviso}${cobro}${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}
  <div class="dg"><div>
  <div class="sec c1"><h4 class="st">👤 Huésped</h4>${u.edificios.requiere_documento?'':'<p class="mu" style="margin-top:0">Acceso remoto: documento no requerido</p>'}<div class="g2">${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div><button onclick="guardarG()" style="margin-top:8px">Guardar huésped</button></div>
@@ -773,6 +773,85 @@ async function pPermEdicion(id){
  $('#mo').innerHTML=`<div style="width:760px"><div style="display:flex;justify-content:space-between"><h3 style="margin:0">✏️ Permisos de edición · ${esc(u.data.nombre_completo)}</h3><button onclick="panel('usuarios')">✕</button></div><p class="mu">Puedes dar permisos campo por campo. Gerencia, Administración y SysAdmin mantienen acceso completo. Los cambios solo permiten editar; no amplían los permisos de vista por edificio.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-top:14px">${EDIT_FIELDS.map(x=>`<label style="display:flex;flex-direction:row;gap:8px;align-items:center;padding:12px;border:1px solid var(--bd);border-radius:8px"><input class="pef" type="checkbox" value="${x[0]}" ${m[x[0]]?'checked':''}>${esc(x[1])}</label>`).join('')}</div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="panel('usuarios')">Cancelar</button><button class="p" onclick="guardarPermisosEdicion('${id}')">Guardar permisos</button></div></div>`;$('#mo').style.display='grid';
 }
 async function guardarPermisosEdicion(id){const campos=[...document.querySelectorAll('.pef:checked')].map(x=>x.value);const {error:d}=await sb.from('perfiles_permisos_edicion').delete().eq('perfil_id',id);if(d)return msg(d.message,1);const rows=campos.map(c=>({perfil_id:id,campo:c,permitido:true}));if(rows.length){const {error:i}=await sb.from('perfiles_permisos_edicion').insert(rows);if(i)return msg(i.message,1)}msg('Permisos de edición guardados');panel('usuarios')}
+
+async function abrirExtensionEstadia(){
+ const r=S.cur;
+ if(!r)return;
+ if(['cancelada','no_show','bloqueado','check_out'].includes(r.estado))return msg('Esta reserva no puede extenderse en su estado actual',1);
+ S.extensionEstadia=null;
+ $('#mo').innerHTML=\`<div style="width:720px;max-width:94vw">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+   <div><h3 style="margin:0">↔ Extender estadía</h3><span class="mu">\${esc(r.uid_reserva||'')} · \${esc(nomU(r.unidad_id))}</span></div>
+   <button onclick="cerrar()">✕</button>
+  </div>
+  <div class="sec c2" style="margin-top:14px">
+   <h4 class="st">📅 Nueva estadía</h4>
+   <p style="margin-top:0">Actual: <b>\${r.fecha_entrada}</b> → <b>\${r.fecha_salida}</b> · \${r.noches} noches.</p>
+   <div class="g2">
+    <label>Nueva entrada<input id="ext_ent" type="date" value="\${r.fecha_entrada}"></label>
+    <label>Nueva salida<input id="ext_sal" type="date" value="\${r.fecha_salida}"></label>
+   </div>
+   <p class="mu" style="margin-bottom:0">Puedes ampliar hacia atrás, hacia adelante o ambos lados. Las fechas actuales deben quedar completamente contenidas en la nueva estadía.</p>
+  </div>
+  <div id="ext_result"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+   <button onclick="cerrar()">Cancelar</button>
+   <button class="p" onclick="buscarExtensionEstadia()">Buscar disponibilidad</button>
+  </div>
+ </div>\`;
+ $('#mo').style.display='grid';
+}
+function extRenderPlan(plan,nuevaEntrada,nuevaSalida){
+ const r=S.cur;
+ const lab=id=>{const u=S.unidades.find(x=>x.id===id);return u?u.codigo+' · '+(u.tipos_unidad?.nombre||'sin categoría'):(id||'—')};
+ const by=Object.fromEntries(S.res.map(x=>[x.id,x]));
+ const lines=(plan||[]).slice().sort((a,b)=>(b.profundidad||0)-(a.profundidad||0)).map(x=>{
+  const q=by[x.reserva_id];
+  return \`<div class="pg">• <b>\${esc(q?.uid_reserva||'Reserva')}</b> · \${esc(q?.huesped_nombre_copia||'Huésped')} · \${esc(lab(x.unidad_origen))} → <b>\${esc(lab(x.unidad_destino))}</b> · \${x.fecha_entrada||q?.fecha_entrada||'—'} → \${x.fecha_salida||q?.fecha_salida||'—'}</div>\`;
+ }).join('');
+ const noches=diff(nuevaEntrada,nuevaSalida);
+ $('#ext_result').innerHTML=\`<div class="sec c3">
+  <h4 class="st">Resultado</h4>
+  <p style="margin-top:0">Nueva estadía: <b>\${nuevaEntrada}</b> → <b>\${nuevaSalida}</b> · <b>\${noches}</b> noches.</p>
+  \${plan.length
+    ? '<p><b>La unidad actual no está libre en todo el nuevo período.</b> Se encontraron las siguientes reacomodaciones:</p>'+lines
+    : '<p style="color:#15803d"><b>✓ Hay disponibilidad completa en la unidad actual.</b> No es necesario mover ninguna reserva.</p>'}
+  <div style="display:flex;justify-content:flex-end;margin-top:12px">
+   <button class="p" onclick="ejecutarExtensionEstadia()">Confirmar extensión</button>
+  </div>
+ </div>\`;
+}
+async function buscarExtensionEstadia(){
+ const r=S.cur;
+ const ne=$('#ext_ent')?.value,ns=$('#ext_sal')?.value;
+ if(!ne||!ns)return msg('Indica las nuevas fechas de estadía',1);
+ if(ns<=ne)return msg('La salida debe ser posterior a la entrada',1);
+ if(ne>r.fecha_entrada||ns<r.fecha_salida)return msg('Las nuevas fechas deben ampliar la estadía actual, no reducirla',1);
+ if(ne<r.fecha_entrada&&r.estado==='en_casa')return msg('No puedes extender hacia atrás una estadía que ya está en casa',1);
+ if(ne===r.fecha_entrada&&ns===r.fecha_salida)return msg('Debes modificar al menos una de las fechas',1);
+ $('#ext_result').innerHTML='<div class="sec"><p class="mu" style="margin:0">Buscando una extensión posible y reacomodando las reservas necesarias…</p></div>';
+ const {data,error}=await sb.rpc('buscar_extension_estadia',{p_reserva_id:r.id,p_nueva_entrada:ne,p_nueva_salida:ns});
+ if(error)return $('#ext_result').innerHTML='<div class="al r">'+esc(errTxt(error))+'</div>';
+ if(!data?.posible)return $('#ext_result').innerHTML='<div class="al r"><b>No es posible extender la estadía.</b><br>'+esc(data?.razon||'No se encontró una combinación válida de unidades.')+'</div>';
+ S.extensionEstadia={reservaId:r.id,nuevaEntrada:ne,nuevaSalida:ns,plan:Array.isArray(data.plan)?data.plan:[]};
+ extRenderPlan(S.extensionEstadia.plan,ne,ns);
+}
+async function ejecutarExtensionEstadia(){
+ const e=S.extensionEstadia;
+ if(!e||e.reservaId!==S.cur?.id)return msg('Primero busca una extensión válida',1);
+ const {error}=await sb.rpc('ejecutar_extension_estadia',{
+  p_reserva_id:e.reservaId,
+  p_nueva_entrada:e.nuevaEntrada,
+  p_nueva_salida:e.nuevaSalida,
+  p_plan:e.plan||[]
+ });
+ if(error)return msg('No se pudo ejecutar la extensión: '+errTxt(error),1);
+ cerrar();
+ await cargar();
+ await abrirDr(e.reservaId);
+ msg('Estadía extendida correctamente: '+e.nuevaEntrada+' → '+e.nuevaSalida);
+ S.extensionEstadia=null;
+}
 
 async function accion(k){
  const r=S.cur;let e;
