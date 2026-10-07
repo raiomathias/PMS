@@ -998,3 +998,133 @@ BEGIN
   END IF;
 END
 $$;
+
+
+-- ============================================================
+-- UNIDAD FIJA / NO MOVER AUTOMÁTICAMENTE
+-- ============================================================
+ALTER TABLE public.reservas
+  ADD COLUMN IF NOT EXISTS no_mover_unidad boolean NOT NULL DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_reservas_no_mover_unidad
+  ON public.reservas(no_mover_unidad)
+  WHERE no_mover_unidad = true;
+
+-- El motor automático jamás puede mover bloqueos ni reservas marcadas
+-- como "no mover unidad".
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion(p_edificio_id uuid,p_tipo_unidad_id uuid,p_entrada date,p_salida date,p_excluir_reserva uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_target uuid;v_blocker reservas%rowtype;v_plan jsonb;
+BEGIN
+ IF p_salida<=p_entrada THEN RETURN '[]'::jsonb;END IF;
+ SELECT u.id INTO v_target FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND NOT EXISTS(SELECT 1 FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show')) ORDER BY u.orden,u.codigo LIMIT 1;
+ IF v_target IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan','[]'::jsonb);END IF;
+ FOR v_target IN SELECT u.id FROM unidades u WHERE u.activo AND u.edificio_id=p_edificio_id AND u.tipo_unidad_id=p_tipo_unidad_id
+ AND (SELECT count(*) FROM reservas r WHERE r.unidad_id=u.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show'))=1 ORDER BY u.orden,u.codigo LOOP
+  SELECT r.* INTO v_blocker FROM reservas r WHERE r.unidad_id=v_target AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show') LIMIT 1;
+  IF v_blocker.estado='en_casa' OR v_blocker.estado='bloqueado' OR COALESCE(v_blocker.no_mover_unidad,false) THEN CONTINUE;END IF;
+  WITH RECURSIVE chain AS(
+   SELECT v_blocker.id rid,v_blocker.unidad_id from_uid,c.id to_uid,1 depth,ARRAY[v_blocker.id]::uuid[] seen_r,ARRAY[v_target]::uuid[] seen_u
+   FROM unidades c JOIN unidades src ON src.id=v_blocker.unidad_id LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   WHERE c.activo AND c.edificio_id=src.edificio_id AND c.id<>v_blocker.unidad_id AND c.id<>v_target AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0))
+   UNION ALL
+   SELECT b.id,b.unidad_id,c.id,ch.depth+1,ch.seen_r||b.id,ch.seen_u||c.id
+   FROM chain ch JOIN reservas cur ON cur.id=ch.rid JOIN unidades src ON src.id=cur.unidad_id JOIN unidades c ON c.activo AND c.edificio_id=src.edificio_id AND c.id<>cur.unidad_id
+   LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   LEFT JOIN LATERAL(SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id,r.no_mover_unidad FROM reservas r WHERE r.unidad_id=c.id AND r.id IS DISTINCT FROM p_excluir_reserva AND r.fecha_entrada<cur.fecha_salida AND r.fecha_salida>cur.fecha_entrada AND r.estado NOT IN ('cancelada','no_show') AND r.id<>ALL(ch.seen_r) LIMIT 1)b ON true
+   WHERE ch.depth<6 AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)) AND c.id<>ALL(ch.seen_u) AND (b.id IS NULL OR (b.estado<>'en_casa' AND b.estado<>'bloqueado' AND NOT COALESCE(b.no_mover_unidad,false)))
+  ),terminals AS(
+   SELECT ch.* FROM chain ch JOIN reservas cur ON cur.id=ch.rid WHERE NOT EXISTS(SELECT 1 FROM reservas b WHERE b.unidad_id=ch.to_uid AND b.id IS DISTINCT FROM p_excluir_reserva AND b.fecha_entrada<cur.fecha_salida AND b.fecha_salida>cur.fecha_entrada AND b.estado NOT IN ('cancelada','no_show'))
+  )
+  SELECT jsonb_agg(jsonb_build_object('reserva_id',rid,'unidad_origen',from_uid,'unidad_destino',to_uid,'profundidad',depth) ORDER BY depth DESC) INTO v_plan FROM terminals;
+  IF v_plan IS NOT NULL THEN RETURN jsonb_build_object('unidad_id',v_target,'plan',v_plan);END IF;
+ END LOOP;RETURN '[]'::jsonb;
+END $$;
+
+-- Reacomodación para "Cambiar Unidad": el destino es una unidad exacta,
+-- no solamente una categoría. Puede mover una cadena de reservas para
+-- liberar esa unidad, pero nunca mueve bloqueos, reservas en casa ni
+-- reservas marcadas como no_mover_unidad.
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion_cambio_unidad(
+  p_unidad_destino uuid,
+  p_reserva_id uuid,
+  p_entrada date,
+  p_salida date
+)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_blocker reservas%rowtype;v_plan jsonb;v_target uuid:=p_unidad_destino;
+BEGIN
+ IF p_salida<=p_entrada THEN RETURN '[]'::jsonb;END IF;
+ IF NOT EXISTS(SELECT 1 FROM unidades WHERE id=v_target AND activo) THEN RETURN '[]'::jsonb;END IF;
+ IF NOT EXISTS(SELECT 1 FROM reservas r WHERE r.unidad_id=v_target AND r.id<>p_reserva_id AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada AND r.estado NOT IN ('cancelada','no_show'))
+   THEN RETURN jsonb_build_object('unidad_id',v_target,'plan','[]'::jsonb); END IF;
+ SELECT r.* INTO v_blocker FROM reservas r
+ WHERE r.unidad_id=v_target AND r.id<>p_reserva_id
+   AND r.fecha_entrada<p_salida AND r.fecha_salida>p_entrada
+   AND r.estado NOT IN ('cancelada','no_show')
+ ORDER BY r.fecha_entrada,r.id LIMIT 1;
+ IF v_blocker.estado='en_casa' OR v_blocker.estado='bloqueado' OR COALESCE(v_blocker.no_mover_unidad,false) THEN RETURN '[]'::jsonb;END IF;
+ WITH RECURSIVE chain AS(
+   SELECT v_blocker.id rid,v_blocker.unidad_id from_uid,c.id to_uid,1 depth,
+          ARRAY[v_blocker.id]::uuid[] seen_r,ARRAY[v_target]::uuid[] seen_u
+   FROM unidades c JOIN unidades src ON src.id=v_blocker.unidad_id
+   LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id
+   LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   WHERE c.activo AND c.edificio_id=src.edificio_id AND c.id<>v_blocker.unidad_id AND c.id<>v_target
+     AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0))
+   UNION ALL
+   SELECT b.id,b.unidad_id,c.id,ch.depth+1,ch.seen_r||b.id,ch.seen_u||c.id
+   FROM chain ch JOIN reservas cur ON cur.id=ch.rid
+   JOIN unidades src ON src.id=cur.unidad_id
+   JOIN unidades c ON c.activo AND c.edificio_id=src.edificio_id AND c.id<>cur.unidad_id
+   LEFT JOIN categoria_ranking_edificio rs ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id
+   LEFT JOIN categoria_ranking_edificio rc ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+   LEFT JOIN LATERAL(
+     SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id,r.no_mover_unidad
+     FROM reservas r
+     WHERE r.unidad_id=c.id AND r.id<>p_reserva_id AND r.fecha_entrada<cur.fecha_salida AND r.fecha_salida>cur.fecha_entrada
+       AND r.estado NOT IN ('cancelada','no_show') AND r.id<>ALL(ch.seen_r)
+     ORDER BY r.fecha_entrada,r.id LIMIT 1
+   ) b ON true
+   WHERE ch.depth<6
+     AND (c.tipo_unidad_id=src.tipo_unidad_id OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0))
+     AND c.id<>ALL(ch.seen_u)
+     AND (b.id IS NULL OR (b.estado<>'en_casa' AND b.estado<>'bloqueado' AND NOT COALESCE(b.no_mover_unidad,false)))
+ ),terminals AS(
+   SELECT ch.* FROM chain ch JOIN reservas cur ON cur.id=ch.rid
+   WHERE NOT EXISTS(
+     SELECT 1 FROM reservas b WHERE b.unidad_id=ch.to_uid AND b.id<>p_reserva_id
+       AND b.fecha_entrada<cur.fecha_salida AND b.fecha_salida>cur.fecha_entrada
+       AND b.estado NOT IN ('cancelada','no_show')
+   )
+ )
+ SELECT jsonb_agg(jsonb_build_object('reserva_id',rid,'unidad_origen',from_uid,'unidad_destino',to_uid,'profundidad',depth) ORDER BY depth DESC)
+ INTO v_plan FROM terminals;
+ IF v_plan IS NULL THEN RETURN '[]'::jsonb;END IF;
+ RETURN jsonb_build_object('unidad_id',v_target,'plan',v_plan);
+END $$;
+
+-- El RPC que ejecuta la cadena también vuelve a protegerse contra bloqueos
+-- y reservas fijadas, aunque alguien entregue manualmente un plan inválido.
+CREATE OR REPLACE FUNCTION public.crear_reserva_con_reacomodacion(p_reserva jsonb,p_plan jsonb DEFAULT '[]'::jsonb,p_iva integer DEFAULT 0,p_otro integer DEFAULT 0)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE x jsonb;r reservas%rowtype;v_id uuid;
+BEGIN
+ IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
+  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
+   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
+   IF r.estado='en_casa' THEN RAISE EXCEPTION 'No se puede mover una reserva que está en casa';END IF;
+   IF r.estado='bloqueado' THEN RAISE EXCEPTION 'Un bloqueo de unidad no puede ser movido automáticamente';END IF;
+   IF COALESCE(r.no_mover_unidad,false) THEN RAISE EXCEPTION 'La reserva % está marcada para no mover de unidad',r.uid_reserva;END IF;
+   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
+   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  END LOOP;
+ END IF;
+ INSERT INTO reservas(huesped_id,unidad_id,fecha_entrada,fecha_salida,estado,canal,referencia_externa,adultos,menores,tarifa_noche,usa_estacionamiento,noches_estacionamiento,modelo_vehiculo,patente_vehiculo,no_mover_unidad)
+ VALUES((p_reserva->>'huesped_id')::uuid,(p_reserva->>'unidad_id')::uuid,(p_reserva->>'fecha_entrada')::date,(p_reserva->>'fecha_salida')::date,(p_reserva->>'estado')::estado_reserva,(p_reserva->>'canal')::canal_reserva,NULLIF(p_reserva->>'referencia_externa',''),COALESCE((p_reserva->>'adultos')::int,1),COALESCE((p_reserva->>'menores')::int,0),COALESCE((p_reserva->>'tarifa_noche')::int,0),COALESCE((p_reserva->>'usa_estacionamiento')::boolean,false),COALESCE((p_reserva->>'noches_estacionamiento')::int,0),NULLIF(p_reserva->>'modelo_vehiculo',''),NULLIF(p_reserva->>'patente_vehiculo',''),COALESCE((p_reserva->>'no_mover_unidad')::boolean,false)) RETURNING id INTO v_id;
+ IF COALESCE(p_iva,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_IVA__',1,p_iva);END IF;
+ IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
+ RETURN v_id;
+END $$;
