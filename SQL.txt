@@ -521,8 +521,13 @@ begin
     update huespedes set nombre_completo=p_huesped_nombre where id=r.huesped_id;
     update reservas set huesped_nombre_copia=p_huesped_nombre where id=r.id;
   end if;
-  if public.tiene_permiso_edicion(v_user,'guest_document') then
-    update huespedes set tipo_documento=coalesce(p_tipo_documento,tipo_documento),numero_documento=coalesce(p_numero_documento,numero_documento) where id=r.huesped_id;
+  -- El botón universal de Guardar Cambios debe permitir que Recepción y los perfiles administrativos guarden los datos documentales del huésped aunque no tengan un registro individual de permisos de edición. Esto evita que el campo se revierta al recargar la reserva.
+  if public.tiene_permiso_edicion(v_user,'guest_document')
+     or public.rol_actual() in ('recepcion','administracion','gerencia','sysadmin') then
+    update huespedes
+      set tipo_documento=coalesce(nullif(trim(p_tipo_documento),''),tipo_documento),
+          numero_documento=coalesce(nullif(trim(p_numero_documento),''),numero_documento)
+      where id=r.huesped_id;
   end if;
   if public.tiene_permiso_edicion(v_user,'guest_contact') then
     update huespedes set telefono=coalesce(p_telefono,telefono),correo=coalesce(p_correo,correo),nacionalidad=coalesce(p_nacionalidad,nacionalidad),ciudad_origen=coalesce(p_ciudad_origen,ciudad_origen) where id=r.huesped_id;
