@@ -1083,8 +1083,10 @@ async function moverReserva(r,uid,ent,sal){
  let tar=null;const uo=S.unidades.find(x=>x.id===r.unidad_id),un=S.unidades.find(x=>x.id===uid);
  if(r.estado!=='bloqueado'&&uid!==r.unidad_id){const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
   if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}}
+ const {data:oldPark}=await sb.from('estacionamiento_reserva_fechas').select('fecha').eq('reserva_id',r.id).order('fecha');
  const {error}=await sb.rpc('mover_reserva',{p_reserva_id:r.id,p_unidad_id:uid,p_entrada:ent,p_salida:sal,p_tarifa:tar});
  if(error){msg(errTxt(error),1);dibujar();return}
+ if(r.usa_estacionamiento){const oldDates=fechasParkingReserva(r,oldPark||[]),shift=diff(r.fecha_entrada,ent),newDates=oldDates.map(d=>addD(d,shift)).filter(d=>d>=ent&&d<sal);const pe=await guardarFechasParking(r.id,newDates);if(pe)return msg('La reserva se movió, pero no se pudieron actualizar sus fechas de estacionamiento: '+pe.message,1);await sb.from('reservas').update({noches_estacionamiento:newDates.length}).eq('id',r.id)}
  msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo:'')+' · '+fm(ent)+' → '+fm(sal));
  await cargar();if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)abrirDr(r.id)}
 async function abrirCambioUnidad(){
