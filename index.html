@@ -714,7 +714,7 @@ async function cargarCatalogoEdicion(){
  if(e.error||t.error||u.error)throw(e.error||t.error||u.error);
  return {e:e.data||[],t:t.data||[],u:u.data||[]};
 }
-async function abrirEditorReserva(){
+async async function abrirEditorReserva(){
  const r=S.cur;if(!r)return;
  const editable=k=>puedeEditarCampo(k);
  let cat;try{cat=await cargarCatalogoEdicion()}catch(e){return msg(e.message,1)}
