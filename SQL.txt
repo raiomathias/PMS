@@ -2546,10 +2546,12 @@ GRANT EXECUTE ON FUNCTION public.ejecutar_extension_estadia(
 
 -- ============================================================
 -- FIX RLS: GUARDAR FECHAS DE ESTACIONAMIENTO
--- La tabla estacionamiento_reserva_fechas puede tener RLS activo
--- sin una policy INSERT/DELETE para el usuario autenticado.
--- El frontend no escribe directamente: utiliza esta RPC atómica.
 -- ============================================================
+-- Elimina posibles firmas antiguas/conflictivas para que PostgREST
+-- pueda encontrar una única función con la firma usada por el frontend.
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(date[], uuid);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(uuid, date[]);
+
 CREATE OR REPLACE FUNCTION public.guardar_fechas_estacionamiento(
   p_reserva_id uuid,
   p_fechas date[] DEFAULT ARRAY[]::date[]
@@ -2557,7 +2559,7 @@ CREATE OR REPLACE FUNCTION public.guardar_fechas_estacionamiento(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO public
+SET search_path = public
 AS $function$
 DECLARE
   v_user uuid := auth.uid();
