@@ -1061,6 +1061,7 @@ DECLARE
   v_plan jsonb;
   v_bloqueadores integer;
   v_cadenas integer;
+  v_conflicto boolean;
 BEGIN
   IF p_salida<=p_entrada THEN RETURN '[]'::jsonb; END IF;
   IF NOT EXISTS (SELECT 1 FROM unidades WHERE id=p_unidad_destino AND activo) THEN
@@ -1254,12 +1255,13 @@ BEGIN
       )
       ORDER BY depth DESC,root_id
     ),
-    count(DISTINCT root_id)
-  INTO v_plan,v_cadenas
+    count(DISTINCT root_id),
+    EXISTS(SELECT 1 FROM conflicts)
+  INTO v_plan,v_cadenas,v_conflicto
   FROM best;
 
   IF v_cadenas<>v_bloqueadores THEN RETURN '[]'::jsonb; END IF;
-  IF EXISTS(SELECT 1 FROM conflicts) THEN RETURN '[]'::jsonb; END IF;
+  IF v_conflicto THEN RETURN '[]'::jsonb; END IF;
 
   RETURN jsonb_build_object(
     'unidad_id',p_unidad_destino,
