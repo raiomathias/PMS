@@ -2938,3 +2938,35 @@ $function$;
 REVOKE ALL ON FUNCTION public.estadisticas_gerencia(date,date,uuid,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.estadisticas_gerencia(date,date,uuid,uuid) TO authenticated;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- PERMISOS DE EDICION: RECEPCION
+-- Recepcion puede guardar todos los campos editables de una reserva.
+-- ============================================================
+INSERT INTO public.perfiles_permisos_edicion (perfil_id, campo, permitido)
+SELECT p.id, f.campo, true
+FROM public.perfiles p
+CROSS JOIN (
+  VALUES
+    ('guest_name'),
+    ('guest_document'),
+    ('guest_contact'),
+    ('status'),
+    ('dates'),
+    ('building_category_unit'),
+    ('rate'),
+    ('price_iva'),
+    ('price_other'),
+    ('total'),
+    ('parking_nights'),
+    ('channel'),
+    ('occupancy'),
+    ('vehicle'),
+    ('observations')
+) AS f(campo)
+WHERE p.rol = 'recepcion'
+ON CONFLICT (perfil_id, campo)
+DO UPDATE SET permitido = true, actualizado_en = now();
+
+NOTIFY pgrst, 'reload schema';
