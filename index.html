@@ -674,7 +674,7 @@ async function abrirDr(id){
  gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
  D.innerHTML=top+`<div style="margin:10px 0 4px"><b style="font-size:20px">${esc(r.huesped_nombre_copia)}</b> <span class="tp" style="display:inline">${esc(G.uid_huesped||'')}</span><br><span class="mu">${r.estado.replace('_',' ')} · ${r.fecha_entrada} → ${r.fecha_salida} · ${r.noches} noches${r.entrada_real?' · entró '+r.entrada_real.slice(0,16).replace('T',' '):''}${r.salida_real?' · salió '+r.salida_real.slice(0,16).replace('T',' '):''}</span></div>
- <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="abrirExtensionEstadia()">↔ Extender estadía</button><button onclick="notaNueva()">＋ Nota al perfil</button><button onclick="abrirReclamoReserva()">💬 Reclamo / sugerencia</button>${['tentativa','confirmada','en_casa'].includes(r.estado)&&r.estado!=='en_casa'?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${ADM.includes(S.perfil.rol)?'<button class="p big" style="background:#16a34a;border-color:#16a34a" onclick="guardarCambiosReservaDetalle()">💾 Guardar Cambios</button><button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
+ <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">${B.map(b=>`<button class="${b[2]} big" onclick="accion('${b[0]}')">${b[1]}</button>`).join('')}<button onclick="abrirExtensionEstadia()">↔ Extender estadía</button><button onclick="notaNueva()">＋ Nota al perfil</button><button onclick="abrirReclamoReserva()">💬 Reclamo / sugerencia</button>${['tentativa','confirmada','en_casa'].includes(r.estado)&&r.estado!=='en_casa'?'<button onclick="abrirCambioUnidad()">⇄ Cambiar unidad</button>':''}${(ADM.includes(S.perfil.rol)||S.perfil?.rol==='recepcion')?'<button class="p big" style="background:#16a34a;border-color:#16a34a" onclick="guardarCambiosReservaDetalle()">💾 Guardar Cambios</button>':''}${ADM.includes(S.perfil.rol)?'<button class="r" style="margin-left:auto" onclick="abrirBorrar()">🗑 Borrar</button>':''}</div>
  ${aviso}${cobro}${(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('')}
  <div class="dg"><div>
  <div class="sec c1"><h4 class="st">👤 Huésped</h4>${u.edificios.requiere_documento?'':'<p class="mu" style="margin-top:0">Acceso remoto: documento no requerido</p>'}<div class="g2">${F('gname','Nombre completo',G.nombre_completo||r.huesped_nombre_copia)}${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div></div>
@@ -854,15 +854,22 @@ async function ejecutarExtensionEstadia(){
 }
 
 async function accion(k){
- const r=S.cur;let e;
+ const r=S.cur;if(!r)return;
+ if(k!=='del'&&$('#gname')){
+  const ok=await guardarCambiosReservaDetalle({silencioso:true});
+  if(!ok)return;
+ }
+ let e;
  if(k==='in')({error:e}=await sb.rpc('hacer_check_in',{p_reserva_id:r.id}));
  if(k==='out')return abrirCheckOut();
  if(k==='can'){const m=prompt('Motivo de la cancelación:');if(!m)return;const x=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:m});e=x.error;if(!e&&x.data)msg('Cancelada. Cargo aplicado: '+clp(x.data))}
  if(k==='conf')({error:e}=await sb.from('reservas').update({estado:'confirmada'}).eq('id',r.id));
  if(k==='ns'){const n=prompt('Nota del no-show (opcional):');if(n===null)return;const x=await sb.rpc('marcar_no_show',{p_reserva_id:r.id,p_nota:n});e=x.error;if(!e)msg('No-show registrado. Cargo aplicado: '+clp(x.data)+'. Se recomienda cobrarlo, pero no es obligatorio.')}
  if(k==='del')({error:e}=await sb.from('reservas').delete().eq('id',r.id));
- if(e)return msg(errTxt(e),1);refrescar();
+ if(e)return msg(errTxt(e),1);
+ refrescar();
 }
+
 async function abrirReclamoReserva(reservaId=S.cur?.id){
   if(!reservaId)return;
   let r=S.cur;
@@ -910,6 +917,7 @@ async function hacerCheckOut(){const r=S.cur,o=$('#co1').value.trim(),n=$('#co2'
  if(rec){const {error:re}=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id,contenido:rec,creado_por:S.perfil.id},{onConflict:'reserva_id'});if(re)return msg('No se pudo guardar el reclamo: '+re.message,1)}
  const {error}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n||null,p_obs_limpieza:o||null});
  if(error)return msg(errTxt(error),1);cerrar();msg('Check-out realizado'+(o?' · observación enviada a limpieza':'')+(rec?' · reclamo/sugerencia guardado':''));refrescar()}
+
 async function guardarDesglosePrecio(id,iva,otro){await sb.from('cargos').delete().eq('reserva_id',id).in('descripcion',['__PMS_IVA__','__PMS_OTRO_PRECIO__']);const rows=[];if(iva)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_IVA__',cantidad:1,monto_unitario:iva});if(otro)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_OTRO_PRECIO__',cantidad:1,monto_unitario:otro});if(rows.length){const {error}=await sb.from('cargos').insert(rows);if(error)return msg(errTxt(error),1)}return true}
 async function guardarR(){const v=i=>$('#'+i).value||null;
  const usa=$('#re').checked,modelo=usa?v('rv'):null,patente=usa?v('rp'):null,dates=usa?fechasParkingSeleccionadas('rpdates'):[];
@@ -921,7 +929,33 @@ async function guardarR(){const v=i=>$('#'+i).value||null;
  const pe=await guardarFechasParking(S.cur.id,dates);if(pe)return msg('Reserva guardada, pero no se pudieron guardar las fechas de estacionamiento: '+pe.message,1);
  await guardarDesglosePrecio(S.cur.id,+$('#ri').value||0,+$('#ro2').value||0);refrescar()}
 function agregarAcompananteDetalle(){const box=$('#acEditList');if(!box)return;box.insertAdjacentHTML('beforeend',`<div class="pg ac-edit-row" data-new="1" data-id=""><div class="g2"><input class="ac-name" placeholder="Nombre completo"><input class="ac-doc" placeholder="N° documento"></div><label style="display:flex;flex-direction:row;gap:6px;margin-top:5px"><input class="ac-minor" type="checkbox"> Menor</label><button type="button" onclick="this.closest('.ac-edit-row').remove()" style="margin-top:5px">Quitar</button></div>`)}function marcarAcEliminado(btn){const row=btn.closest('.ac-edit-row');if(!row)return;row.dataset.deleted='1';row.style.opacity='.45';row.querySelectorAll('input').forEach(x=>x.disabled=true);btn.textContent='Se eliminará';btn.onclick=null}
-async function guardarCambiosReservaDetalle(){const r=S.cur;if(!r)return;const v=id=>$('#'+id)?.value||null,n=id=>$('#'+id)?.value===''?null:+$('#'+id).value;const usa=$('#re')?.checked??false,dates=usa?fechasParkingSeleccionadas('rpdates'):[];if(usa&&(!v('rv')?.trim()||!v('rp')?.trim()))return msg('Para usar estacionamiento debes indicar modelo y patente',1);if(usa&&!dates.length)return msg('Selecciona al menos una fecha de estacionamiento',1);const payload={p_reserva_id:r.id,p_huesped_nombre:v('gname'),p_tipo_documento:v('gd'),p_numero_documento:v('gn'),p_telefono:v('gt'),p_correo:null,p_nacionalidad:v('gna'),p_ciudad_origen:v('gc'),p_estado:null,p_fecha_entrada:v('rhent'),p_fecha_salida:v('rhsal'),p_unidad_id:null,p_canal:v('rc'),p_referencia_externa:v('rx'),p_adultos:n('ra'),p_menores:n('rm'),p_tarifa_noche:n('rt'),p_total_manual:null,p_modelo_vehiculo:usa?v('rv'):null,p_patente_vehiculo:usa?v('rp'):null,p_cupo_estacionamiento:usa?n('rcu'):null,p_usa_estacionamiento:usa,p_observaciones:v('ro'),p_iva_total:n('ri'),p_otro_precio:n('ro2'),p_noches_estacionamiento:dates.length};if(payload.p_fecha_salida<=payload.p_fecha_entrada)return msg('La salida debe ser posterior a la entrada',1);const {error}=await sb.rpc('editar_reserva_completa',payload);if(error)return msg(errTxt(error),1);const {error:em}=await sb.from('reservas').update({no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad}).eq('id',r.id);if(em)return msg('La reserva se guardó, pero no se pudo actualizar la regla de movimiento: '+em.message,1);const pe=await guardarFechasParking(r.id,dates);if(pe)return msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);const pagoErr=await guardarPagoFormulario();if(pagoErr)return msg('La reserva se guardó, pero no se pudo registrar el pago: '+errTxt(pagoErr),1);const cargoErr=await guardarCargoFormulario();if(cargoErr)return msg('La reserva se guardó, pero no se pudo registrar el cargo: '+errTxt(cargoErr),1);for(const row of [...document.querySelectorAll('#acEditList .ac-edit-row')]){const id=row.dataset.id;if(row.dataset.deleted==='1'&&id){const {error:e}=await sb.from('acompanantes').delete().eq('id',id);if(e)return msg(errTxt(e),1);continue}const name=row.querySelector('.ac-name')?.value.trim()||'';if(!name)continue;const doc=row.querySelector('.ac-doc')?.value.trim()||null,minor=!!row.querySelector('.ac-minor')?.checked;if(id){const {error:e}=await sb.from('acompanantes').update({nombre_completo:name,numero_documento:doc,es_menor:minor}).eq('id',id);if(e)return msg(errTxt(e),1)}else{const {error:e}=await sb.from('acompanantes').insert({reserva_id:r.id,nombre_completo:name,numero_documento:doc,es_menor:minor});if(e)return msg(errTxt(e),1)}}cerrarDr();await cargar();await abrirDr(r.id);msg('Cambios guardados correctamente')}
+async function guardarCambiosReservaDetalle(op={}){
+ const r=S.cur;if(!r)return false;
+ const v=id=>$('#'+id)?.value||null,n=id=>$('#'+id)?.value===''?null:+$('#'+id).value;
+ const usa=$('#re')?.checked??false,dates=usa?fechasParkingSeleccionadas('rpdates'):[];
+ if(usa&&(!v('rv')?.trim()||!v('rp')?.trim())){msg('Para usar estacionamiento debes indicar modelo y patente',1);return false}
+ if(usa&&!dates.length){msg('Selecciona al menos una fecha de estacionamiento',1);return false}
+ const payload={p_reserva_id:r.id,p_huesped_nombre:v('gname'),p_tipo_documento:v('gd'),p_numero_documento:v('gn'),p_telefono:v('gt'),p_correo:null,p_nacionalidad:v('gna'),p_ciudad_origen:v('gc'),p_estado:null,p_fecha_entrada:v('rhent'),p_fecha_salida:v('rhsal'),p_unidad_id:null,p_canal:v('rc'),p_referencia_externa:v('rx'),p_adultos:n('ra'),p_menores:n('rm'),p_tarifa_noche:n('rt'),p_total_manual:null,p_modelo_vehiculo:usa?v('rv'):null,p_patente_vehiculo:usa?v('rp'):null,p_cupo_estacionamiento:usa?n('rcu'):null,p_usa_estacionamiento:usa,p_observaciones:v('ro'),p_iva_total:n('ri'),p_otro_precio:n('ro2'),p_noches_estacionamiento:dates.length};
+ if(payload.p_fecha_salida<=payload.p_fecha_entrada){msg('La salida debe ser posterior a la entrada',1);return false}
+ const {error}=await sb.rpc('editar_reserva_completa',payload);if(error){msg(errTxt(error),1);return false}
+ const {error:em}=await sb.from('reservas').update({no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad}).eq('id',r.id);if(em){msg('La reserva se guardó, pero no se pudo actualizar la regla de movimiento: '+em.message,1);return false}
+ const pe=await guardarFechasParking(r.id,dates);if(pe){msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);return false}
+ const pagoErr=await guardarPagoFormulario();if(pagoErr){msg('La reserva se guardó, pero no se pudo registrar el pago: '+errTxt(pagoErr),1);return false}
+ const cargoErr=await guardarCargoFormulario();if(cargoErr){msg('La reserva se guardó, pero no se pudo registrar el cargo: '+errTxt(cargoErr),1);return false}
+ for(const row of [...document.querySelectorAll('#acEditList .ac-edit-row')]){
+  const id=row.dataset.id;
+  if(row.dataset.deleted==='1'&&id){const {error:e}=await sb.from('acompanantes').delete().eq('id',id);if(e){msg(errTxt(e),1);return false}continue}
+  const name=row.querySelector('.ac-name')?.value.trim()||'';if(!name)continue;
+  const doc=row.querySelector('.ac-doc')?.value.trim()||null,minor=!!row.querySelector('.ac-minor')?.checked;
+  if(id){const {error:e}=await sb.from('acompanantes').update({nombre_completo:name,numero_documento:doc,es_menor:minor}).eq('id',id);if(e){msg(errTxt(e),1);return false}}
+  else{const {error:e}=await sb.from('acompanantes').insert({reserva_id:r.id,nombre_completo:name,numero_documento:doc,es_menor:minor});if(e){msg(errTxt(e),1);return false}}
+ }
+ const nuevo={...r,fecha_entrada:payload.p_fecha_entrada,fecha_salida:payload.p_fecha_salida,canal:payload.p_canal,referencia_externa:payload.p_referencia_externa,adultos:payload.p_adultos,menores:payload.p_menores,tarifa_noche:payload.p_tarifa_noche,modelo_vehiculo:payload.p_modelo_vehiculo,patente_vehiculo:payload.p_patente_vehiculo,cupo_estacionamiento:payload.p_cupo_estacionamiento,usa_estacionamiento:payload.p_usa_estacionamiento,noches_estacionamiento:payload.p_noches_estacionamiento,observaciones:payload.p_observaciones,no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad,noches:diff(payload.p_fecha_entrada,payload.p_fecha_salida)};
+ S.cur=nuevo;const ri=S.res.findIndex(x=>x.id===r.id);if(ri>=0)S.res[ri]={...S.res[ri],...nuevo};
+ if(!op.silencioso)await abrirDr(r.id);
+ if(!op.silencioso)msg('Cambios guardados correctamente');
+ return true;
+}
 
 async function guardarG(){const v=i=>$('#'+i).value||null;
  const {error}=await sb.from('huespedes').update({tipo_documento:v('gd'),numero_documento:v('gn'),telefono:v('gt'),nacionalidad:v('gna'),ciudad_origen:v('gc')}).eq('id',S.cur.huesped_id);
