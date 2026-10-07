@@ -1128,3 +1128,30 @@ BEGIN
  IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
  RETURN v_id;
 END $$;
+
+
+CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
+  p_reserva_id uuid,
+  p_unidad_destino uuid,
+  p_entrada date,
+  p_salida date,
+  p_plan jsonb DEFAULT '[]'::jsonb
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE x jsonb;r reservas%rowtype;v_target uuid:=p_unidad_destino;
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM unidades WHERE id=v_target AND activo) THEN RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';END IF;
+ IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=v_target AND q.id<>p_reserva_id AND q.fecha_entrada<p_salida AND q.fecha_salida>p_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN
+   IF p_plan IS NULL OR jsonb_typeof(p_plan)<>'array' OR jsonb_array_length(p_plan)=0 THEN RAISE EXCEPTION 'La unidad de destino sigue ocupada y no hay una reacomodación válida';END IF;
+ END IF;
+ IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
+  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
+   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
+   IF r.estado IN ('en_casa','bloqueado') THEN RAISE EXCEPTION 'La cadena contiene una reserva que no puede ser movida';END IF;
+   IF COALESCE(r.no_mover_unidad,false) THEN RAISE EXCEPTION 'La cadena contiene una reserva marcada para no mover de unidad';END IF;
+   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
+   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  END LOOP;
+ END IF;
+END $$;
