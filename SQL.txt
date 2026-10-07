@@ -2644,3 +2644,296 @@ TO authenticated;
 -- Forzar a PostgREST/Supabase a recargar el schema cache.
 NOTIFY pgrst, 'reload schema';
 
+
+-- ============================================================
+-- SUITE DE ESTADISTICAS GERENCIA
+-- ============================================================
+DROP FUNCTION IF EXISTS public.estadisticas_gerencia(date,date,uuid,uuid);
+
+CREATE OR REPLACE FUNCTION public.estadisticas_gerencia(
+  p_desde date DEFAULT CURRENT_DATE - 29,
+  p_hasta date DEFAULT CURRENT_DATE,
+  p_edificio_id uuid DEFAULT NULL,
+  p_unidad_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_rol text := public.rol_actual();
+  v_total_unidades integer;
+  v_reservas bigint;
+  v_noches bigint;
+  v_ingreso numeric;
+  v_pagado numeric;
+  v_pendiente numeric;
+  v_ocupacion numeric;
+  v_adr numeric;
+  v_revpar numeric;
+  v_los numeric;
+  v_lead numeric;
+BEGIN
+  IF v_user IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  IF v_rol NOT IN ('gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia o SysAdmin puede acceder a las estadísticas';
+  END IF;
+  IF p_hasta < p_desde THEN RAISE EXCEPTION 'El rango de fechas no es válido'; END IF;
+
+  IF p_edificio_id IS NOT NULL
+     AND v_rol NOT IN ('gerencia','sysadmin')
+     AND NOT EXISTS (
+       SELECT 1 FROM perfiles_edificios pe
+       WHERE pe.perfil_id=v_user AND pe.edificio_id=p_edificio_id
+     )
+  THEN RAISE EXCEPTION 'Sin permiso para este edificio'; END IF;
+
+  IF p_unidad_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM unidades u
+    WHERE u.id=p_unidad_id
+      AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+  ) THEN RAISE EXCEPTION 'Unidad no encontrada'; END IF;
+
+  SELECT count(*) INTO v_total_unidades
+  FROM unidades u
+  WHERE u.activo
+    AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+    AND (p_unidad_id IS NULL OR u.id=p_unidad_id);
+
+  WITH b AS (
+    SELECT r.*,
+           GREATEST(r.fecha_entrada,p_desde) AS o_ent,
+           LEAST(r.fecha_salida,p_hasta+1) AS o_sal
+    FROM reservas r
+    JOIN unidades u ON u.id=r.unidad_id
+    WHERE u.activo
+      AND r.fecha_entrada < p_hasta+1
+      AND r.fecha_salida > p_desde
+      AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+      AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+      AND (p_unidad_id IS NULL OR r.unidad_id=p_unidad_id)
+  )
+  SELECT count(*),coalesce(sum(GREATEST(o_sal-o_ent,0)),0),
+         coalesce(sum(GREATEST(o_sal-o_ent,0)*tarifa_noche),0),
+         coalesce(avg(GREATEST(o_sal-o_ent,0)),0)
+  INTO v_reservas,v_noches,v_ingreso,v_los
+  FROM b;
+
+  SELECT coalesce(sum(p.monto_clp),0) INTO v_pagado
+  FROM pagos p JOIN reservas r ON r.id=p.reserva_id
+  JOIN unidades u ON u.id=r.unidad_id
+  WHERE p.pagado_en::date BETWEEN p_desde AND p_hasta
+    AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+    AND (p_unidad_id IS NULL OR u.id=p_unidad_id);
+
+  v_pendiente:=GREATEST(v_ingreso-v_pagado,0);
+  v_adr:=CASE WHEN v_noches>0 THEN v_ingreso/v_noches ELSE 0 END;
+  v_ocupacion:=CASE WHEN v_total_unidades>0 THEN
+    LEAST(100,(v_noches::numeric/(v_total_unidades*(p_hasta-p_desde+1)))*100)
+    ELSE 0 END;
+  v_revpar:=CASE WHEN v_total_unidades>0 THEN
+    v_ingreso/(v_total_unidades*(p_hasta-p_desde+1))
+    ELSE 0 END;
+  SELECT coalesce(avg(GREATEST(r.fecha_entrada-r.creado_en::date,0)),0)
+  INTO v_lead
+  FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+  WHERE r.fecha_entrada BETWEEN p_desde AND p_hasta
+    AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+    AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+    AND (p_unidad_id IS NULL OR u.id=p_unidad_id);
+
+  RETURN jsonb_build_object(
+    'meta', jsonb_build_object('desde',p_desde,'hasta',p_hasta,'dias',p_hasta-p_desde+1),
+    'summary', jsonb_build_object(
+      'reservas',v_reservas,'noches',v_noches,'unidades',v_total_unidades,
+      'ocupacion_pct',round(v_ocupacion,2),'ingreso_habitaciones',round(v_ingreso,0),
+      'pagado_en_periodo',round(v_pagado,0),'pendiente_estimado',round(v_pendiente,0),
+      'adr',round(v_adr,0),'revpar',round(v_revpar,0),
+      'los_promedio',round(v_los,2),'lead_time_promedio',round(v_lead,2)
+    ),
+    'by_building',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.ocupacion_pct DESC),'[]'::jsonb)
+      FROM (
+        SELECT e.id,e.nombre,count(DISTINCT r.id) reservas,
+          coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)),0) noches,
+          coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)*r.tarifa_noche),0) ingreso,
+          round(LEAST(100,
+            coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0))::numeric/
+            NULLIF(count(DISTINCT u.id)*(p_hasta-p_desde+1),0)*100,0)),2) ocupacion_pct
+        FROM edificios e JOIN unidades u ON u.edificio_id=e.id AND u.activo
+        LEFT JOIN reservas r ON r.unidad_id=u.id
+          AND r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde
+          AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+        WHERE (p_edificio_id IS NULL OR e.id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY e.id,e.nombre
+      ) x
+    ),
+    'by_unit',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.ingreso DESC),'[]'::jsonb)
+      FROM (
+        SELECT u.id,u.codigo,e.nombre edificio,
+          count(r.id) FILTER (WHERE r.id IS NOT NULL) reservas,
+          coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)),0) noches,
+          coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)*r.tarifa_noche),0) ingreso,
+          round(LEAST(100,coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0))::numeric/
+            NULLIF(p_hasta-p_desde+1,0)*100,0)),2) ocupacion_pct,
+          round(coalesce(avg(r.tarifa_noche) FILTER (WHERE r.estado NOT IN ('cancelada','no_show','bloqueado')),0),0) tarifa_media
+        FROM unidades u JOIN edificios e ON e.id=u.edificio_id
+        LEFT JOIN reservas r ON r.unidad_id=u.id AND r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde
+        WHERE u.activo AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY u.id,u.codigo,e.nombre
+      ) x
+    ),
+    'by_channel',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.reservas DESC),'[]'::jsonb)
+      FROM (
+        SELECT r.canal::text canal,count(*) reservas,
+          coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)),0) noches,
+          coalesce(sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)*r.tarifa_noche),0) ingreso
+        FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde
+          AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY r.canal
+      ) x
+    ),
+    'by_status',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.cantidad DESC),'[]'::jsonb)
+      FROM (
+        SELECT r.estado::text estado,count(*) cantidad
+        FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY r.estado
+      ) x
+    ),
+    'daily',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.fecha),'[]'::jsonb)
+      FROM (
+        SELECT d::date fecha,
+          count(r.id) FILTER (WHERE r.fecha_entrada=d::date) check_ins,
+          count(r.id) FILTER (WHERE r.fecha_salida=d::date) check_outs,
+          count(r.id) FILTER (WHERE r.fecha_entrada<d::date+1 AND r.fecha_salida>d::date
+             AND r.estado NOT IN ('cancelada','no_show','bloqueado')) reservas_activas,
+          coalesce(sum(r.tarifa_noche) FILTER (WHERE r.fecha_entrada=d::date
+             AND r.estado NOT IN ('cancelada','no_show','bloqueado')),0) ingresos_entradas
+        FROM generate_series(p_desde,p_hasta,'1 day') d
+        LEFT JOIN reservas r ON r.fecha_entrada<=d::date AND r.fecha_salida>d::date
+        LEFT JOIN unidades u ON u.id=r.unidad_id
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY d
+      ) x
+    ),
+    'by_weekday',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.dia_num),'[]'::jsonb)
+      FROM (
+        SELECT extract(isodow from r.fecha_entrada)::int dia_num,
+          to_char(r.fecha_entrada,'TMDay') dia,
+          count(*) reservas,round(avg(r.noches),2) los_promedio,
+          round(avg(r.fecha_entrada-r.creado_en::date),2) lead_promedio
+        FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada BETWEEN p_desde AND p_hasta
+          AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY 1,2
+      ) x
+    ),
+    'by_payment',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.monto DESC),'[]'::jsonb)
+      FROM (
+        SELECT p.metodo::text metodo,count(*) pagos,coalesce(sum(p.monto_clp),0) monto
+        FROM pagos p JOIN reservas r ON r.id=p.reserva_id JOIN unidades u ON u.id=r.unidad_id
+        WHERE p.pagado_en::date BETWEEN p_desde AND p_hasta
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY p.metodo
+      ) x
+    ),
+    'extras',(
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.monto DESC),'[]'::jsonb)
+      FROM (
+        SELECT coalesce(c.tipo::text,'otro') tipo,count(*) cantidad,coalesce(sum(c.total),0) monto
+        FROM cargos c JOIN reservas r ON r.id=c.reserva_id JOIN unidades u ON u.id=r.unidad_id
+        WHERE c.creado_en::date BETWEEN p_desde AND p_hasta
+          AND c.descripcion NOT IN ('__PMS_IVA__','__PMS_OTRO_PRECIO__','__PMS_AJUSTE_TOTAL_MANUAL__')
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+          AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY c.tipo
+      ) x
+    ),
+    'guest_profile',(
+      SELECT jsonb_build_object(
+        'huespedes_unicos',count(DISTINCT r.huesped_id),
+        'adultos',coalesce(sum(r.adultos),0),
+        'menores',coalesce(sum(r.menores),0),
+        'estacionamiento_reservas',count(*) FILTER (WHERE r.usa_estacionamiento),
+        'noches_estacionamiento',coalesce(sum(r.noches_estacionamiento),0),
+        'vip',count(*) FILTER (WHERE h.es_vip),
+        'acompanantes',coalesce((SELECT count(*) FROM acompanantes a JOIN reservas ar ON ar.id=a.reserva_id JOIN unidades au ON au.id=ar.unidad_id WHERE ar.fecha_entrada<p_hasta+1 AND ar.fecha_salida>p_desde AND ar.estado NOT IN ('cancelada','no_show','bloqueado') AND (p_edificio_id IS NULL OR au.edificio_id=p_edificio_id) AND (p_unidad_id IS NULL OR au.id=p_unidad_id)),0)
+      )
+      FROM reservas r JOIN unidades u ON u.id=r.unidad_id LEFT JOIN huespedes h ON h.id=r.huesped_id
+      WHERE r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde
+        AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+        AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id)
+        AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+    ),
+    'patterns',jsonb_build_object(
+      'peak_arrival_weekday',(
+        SELECT to_char(r.fecha_entrada,'TMDay') FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada BETWEEN p_desde AND p_hasta AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id) AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY to_char(r.fecha_entrada,'TMDay'),extract(isodow from r.fecha_entrada)
+        ORDER BY count(*) DESC LIMIT 1),
+      'peak_unit',(
+        SELECT u.codigo FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id) AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+        GROUP BY u.id,u.codigo ORDER BY sum(GREATEST(LEAST(r.fecha_salida,p_hasta+1)-GREATEST(r.fecha_entrada,p_desde),0)) DESC LIMIT 1),
+      'repeat_guests',(
+        SELECT count(*) FROM (
+          SELECT r.huesped_id FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+          WHERE r.fecha_entrada<p_hasta+1 AND r.fecha_salida>p_desde AND r.estado NOT IN ('cancelada','no_show','bloqueado')
+            AND r.huesped_id IS NOT NULL AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id) AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+          GROUP BY r.huesped_id HAVING count(*)>1
+        ) q),
+      'cancellation_rate',(
+        SELECT round(100.0*count(*) FILTER(WHERE r.estado='cancelada')/NULLIF(count(*),0),2)
+        FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada BETWEEN p_desde AND p_hasta
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id) AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+      ),
+      'no_show_rate',(
+        SELECT round(100.0*count(*) FILTER(WHERE r.estado='no_show')/NULLIF(count(*),0),2)
+        FROM reservas r JOIN unidades u ON u.id=r.unidad_id
+        WHERE r.fecha_entrada BETWEEN p_desde AND p_hasta
+          AND (p_edificio_id IS NULL OR u.edificio_id=p_edificio_id) AND (p_unidad_id IS NULL OR u.id=p_unidad_id)
+      )
+    ),
+    'audit',(
+      SELECT jsonb_build_object('eventos',count(*),'usuarios_activos',count(DISTINCT a.usuario_id))
+      FROM auditoria a
+      WHERE a.fecha::date BETWEEN p_desde AND p_hasta
+    ),
+    'complaints',(
+      SELECT jsonb_build_object('total',count(*))
+      FROM reclamos_sugerencias rs JOIN reservas rr ON rr.id=rs.reserva_id JOIN unidades uu ON uu.id=rr.unidad_id
+      WHERE rs.creado_en::date BETWEEN p_desde AND p_hasta
+        AND (p_edificio_id IS NULL OR uu.edificio_id=p_edificio_id)
+        AND (p_unidad_id IS NULL OR uu.id=p_unidad_id)
+    )
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.estadisticas_gerencia(date,date,uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.estadisticas_gerencia(date,date,uuid,uuid) TO authenticated;
+NOTIFY pgrst, 'reload schema';
