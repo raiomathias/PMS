@@ -1296,12 +1296,58 @@ BEGIN
 END $$;
 
 
+-- ============================================================
+-- CAMBIO DE UNIDAD: HACER DIFERIBLE LA RESTRICCIÓN DE NO SOLAPAMIENTO
+-- ============================================================
+-- PostgreSQL verifica las restricciones de exclusión normalmente después
+-- de cada sentencia. Para un intercambio A<->B necesitamos que se validen
+-- al final de la transacción, cuando todas las reservas ya estén en su
+-- unidad final.
+DO $$
+DECLARE
+  c record;
+BEGIN
+  FOR c IN
+    SELECT
+      conname,
+      condeferrable,
+      pg_get_constraintdef(oid, true) AS definicion
+    FROM pg_constraint
+    WHERE conrelid = 'public.reservas'::regclass
+      AND contype = 'x'
+  LOOP
+    IF NOT c.condeferrable THEN
+      EXECUTE format(
+        'ALTER TABLE public.reservas DROP CONSTRAINT %I',
+        c.conname
+      );
+
+      EXECUTE format(
+        'ALTER TABLE public.reservas ADD CONSTRAINT %I %s DEFERRABLE INITIALLY IMMEDIATE',
+        c.conname,
+        c.definicion
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+
+-- ============================================================
+-- EJECUTAR REACOMODACIÓN / CAMBIO DE UNIDAD
+-- TODO EL INTERCAMBIO OCURRE EN UNA SOLA TRANSACCIÓN
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.ejecutar_reacomodacion_cambio_unidad(
+  uuid, uuid, date, date, jsonb
+);
+
 CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
   p_reserva_id uuid,
   p_unidad_destino uuid,
   p_entrada date,
   p_salida date,
-  p_plan jsonb DEFAULT '[]'::jsonb
+  p_plan jsonb DEFAULT '[]'::jsonb,
+  p_tarifa integer DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -1310,23 +1356,79 @@ SET search_path TO public AS $$
 DECLARE
   x jsonb;
   v_reserva reservas%rowtype;
+  v_principal reservas%rowtype;
   v_target uuid := p_unidad_destino;
   v_ids uuid[];
   v_count integer;
+  c record;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM unidades
-    WHERE id = v_target
-      AND activo
-  ) THEN
-    RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';
+  -- Bloquear primero la reserva principal para evitar que otra operación
+  -- cambie fechas/unidad mientras se está preparando el intercambio.
+  SELECT *
+  INTO v_principal
+  FROM reservas rr
+  WHERE rr.id = p_reserva_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva principal no encontrada';
   END IF;
 
+  IF v_principal.fecha_entrada <> p_entrada
+     OR v_principal.fecha_salida <> p_salida
+  THEN
+    RAISE EXCEPTION
+      'La cadena ya no es válida: las fechas de la reserva principal cambiaron';
+  END IF;
+
+  IF v_principal.estado = 'en_casa' THEN
+    RAISE EXCEPTION
+      'Una persona que ya está en casa nunca puede ser movida de unidad';
+  END IF;
+
+  IF v_principal.estado = 'bloqueado' THEN
+    RAISE EXCEPTION
+      'Los bloqueos no se pueden mover mediante movimiento automático';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM unidades u
+    WHERE u.id = v_target
+      AND u.activo
+  ) THEN
+    RAISE EXCEPTION
+      'La unidad de destino no existe o está inactiva';
+  END IF;
+
+  /*
+   * Todas las restricciones EXCLUDE de reservas deben quedar diferidas
+   * durante este RPC. La migración anterior garantiza que sean
+   * DEFERRABLE. Al terminar la función, PostgreSQL las vuelve a validar
+   * al confirmar la transacción completa.
+   */
+  FOR c IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'public.reservas'::regclass
+      AND contype = 'x'
+      AND condeferrable
+  LOOP
+    EXECUTE format(
+      'SET CONSTRAINTS %I DEFERRED',
+      c.conname
+    );
+  END LOOP;
+
+  /*
+   * Sin plan, simplemente usamos el RPC existente mover_reserva dentro
+   * de esta misma transacción.
+   */
   IF p_plan IS NULL
      OR jsonb_typeof(p_plan) <> 'array'
      OR jsonb_array_length(p_plan) = 0
   THEN
+
     IF EXISTS (
       SELECT 1
       FROM reservas q
@@ -1340,8 +1442,21 @@ BEGIN
         'La unidad de destino sigue ocupada y no hay una reacomodación válida';
     END IF;
 
+    PERFORM public.mover_reserva(
+      p_reserva_id,
+      v_target,
+      p_entrada,
+      p_salida,
+      p_tarifa
+    );
+
     RETURN;
   END IF;
+
+
+  -- ----------------------------------------------------------
+  -- Obtener y bloquear todas las reservas del plan.
+  -- ----------------------------------------------------------
 
   SELECT COALESCE(
     array_agg((value->>'reserva_id')::uuid),
@@ -1362,25 +1477,31 @@ BEGIN
       'La cadena de reacomodación contiene reservas duplicadas';
   END IF;
 
+  IF p_reserva_id = ANY(v_ids) THEN
+    RAISE EXCEPTION
+      'La cadena de reacomodación no puede contener la reserva principal';
+  END IF;
+
   PERFORM 1
-  FROM reservas
-  WHERE id = ANY(v_ids)
+  FROM reservas rr
+  WHERE rr.id = ANY(v_ids)
   FOR UPDATE;
 
   IF (
     SELECT count(*)
-    FROM reservas
-    WHERE id = ANY(v_ids)
-  ) <> v_count THEN
-    RAISE EXCEPTION 'Reserva del plan no encontrada';
+    FROM reservas rr
+    WHERE rr.id = ANY(v_ids)
+  ) <> v_count
+  THEN
+    RAISE EXCEPTION
+      'Reserva del plan no encontrada';
   END IF;
 
-  /*
-   * Validar el plan completo.
-   *
-   * Las reservas que pertenecen al propio plan, y la reserva principal
-   * que se moverá después, NO se consideran obstáculos externos.
-   */
+
+  -- ----------------------------------------------------------
+  -- Validación completa del plan.
+  -- ----------------------------------------------------------
+
   FOR x IN
     SELECT value
     FROM jsonb_array_elements(p_plan)
@@ -1419,8 +1540,8 @@ BEGIN
     END IF;
 
     /*
-     * Solo una reserva completamente externa al intercambio puede
-     * provocar "destino ocupado".
+     * Una reserva externa al intercambio sí bloquea el movimiento.
+     * Las reservas del propio plan y p_reserva_id no lo bloquean.
      */
     IF EXISTS (
       SELECT 1
@@ -1439,16 +1560,13 @@ BEGIN
 
   END LOOP;
 
-  /*
-   * Aplicar todos los movimientos del plan en una sola operación.
-   *
-   * Ejemplo:
-   *   R1 A -> B
-   *   R2 A -> B
-   *
-   * Aunque R3 siga temporalmente en B, no bloquea estos movimientos
-   * porque p_reserva_id forma parte del intercambio.
-   */
+
+  -- ----------------------------------------------------------
+  -- Mover primero las reservas que liberan el destino.
+  -- La restricción EXCLUDE está diferida, por lo que temporalmente
+  -- pueden coexistir con la reserva principal.
+  -- ----------------------------------------------------------
+
   UPDATE reservas rr
   SET
     unidad_id = p.unidad_destino_plan,
@@ -1461,9 +1579,24 @@ BEGIN
   ) p
   WHERE rr.id = p.reserva_id;
 
-  /*
-   * Verificación final.
-   */
+
+  -- ----------------------------------------------------------
+  -- Ahora mover la reserva principal dentro de la MISMA transacción.
+  -- ----------------------------------------------------------
+
+  PERFORM public.mover_reserva(
+    p_reserva_id,
+    v_target,
+    p_entrada,
+    p_salida,
+    p_tarifa
+  );
+
+
+  -- ----------------------------------------------------------
+  -- Verificación final antes del COMMIT.
+  -- ----------------------------------------------------------
+
   IF EXISTS (
     SELECT 1
     FROM (
@@ -1480,4 +1613,23 @@ BEGIN
       'No se pudo completar la reacomodación';
   END IF;
 
+  SELECT *
+  INTO v_principal
+  FROM reservas rr
+  WHERE rr.id = p_reserva_id;
+
+  IF v_principal.unidad_id <> v_target THEN
+    RAISE EXCEPTION
+      'No se pudo mover la reserva principal a la unidad de destino';
+  END IF;
+
 END $$;
+
+REVOKE ALL ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
+  uuid, uuid, date, date, jsonb, integer
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
+  uuid, uuid, date, date, jsonb, integer
+) TO authenticated;
+
