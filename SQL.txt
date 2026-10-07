@@ -3446,7 +3446,7 @@ BEGIN
         IF b.estado IN ('en_casa','bloqueado')
            OR COALESCE(b.no_mover_unidad,false)
         THEN
-          RAISE EXCEPTION 'DEPENDENCIA_NO_MOVIBLE';
+          RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'DEPENDENCIA_NO_MOVIBLE';
         END IF;
       END LOOP;
 
@@ -3560,7 +3560,7 @@ BEGIN
           p_path_reservas || p_reserva_id,
           p_path_unidades || c.id
         ) THEN
-          RAISE EXCEPTION 'DEPENDENCIA_NO_RESUELTA';
+          RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'DEPENDENCIA_NO_RESUELTA';
         END IF;
 
       END LOOP;
@@ -3584,7 +3584,7 @@ BEGIN
             WHERE pp.reserva_id = q.id
           )
       ) THEN
-        RAISE EXCEPTION 'DESTINO_AUN_OCUPADO';
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'DESTINO_AUN_OCUPADO';
       END IF;
 
 
@@ -3602,7 +3602,7 @@ BEGIN
           AND qq.fecha_entrada < v_reserva.fecha_salida
           AND qq.fecha_salida > v_reserva.fecha_entrada
       ) THEN
-        RAISE EXCEPTION 'PLAN_SUPERPUESTO';
+        RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'PLAN_SUPERPUESTO';
       END IF;
 
 
@@ -3626,7 +3626,7 @@ BEGIN
       RETURN true;
 
     EXCEPTION
-      WHEN OTHERS THEN
+      WHEN SQLSTATE 'P0001' THEN
         /*
          * El bloque EXCEPTION crea un sub-bloque transaccional.
          * Al fallar esta alternativa, cualquier inserción de dependencias
