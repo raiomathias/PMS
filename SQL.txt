@@ -1633,3 +1633,771 @@ GRANT EXECUTE ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
   uuid, uuid, date, date, jsonb, integer
 ) TO authenticated;
 
+
+
+
+-- ============================================================
+-- EXTENSIÓN INTELIGENTE DE ESTADÍA
+--
+-- Permite:
+--   - extender salida
+--   - adelantar entrada
+--   - extender ambos extremos
+--
+-- La reserva principal conserva su unidad siempre que sea posible.
+-- Si nuevas fechas chocan con otras reservas de esa unidad, se
+-- intenta reacomodar esas reservas y sus dependencias.
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.pms_plan_extension_move(
+  uuid, uuid, integer, uuid[], uuid[]
+);
+
+CREATE OR REPLACE FUNCTION public.pms_plan_extension_move(
+  p_reserva_id uuid,
+  p_unidad_protegida uuid,
+  p_depth integer,
+  p_path_reservas uuid[],
+  p_path_unidades uuid[]
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_temp, public
+AS $$
+DECLARE
+  v_reserva reservas%rowtype;
+  v_origen unidades%rowtype;
+  c record;
+  b record;
+  v_blockers uuid[];
+BEGIN
+  IF p_depth > 8 THEN
+    RETURN false;
+  END IF;
+
+  IF p_reserva_id = ANY(p_path_reservas) THEN
+    RETURN false;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pms_extension_plan p
+    WHERE p.reserva_id = p_reserva_id
+  ) THEN
+    RETURN true;
+  END IF;
+
+  SELECT *
+  INTO v_reserva
+  FROM public.reservas r
+  WHERE r.id = p_reserva_id;
+
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  IF v_reserva.estado IN ('cancelada','no_show','en_casa','bloqueado') THEN
+    RETURN false;
+  END IF;
+
+  IF COALESCE(v_reserva.no_mover_unidad,false) THEN
+    RETURN false;
+  END IF;
+
+  SELECT *
+  INTO v_origen
+  FROM public.unidades u
+  WHERE u.id = v_reserva.unidad_id
+    AND u.activo;
+
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  /*
+   * Intentar primero la misma categoría y luego categorías superiores.
+   */
+  FOR c IN
+    SELECT
+      u.id,
+      u.edificio_id,
+      u.tipo_unidad_id,
+      u.codigo,
+      u.orden,
+      CASE
+        WHEN u.tipo_unidad_id = v_origen.tipo_unidad_id THEN 0
+        ELSE 1
+      END AS prioridad
+    FROM public.unidades u
+    LEFT JOIN public.categoria_ranking_edificio rs
+      ON rs.edificio_id = v_origen.edificio_id
+      AND rs.tipo_unidad_id = v_origen.tipo_unidad_id
+    LEFT JOIN public.categoria_ranking_edificio rc
+      ON rc.edificio_id = u.edificio_id
+      AND rc.tipo_unidad_id = u.tipo_unidad_id
+    WHERE u.activo
+      AND u.edificio_id = v_origen.edificio_id
+      AND u.id <> v_reserva.unidad_id
+      AND u.id <> p_unidad_protegida
+      AND u.id <> ALL(p_path_unidades)
+      AND (
+        u.tipo_unidad_id = v_origen.tipo_unidad_id
+        OR COALESCE(rc.ranking,0) > COALESCE(rs.ranking,0)
+      )
+    ORDER BY prioridad, u.orden, u.codigo
+  LOOP
+
+    /*
+     * Cada candidato se intenta dentro de un sub-bloque para que, si
+     * una dependencia no puede ser acomodada, los cambios en la tabla
+     * temporal del plan se reviertan automáticamente.
+     */
+    BEGIN
+
+      /*
+       * Reservas que actualmente bloquean el candidato.
+       * Las que ya forman parte del plan se consideran movibles y no
+       * vuelven a bloquear el candidato.
+       */
+      SELECT COALESCE(
+        array_agg(q.id),
+        ARRAY[]::uuid[]
+      )
+      INTO v_blockers
+      FROM public.reservas q
+      WHERE q.unidad_id = c.id
+        AND q.id <> p_reserva_id
+        AND q.fecha_entrada < v_reserva.fecha_salida
+        AND q.fecha_salida > v_reserva.fecha_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM pms_extension_plan pp
+          WHERE pp.reserva_id = q.id
+        );
+
+      /*
+       * No podemos mover reservas en casa, bloqueos ni reservas fijadas.
+       */
+      FOR b IN
+        SELECT
+          q.id,
+          q.estado,
+          q.no_mover_unidad
+        FROM public.reservas q
+        WHERE q.id = ANY(v_blockers)
+      LOOP
+        IF b.estado IN ('en_casa','bloqueado')
+           OR COALESCE(b.no_mover_unidad,false)
+        THEN
+          RAISE EXCEPTION 'DEPENDENCIA_NO_MOVIBLE';
+        END IF;
+      END LOOP;
+
+      /*
+       * Primero liberar todas las reservas que bloquean el candidato.
+       */
+      FOR b IN
+        SELECT q.id
+        FROM public.reservas q
+        WHERE q.id = ANY(v_blockers)
+        ORDER BY q.fecha_entrada, q.id
+      LOOP
+
+        IF NOT public.pms_plan_extension_move(
+          b.id,
+          p_unidad_protegida,
+          p_depth + 1,
+          p_path_reservas || p_reserva_id,
+          p_path_unidades || c.id
+        ) THEN
+          RAISE EXCEPTION 'DEPENDENCIA_NO_RESUELTA';
+        END IF;
+
+      END LOOP;
+
+
+      /*
+       * Verificación final del candidato, ya considerando las
+       * reservas que acabamos de planificar para mover.
+       */
+      IF EXISTS (
+        SELECT 1
+        FROM public.reservas q
+        WHERE q.unidad_id = c.id
+          AND q.id <> p_reserva_id
+          AND q.fecha_entrada < v_reserva.fecha_salida
+          AND q.fecha_salida > v_reserva.fecha_entrada
+          AND q.estado NOT IN ('cancelada','no_show')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM pms_extension_plan pp
+            WHERE pp.reserva_id = q.id
+          )
+      ) THEN
+        RAISE EXCEPTION 'DESTINO_AUN_OCUPADO';
+      END IF;
+
+
+      /*
+       * También evitar que dos movimientos del propio plan terminen
+       * superpuestos en la misma unidad.
+       */
+      IF EXISTS (
+        SELECT 1
+        FROM pms_extension_plan pp
+        JOIN public.reservas qq
+          ON qq.id = pp.reserva_id
+        WHERE pp.unidad_destino = c.id
+          AND pp.reserva_id <> p_reserva_id
+          AND qq.fecha_entrada < v_reserva.fecha_salida
+          AND qq.fecha_salida > v_reserva.fecha_entrada
+      ) THEN
+        RAISE EXCEPTION 'PLAN_SUPERPUESTO';
+      END IF;
+
+
+      INSERT INTO pms_extension_plan(
+        reserva_id,
+        unidad_origen,
+        unidad_destino,
+        profundidad,
+        fecha_entrada,
+        fecha_salida
+      )
+      VALUES(
+        p_reserva_id,
+        v_reserva.unidad_id,
+        c.id,
+        p_depth,
+        v_reserva.fecha_entrada,
+        v_reserva.fecha_salida
+      );
+
+      RETURN true;
+
+    EXCEPTION
+      WHEN OTHERS THEN
+        /*
+         * El bloque EXCEPTION crea un sub-bloque transaccional.
+         * Al fallar esta alternativa, cualquier inserción de dependencias
+         * realizada dentro de ella se revierte y probamos la siguiente.
+         */
+        NULL;
+    END;
+
+  END LOOP;
+
+  RETURN false;
+END;
+$$;
+
+
+DROP FUNCTION IF EXISTS public.buscar_extension_estadia(
+  uuid, date, date
+);
+
+CREATE OR REPLACE FUNCTION public.buscar_extension_estadia(
+  p_reserva_id uuid,
+  p_nueva_entrada date,
+  p_nueva_salida date
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_temp, public
+AS $$
+DECLARE
+  r reservas%rowtype;
+  v_blocker reservas%rowtype;
+  v_plan jsonb;
+  v_count integer;
+BEGIN
+  SELECT *
+  INTO r
+  FROM public.reservas rr
+  WHERE rr.id = p_reserva_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Reserva no encontrada'
+    );
+  END IF;
+
+  IF r.estado IN ('cancelada','no_show','bloqueado','check_out') THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Esta reserva no puede extenderse en su estado actual'
+    );
+  END IF;
+
+  IF p_nueva_entrada >= r.fecha_entrada
+     AND p_nueva_salida <= r.fecha_salida
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Las nuevas fechas no amplían la estadía'
+    );
+  END IF;
+
+  IF p_nueva_entrada > r.fecha_entrada
+     OR p_nueva_salida < r.fecha_salida
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'Una extensión no puede reducir ninguno de los extremos actuales'
+    );
+  END IF;
+
+  IF p_nueva_salida <= p_nueva_entrada THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La salida debe ser posterior a la entrada'
+    );
+  END IF;
+
+  IF p_nueva_entrada < r.fecha_entrada
+     AND r.estado = 'en_casa'
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'No se puede ampliar hacia atrás una estadía que ya está en casa'
+    );
+  END IF;
+
+  /*
+   * Si la nueva entrada queda en el pasado respecto del inicio actual
+   * y la reserva ya comenzó, tampoco permitimos retroactividad.
+   */
+  IF p_nueva_entrada < r.fecha_entrada
+     AND r.fecha_entrada < CURRENT_DATE
+  THEN
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La fecha de entrada actual ya quedó en el pasado'
+    );
+  END IF;
+
+  DROP TABLE IF EXISTS pms_extension_plan;
+
+  CREATE TEMP TABLE pms_extension_plan (
+    reserva_id uuid PRIMARY KEY,
+    unidad_origen uuid NOT NULL,
+    unidad_destino uuid NOT NULL,
+    profundidad integer NOT NULL,
+    fecha_entrada date NOT NULL,
+    fecha_salida date NOT NULL
+  ) ON COMMIT DROP;
+
+
+  /*
+   * Buscar todas las reservas que actualmente bloquean cualquier parte
+   * del nuevo intervalo en la unidad original.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+      AND (
+        q.estado IN ('en_casa','bloqueado')
+        OR COALESCE(q.no_mover_unidad,false)
+      )
+  ) THEN
+    SELECT q.*
+    INTO v_blocker
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+      AND (
+        q.estado IN ('en_casa','bloqueado')
+        OR COALESCE(q.no_mover_unidad,false)
+      )
+    ORDER BY q.fecha_entrada
+    LIMIT 1;
+
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La unidad actual tiene una reserva o bloqueo que no puede ser reacomodado',
+      'bloqueador', v_blocker.id
+    );
+  END IF;
+
+
+  /*
+   * Planificar cada blocker del nuevo intervalo.
+   */
+  FOR v_blocker IN
+    SELECT q.*
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+    ORDER BY q.fecha_entrada, q.fecha_salida, q.id
+  LOOP
+
+    IF NOT public.pms_plan_extension_move(
+      v_blocker.id,
+      r.unidad_id,
+      1,
+      ARRAY[r.id]::uuid[],
+      ARRAY[r.unidad_id]::uuid[]
+    ) THEN
+
+      DROP TABLE IF EXISTS pms_extension_plan;
+
+      RETURN jsonb_build_object(
+        'posible', false,
+        'razon', 'No existe una reacomodación completa para liberar la unidad durante toda la extensión'
+      );
+
+    END IF;
+
+  END LOOP;
+
+
+  /*
+   * Validación final del intervalo completo.
+   *
+   * El único ocupante permitido en la unidad original durante las
+   * nuevas fechas debe ser la propia reserva principal. Todos los
+   * demás ocupantes deben formar parte del plan.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM public.reservas q
+    WHERE q.unidad_id = r.unidad_id
+      AND q.id <> r.id
+      AND q.fecha_entrada < p_nueva_salida
+      AND q.fecha_salida > p_nueva_entrada
+      AND q.estado NOT IN ('cancelada','no_show')
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pms_extension_plan p
+        WHERE p.reserva_id = q.id
+      )
+  ) THEN
+
+    DROP TABLE IF EXISTS pms_extension_plan;
+
+    RETURN jsonb_build_object(
+      'posible', false,
+      'razon', 'La unidad actual no puede quedar libre durante toda la extensión'
+    );
+
+  END IF;
+
+
+  SELECT
+    COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'reserva_id', reserva_id,
+          'unidad_origen', unidad_origen,
+          'unidad_destino', unidad_destino,
+          'profundidad', profundidad,
+          'fecha_entrada', fecha_entrada,
+          'fecha_salida', fecha_salida
+        )
+        ORDER BY profundidad DESC, fecha_entrada, reserva_id
+      ),
+      '[]'::jsonb
+    ),
+    count(*)
+  INTO v_plan, v_count
+  FROM pms_extension_plan;
+
+
+  RETURN jsonb_build_object(
+    'posible', true,
+    'reserva_id', r.id,
+    'unidad_id', r.unidad_id,
+    'nueva_entrada', p_nueva_entrada,
+    'nueva_salida', p_nueva_salida,
+    'noches_nuevas', p_nueva_salida - p_nueva_entrada,
+    'reacomodaciones', v_count,
+    'plan', v_plan
+  );
+END;
+$$;
+
+
+DROP FUNCTION IF EXISTS public.ejecutar_extension_estadia(
+  uuid, date, date, jsonb
+);
+
+CREATE OR REPLACE FUNCTION public.ejecutar_extension_estadia(
+  p_reserva_id uuid,
+  p_nueva_entrada date,
+  p_nueva_salida date,
+  p_plan jsonb DEFAULT '[]'::jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public, pg_temp
+AS $$
+DECLARE
+  r reservas%rowtype;
+  x jsonb;
+  v_ids uuid[];
+  v_count integer;
+  c record;
+BEGIN
+
+  SELECT *
+  INTO r
+  FROM public.reservas rr
+  WHERE rr.id = p_reserva_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF r.estado IN ('cancelada','no_show','bloqueado','check_out') THEN
+    RAISE EXCEPTION 'Esta reserva no puede extenderse en su estado actual';
+  END IF;
+
+  IF p_nueva_entrada > r.fecha_entrada
+     OR p_nueva_salida < r.fecha_salida
+  THEN
+    RAISE EXCEPTION 'Las nuevas fechas no pueden reducir la estadía actual';
+  END IF;
+
+  IF p_nueva_salida <= p_nueva_entrada THEN
+    RAISE EXCEPTION 'La salida debe ser posterior a la entrada';
+  END IF;
+
+  IF p_nueva_entrada < r.fecha_entrada
+     AND r.estado = 'en_casa'
+  THEN
+    RAISE EXCEPTION 'No se puede extender hacia atrás una estadía que ya está en casa';
+  END IF;
+
+  IF p_plan IS NULL THEN
+    p_plan := '[]'::jsonb;
+  END IF;
+
+  /*
+   * Diferir todas las restricciones de exclusión existentes.
+   * Esto permite reacomodar primero los blockers y modificar después
+   * la fecha de la reserva principal dentro de la misma transacción.
+   */
+  FOR c IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'public.reservas'::regclass
+      AND contype = 'x'
+      AND condeferrable
+  LOOP
+    EXECUTE format(
+      'SET CONSTRAINTS %I DEFERRED',
+      c.conname
+    );
+  END LOOP;
+
+
+  SELECT COALESCE(
+    array_agg((value->>'reserva_id')::uuid),
+    ARRAY[]::uuid[]
+  )
+  INTO v_ids
+  FROM jsonb_array_elements(p_plan);
+
+
+  SELECT count(*)
+  INTO v_count
+  FROM (
+    SELECT DISTINCT value->>'reserva_id' AS reserva_id
+    FROM jsonb_array_elements(p_plan)
+  ) q;
+
+
+  IF v_count <> jsonb_array_length(p_plan) THEN
+    RAISE EXCEPTION
+      'El plan de reacomodación contiene reservas duplicadas';
+  END IF;
+
+
+  IF p_reserva_id = ANY(v_ids) THEN
+    RAISE EXCEPTION
+      'El plan de reacomodación no puede contener la reserva que se está extendiendo';
+  END IF;
+
+
+  /*
+   * Bloquear las reservas del plan.
+   */
+  PERFORM 1
+  FROM public.reservas rr
+  WHERE rr.id = ANY(v_ids)
+  FOR UPDATE;
+
+
+  IF (
+    SELECT count(*)
+    FROM public.reservas rr
+    WHERE rr.id = ANY(v_ids)
+  ) <> v_count
+  THEN
+    RAISE EXCEPTION 'Reserva del plan no encontrada';
+  END IF;
+
+
+  /*
+   * Validar cada movimiento antes de modificar nada.
+   */
+  FOR x IN
+    SELECT value
+    FROM jsonb_array_elements(p_plan)
+  LOOP
+
+    SELECT *
+    INTO r
+    FROM public.reservas rr
+    WHERE rr.id = (x->>'reserva_id')::uuid;
+
+    IF r.estado IN ('cancelada','no_show') THEN
+      RAISE EXCEPTION 'La reserva % ya no está activa', r.uid_reserva;
+    END IF;
+
+    IF r.estado IN ('en_casa','bloqueado')
+       OR COALESCE(r.no_mover_unidad,false)
+    THEN
+      RAISE EXCEPTION
+        'La reserva % no puede ser reacomodada', r.uid_reserva;
+    END IF;
+
+    IF r.unidad_id <> (x->>'unidad_origen')::uuid THEN
+      RAISE EXCEPTION
+        'La cadena ya no es válida: la reserva % cambió de unidad',
+        r.uid_reserva;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.unidades u
+      WHERE u.id = (x->>'unidad_destino')::uuid
+        AND u.activo
+        AND u.id <> (SELECT unidad_id FROM public.reservas WHERE id=p_reserva_id)
+    ) THEN
+      RAISE EXCEPTION
+        'Una reserva del plan intenta ocupar la unidad de la estadía extendida';
+    END IF;
+
+    /*
+     * Reservas externas al plan siguen siendo obstáculos.
+     */
+    IF EXISTS (
+      SELECT 1
+      FROM public.reservas q
+      WHERE q.unidad_id = (x->>'unidad_destino')::uuid
+        AND q.id <> r.id
+        AND q.id <> p_reserva_id
+        AND NOT (q.id = ANY(v_ids))
+        AND q.fecha_entrada < r.fecha_salida
+        AND q.fecha_salida > r.fecha_entrada
+        AND q.estado NOT IN ('cancelada','no_show')
+    ) THEN
+      RAISE EXCEPTION
+        'La reacomodación ya no es válida: una unidad destino quedó ocupada';
+    END IF;
+
+  END LOOP;
+
+
+  /*
+   * Mover todos los blockers.
+   */
+  UPDATE public.reservas rr
+  SET
+    unidad_id = p.unidad_destino,
+    actualizado_en = now()
+  FROM (
+    SELECT
+      (value->>'reserva_id')::uuid AS reserva_id,
+      (value->>'unidad_destino')::uuid AS unidad_destino
+    FROM jsonb_array_elements(p_plan)
+  ) p
+  WHERE rr.id = p.reserva_id;
+
+
+  /*
+   * Extender la reserva principal en la misma transacción.
+   *
+   * Importante:
+   * 'noches' se actualiza explícitamente porque es un valor almacenado
+   * con DEFAULT y no un generated column.
+   */
+  UPDATE public.reservas
+  SET
+    fecha_entrada = p_nueva_entrada,
+    fecha_salida = p_nueva_salida,
+    noches = p_nueva_salida - p_nueva_entrada,
+    actualizado_en = now()
+  WHERE id = p_reserva_id;
+
+
+  /*
+   * Verificación final del plan.
+   */
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT
+        (value->>'reserva_id')::uuid AS reserva_id,
+        (value->>'unidad_destino')::uuid AS unidad_destino
+      FROM jsonb_array_elements(p_plan)
+    ) p
+    JOIN public.reservas rr
+      ON rr.id = p.reserva_id
+    WHERE rr.unidad_id <> p.unidad_destino
+  ) THEN
+    RAISE EXCEPTION 'No se pudo completar la reacomodación de la extensión';
+  END IF;
+
+
+  SELECT *
+  INTO r
+  FROM public.reservas rr
+  WHERE rr.id = p_reserva_id;
+
+
+  IF r.fecha_entrada <> p_nueva_entrada
+     OR r.fecha_salida <> p_nueva_salida
+  THEN
+    RAISE EXCEPTION 'No se pudo actualizar la nueva estadía';
+  END IF;
+
+END;
+$$;
+
+
+REVOKE ALL ON FUNCTION public.buscar_extension_estadia(
+  uuid, date, date
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.buscar_extension_estadia(
+  uuid, date, date
+) TO authenticated;
+
+
+REVOKE ALL ON FUNCTION public.ejecutar_extension_estadia(
+  uuid, date, date, jsonb
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.ejecutar_extension_estadia(
+  uuid, date, date, jsonb
+) TO authenticated;
+
