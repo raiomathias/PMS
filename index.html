@@ -208,7 +208,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span style="margin-left:auto;font-weight:700;white-space:nowrap">v1.5</span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span style="margin-left:auto;font-weight:700;white-space:nowrap">v1.6</span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="abrirBuzon()" title="Buzón" aria-label="Buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -335,8 +335,9 @@ let MAIL={open:false,preview:false,previewRows:[],rows:[],timer:null,channel:nul
 
 function mailPuedeJefes(){return esAdminPlus(S.perfil?.rol)}
 function mailPuedeRecepcion(){return mailPuedeJefes()}
+function mailPuedeEnviar(a){return ['recepcion_egana','recepcion_huasco','administracion','gerencia'].includes(a)}
+function mailAudienciaLabel(a){return ({recepcion_egana:'Recepción Egaña',recepcion_huasco:'Recepción Huasco',administracion:'Administración',gerencia:'Gerencia'})[a]||a}
 function mailFormato(v){if(!v)return '';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-function mailAudienciaLabel(a){return a==='jefes'?'Administración / Gerencia':a==='recepcion'?'Recepción':'Próximo turno'}
 function mailBeep(){
  try{
   const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
@@ -369,7 +370,8 @@ async function cargarBuzon(autopopup=false){
  }else if(first&&unread.length){
   abrirBuzon(true,[unread[unread.length-1]]);
  }
- if(MAIL.open&&!MAIL.preview)renderBuzon();
+ // No renderizar el Buzón completo durante el polling: así no se destruye
+ // el textarea ni se pierde lo que el usuario está escribiendo.
 }
 function actualizarBadge(n){const b=$('#mailBadge');if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
 function cerrarBuzon(){MAIL.open=false;MAIL.preview=false;MAIL.previewRows=[];const b=$('#mailBox');if(b){b.style.display='none';b.classList.remove('mail-preview')}}
@@ -389,11 +391,13 @@ async function marcarTodosBuzon(){
  MAIL.rows.forEach(x=>x.unread=false);actualizarBadge(0);renderBuzon();
 }
 async function enviarMensajeBuzon(){
- const a=$('#mailAudience')?.value||'proximo_turno',t=$('#mailText')?.value.trim()||'';
+ const a=$('#mailAudience')?.value||'recepcion_egana';
+ const t=$('#mailText')?.value.trim()||'';
  if(!t)return msg('Escribe el mensaje antes de enviarlo.',1);
+ if(!mailPuedeEnviar(a))return msg('No tienes permiso para enviar a ese destino.',1);
  const {error}=await sb.rpc('buzon_enviar',{p_audiencia:a,p_mensaje:t,p_receptor_id:null});
  if(error)return msg(error.message,1);
- $('#mailText').value='';msg('Mensaje enviado al buzón.');
+ $('#mailText').value='';msg('Mensaje enviado a '+mailAudienciaLabel(a)+'.');
  await cargarBuzon(false);
 }
 async function limpiarBandejaBuzon(){
@@ -417,13 +421,11 @@ async function limpiarTodosBuzones(){
 }
 function renderBuzon(){
  const b=$('#mailBox');if(!b)return;
- const opts=['<option value="proximo_turno">Próximo turno</option>'];
- if(mailPuedeJefes())opts.push('<option value="jefes">Administración / Gerencia</option>','<option value="recepcion">Recepción</option>');
- else if(rolNormalizado(S.perfil?.rol)==='recepcion')opts.push('<option value="jefes">Administración / Gerencia</option>');
+ const opts=[['recepcion_egana','Recepción Egaña'],['recepcion_huasco','Recepción Huasco'],['administracion','Administración'],['gerencia','Gerencia']];
  const rows=MAIL.preview&&MAIL.previewRows.length?MAIL.previewRows:MAIL.rows;
  const preview=MAIL.preview;
  b.classList.toggle('mail-preview',preview);
- b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3>${preview?'<span class="mu">Nuevo mensaje</span>':'<button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button class="mail-clear-btn" onclick="limpiarBandejaBuzon()" title="Limpiar bandeja" aria-label="Limpiar bandeja">🗑️ <span>Limpiar</span></button><button class="mail-clear-all-btn" onclick="limpiarTodosBuzones()" title="Limpiar todos los buzones">🗑️ <span>Todos</span></button>'}<button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${preview?'<div class="mail-preview-actions"><button class="p" onclick="mostrarBuzonCompleto()">Ver más</button></div>':`<div class="mail-compose"><select id="mailAudience">${opts.join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="${mailPuedeJefes()?'Escribe un mensaje para Recepción, Administración/Gerencia o el próximo turno…':rolNormalizado(S.perfil?.rol)==='recepcion'?'Escribe un mensaje para Administración/Gerencia o el próximo turno…':'Escribe las novedades que deba conocer el siguiente turno…'}"></textarea></div>`}`;
+ b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3>${preview?'<span class="mu">Nuevo mensaje</span>':'<button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button class="mail-clear-btn" onclick="limpiarBandejaBuzon()" title="Limpiar bandeja" aria-label="Limpiar bandeja">🗑️ <span>Limpiar</span></button><button class="mail-clear-all-btn" onclick="limpiarTodosBuzones()" title="Limpiar todos los buzones">🗑️ <span>Todos</span></button>'}<button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${preview?'<div class="mail-preview-actions"><button class="p" onclick="mostrarBuzonCompleto()">Ver más</button></div>':`<div class="mail-compose"><select id="mailAudience">${opts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="Escribe un mensaje para Recepción Egaña, Recepción Huasco, Administración o Gerencia…"></textarea></div>`}`;
 }
 function abrirBuzon(auto=false,rows=null){
  MAIL.open=true;MAIL.preview=!!(auto&&rows?.length);MAIL.previewRows=rows||[];
@@ -1108,6 +1110,27 @@ async function guardarEditorReserva(){
  else if(usa===true&&editableDates){const pe=await guardarFechasParking(r.id,dates);if(pe)return msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1)}
  cerrar();await cargar();await abrirDr(r.id);msg('Reserva y datos del huésped actualizados');
 }
+async function pPermBuzon(id){
+ const u=await sb.from('perfiles').select('id,nombre_completo,rol').eq('id',id).maybeSingle();
+ if(u.error||!u.data)return msg((u.error||{message:'Usuario no encontrado'}).message,1);
+ const {data,error}=await sb.rpc('buzon_obtener_permisos',{p_usuario_id:id});
+ if(error)return msg(error.message,1);
+ const v=data?.[0]||{recepcion_egana:false,recepcion_huasco:false};
+ $('#mo').innerHTML=`<div style="width:680px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 10px">📬 Permisos de Buzón · ${esc(u.data.nombre_completo)}</h3><button onclick="panel('usuarios')">✕</button></div>
+ <p class="mu" style="margin-top:0">Estos permisos controlan qué mensajes de las dos recepciones puede ver este usuario. Ambos destinos de recepción están disponibles para enviar.</p>
+ <div style="display:grid;gap:10px;margin-top:14px">
+  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_egana" type="checkbox" ${v.recepcion_egana?'checked':''}> <span><b>Recepción Egaña</b><br><span class="mu">Puede ver los mensajes enviados al canal Recepción Egaña.</span></span></label>
+  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_huasco" type="checkbox" ${v.recepcion_huasco?'checked':''}> <span><b>Recepción Huasco</b><br><span class="mu">Puede ver los mensajes enviados al canal Recepción Huasco.</span></span></label>
+ </div>
+ <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="panel('usuarios')">Volver</button><button class="p" onclick="guardarPermisosBuzon('${id}')">Guardar permisos</button></div></div>`;
+ $('#mo').style.display='grid';
+}
+async function guardarPermisosBuzon(id){
+ const {error}=await sb.rpc('buzon_guardar_permisos',{p_usuario_id:id,p_recepcion_egana:$('#pb_egana').checked,p_recepcion_huasco:$('#pb_huasco').checked});
+ if(error)return msg(error.message,1);
+ msg('Permisos de Buzón guardados');panel('usuarios');
+}
+
 async function pPermEdicion(id){
  const u=await sb.from('perfiles').select('id,nombre_completo,rol').eq('id',id).maybeSingle();if(u.error||!u.data)return msg((u.error||{message:'Usuario no encontrado'}).message,1);
  const q=await sb.from('perfiles_permisos_edicion').select('campo,permitido').eq('perfil_id',id);if(q.error)return msg('Falta crear la tabla de permisos de edición: '+q.error.message,1);const m=Object.fromEntries((q.data||[]).map(x=>[x.campo,x.permitido]));
@@ -1654,7 +1677,7 @@ async function pUsu(){
  $('#pc').innerHTML=`<h4 style="margin-top:0">Nuevo usuario</h4><div class="rw"><input id="un" placeholder="Nombre Apellido"><select id="ur">${R.map(r=>`<option>${r}</option>`).join('')}</select><input id="uc" type="password" placeholder="Clave (mín. 6)"><button class="p" onclick="crearU()">Crear</button></div><p class="mu">Un usuario puede tener cualquier cantidad de edificios asignados. Administración, Gerencia y SysAdmin mantienen acceso a todos los edificios independientemente de esta lista.</p><h4>Usuarios</h4>${(data||[]).map(x=>{
   const bl=x.id===yo||(x.rol==='sysadmin'&&!sy),ids=pm[x.id]||[],names=ids.map(id=>edn[id]).filter(Boolean);
   const perm=ED_ROLES_TODOS.includes(x.rol)?'<span class="tg">Todos los edificios</span>':names.length?names.map(n=>`<span class="tg">${esc(n)}</span>`).join(''):'<span class="mu">Sin edificios asignados</span>';
-  return `<div class="rw" style="align-items:flex-start"><span style="flex:1 1 34%"><b>${esc(x.nombre_completo)}</b><br><span class="mu">${esc(x.usuario)}</span></span>${bl?`<span class="mu">${x.rol}${x.id===yo?' (tú)':''}</span>`:`${SO('rol',R.map(r=>[r,r]),x.rol)}${CK('activo',x.activo,'Activo')}<button onclick="gd('perfiles','${x.id}',this)">Guardar</button><button onclick="claveU('${x.id}')">Clave</button><button class="r" onclick="borrarU('${x.id}','${esc(x.nombre_completo)}')">🗑 Borrar</button>`}<div style="flex:1 1 35%;line-height:1.8">${perm}</div>${!bl&&x.rol!=='sysadmin'?`<button onclick="pPerm('${x.id}')">🏢 Permisos</button><button onclick="pPermEdicion('${x.id}')">✏️ Edición</button>`:''}</div>`}).join('')}`;
+  return `<div class="rw" style="align-items:flex-start"><span style="flex:1 1 34%"><b>${esc(x.nombre_completo)}</b><br><span class="mu">${esc(x.usuario)}</span></span>${bl?`<span class="mu">${x.rol}${x.id===yo?' (tú)':''}</span>`:`${SO('rol',R.map(r=>[r,r]),x.rol)}${CK('activo',x.activo,'Activo')}<button onclick="gd('perfiles','${x.id}',this)">Guardar</button><button onclick="claveU('${x.id}')">Clave</button><button class="r" onclick="borrarU('${x.id}','${esc(x.nombre_completo)}')">🗑 Borrar</button>`}<div style="flex:1 1 35%;line-height:1.8">${perm}</div>${!bl&&x.rol!=='sysadmin'?`<button onclick="pPerm('${x.id}')">🏢 Permisos</button><button onclick="pPermEdicion('${x.id}')">✏️ Edición</button><button onclick="pPermBuzon('${x.id}')">📬 Buzón</button>`:''}</div>`}).join('')}`;
 }
 async function pPerm(id){
  const u=await sb.from('perfiles').select('id,nombre_completo,rol').eq('id',id).maybeSingle();
