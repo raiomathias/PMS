@@ -421,7 +421,7 @@ async function limpiarTodosBuzones(){
 }
 function renderBuzon(){
  const b=$('#mailBox');if(!b)return;
- if(!MAIL.preview&&document.activeElement?.id==='mailText'){
+ if(!MAIL.preview&&$('#mailText')){
   MAIL.draft={audiencia:$('#mailAudience')?.value||MAIL.draft.audiencia||'recepcion_egana',text:$('#mailText')?.value||''};
  }
  const opts=[['recepcion_egana','Recepción Egaña'],['recepcion_huasco','Recepción Huasco'],['administracion','Administración'],['gerencia','Gerencia']];
