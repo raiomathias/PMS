@@ -3255,6 +3255,7 @@ BEGIN
     ON l.mensaje_id = b.id
    AND l.usuario_id = auth.uid()
   WHERE b.activo
+    AND NOT EXISTS (SELECT 1 FROM buzon_ocultos bo WHERE bo.usuario_id = auth.uid() AND bo.mensaje_id = b.id)
     AND (
       b.audiencia = 'proximo_turno'
       OR (b.audiencia = 'jefes'
