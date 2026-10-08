@@ -3052,3 +3052,149 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.hacer_check_in(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- BUZÓN DE TURNOS / MENSAJERÍA INTERNA
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.buzon_mensajes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  remitente_id uuid NOT NULL REFERENCES public.perfiles(id),
+  audiencia text NOT NULL CHECK (audiencia IN ('proximo_turno','jefes','recepcion')),
+  receptor_id uuid REFERENCES public.perfiles(id),
+  mensaje text NOT NULL CHECK (length(trim(mensaje)) BETWEEN 1 AND 4000),
+  creado_en timestamptz NOT NULL DEFAULT now(),
+  leido_en timestamptz,
+  activo boolean NOT NULL DEFAULT true
+);
+
+CREATE INDEX IF NOT EXISTS buzon_mensajes_creado_idx
+  ON public.buzon_mensajes (creado_en DESC);
+CREATE INDEX IF NOT EXISTS buzon_mensajes_receptor_idx
+  ON public.buzon_mensajes (receptor_id, creado_en DESC);
+
+ALTER TABLE public.buzon_mensajes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS buzon_no_acceso_directo ON public.buzon_mensajes;
+CREATE POLICY buzon_no_acceso_directo
+  ON public.buzon_mensajes
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+CREATE OR REPLACE FUNCTION public.buzon_listar()
+RETURNS TABLE(
+  id uuid,
+  audiencia text,
+  receptor_id uuid,
+  mensaje text,
+  creado_en timestamptz,
+  leido_en timestamptz,
+  remitente_id uuid,
+  remitente_nombre text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE v_rol text;
+BEGIN
+  v_rol := rol_actual();
+
+  RETURN QUERY
+  SELECT b.id,b.audiencia,b.receptor_id,b.mensaje,b.creado_en,b.leido_en,
+         b.remitente_id,p.nombre_completo
+  FROM buzon_mensajes b
+  JOIN perfiles p ON p.id=b.remitente_id
+  WHERE b.activo
+    AND (
+      b.audiencia='proximo_turno'
+      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+      OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
+      OR b.receptor_id=auth.uid()
+    )
+  ORDER BY b.creado_en DESC
+  LIMIT 100;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buzon_enviar(
+  p_audiencia text,
+  p_mensaje text,
+  p_receptor_id uuid DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_rol text;
+  v_id uuid;
+BEGIN
+  v_rol := rol_actual();
+  p_mensaje := trim(coalesce(p_mensaje,''));
+
+  IF p_mensaje='' THEN
+    RAISE EXCEPTION 'El mensaje no puede estar vacío';
+  END IF;
+  IF length(p_mensaje)>4000 THEN
+    RAISE EXCEPTION 'El mensaje no puede superar 4000 caracteres';
+  END IF;
+  IF p_audiencia NOT IN ('proximo_turno','jefes','recepcion') THEN
+    RAISE EXCEPTION 'Audiencia de buzón no válida';
+  END IF;
+
+  IF p_audiencia='jefes' AND v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia o superior puede enviar mensajes a jefes';
+  END IF;
+
+  IF p_audiencia='recepcion' AND v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia o superior puede enviar mensajes a Recepción';
+  END IF;
+
+  IF p_audiencia='recepcion' AND p_receptor_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM perfiles
+      WHERE id=p_receptor_id AND activo AND rol='recepcion'
+    ) THEN
+      RAISE EXCEPTION 'El receptor no es un usuario de Recepción activo';
+    END IF;
+  END IF;
+
+  INSERT INTO buzon_mensajes(remitente_id,audiencia,receptor_id,mensaje)
+  VALUES(auth.uid(),p_audiencia,p_receptor_id,p_mensaje)
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buzon_marcar_leido(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE v_rol text;
+BEGIN
+  v_rol := rol_actual();
+
+  UPDATE buzon_mensajes
+  SET leido_en=coalesce(leido_en,now())
+  WHERE id=p_id
+    AND activo
+    AND (
+      receptor_id=auth.uid()
+      OR audiencia='proximo_turno'
+      OR (audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+      OR (audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.buzon_listar() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.buzon_enviar(text,text,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.buzon_marcar_leido(uuid) TO authenticated;
+
