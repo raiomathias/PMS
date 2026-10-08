@@ -391,13 +391,21 @@ async function enviarMensajeBuzon(){
  $('#mailText').value='';msg('Mensaje enviado al buzón.');
  await cargarBuzon(false);
 }
+async function limpiarBandejaBuzon(){
+ if(!MAIL.rows.length)return msg('La bandeja ya está limpia.');
+ if(!confirm('¿Limpiar la bandeja? Los mensajes no se eliminarán del sistema ni de Auditoría; solo dejarán de aparecer en tu Buzón.'))return;
+ const {error}=await sb.rpc('buzon_limpiar_bandeja');
+ if(error)return msg(error.message,1);
+ MAIL.rows=[];MAIL.known=new Set();actualizarBadge(0);renderBuzon();
+ msg('Bandeja limpiada.');
+}
 function renderBuzon(){
  const b=$('#mailBox');if(!b)return;
  const opts=['<option value="proximo_turno">Próximo turno</option>'];
  if(mailPuedeJefes())opts.push('<option value="jefes">Administración / Gerencia</option>','<option value="recepcion">Recepción</option>');
  else if(rolNormalizado(S.perfil?.rol)==='recepcion')opts.push('<option value="jefes">Administración / Gerencia</option>');
  const rows=MAIL.rows;
- b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3><button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div><div class="mail-compose"><select id="mailAudience">${opts.join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="${mailPuedeJefes()?'Escribe un mensaje para Recepción, Administración/Gerencia o el próximo turno…':rolNormalizado(S.perfil?.rol)==='recepcion'?'Escribe un mensaje para Administración/Gerencia o el próximo turno…':'Escribe las novedades que deba conocer el siguiente turno…'}"></textarea></div>`;
+ b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3><button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button onclick="limpiarBandejaBuzon()" title="Limpiar bandeja">🗑️</button><button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div><div class="mail-compose"><select id="mailAudience">${opts.join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="${mailPuedeJefes()?'Escribe un mensaje para Recepción, Administración/Gerencia o el próximo turno…':rolNormalizado(S.perfil?.rol)==='recepcion'?'Escribe un mensaje para Administración/Gerencia o el próximo turno…':'Escribe las novedades que deba conocer el siguiente turno…'}"></textarea></div>`;
 }
 function abrirBuzon(auto=false){
  MAIL.open=true;const b=$('#mailBox');if(!b)return;
