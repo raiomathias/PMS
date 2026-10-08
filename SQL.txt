@@ -3716,3 +3716,225 @@ GRANT EXECUTE ON FUNCTION public.buzon_limpiar_todos() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.buzon_limpiar_bandeja() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- BUZÓN: LIMPIEZA POR USUARIO + LIMPIEZA GLOBAL
+-- Versión definitiva/idempotente.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.buzon_ocultos (
+  usuario_id uuid NOT NULL REFERENCES public.perfiles(id) ON DELETE CASCADE,
+  mensaje_id uuid NOT NULL REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
+  ocultado_en timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (usuario_id, mensaje_id)
+);
+
+CREATE INDEX IF NOT EXISTS buzon_ocultos_usuario_idx
+  ON public.buzon_ocultos(usuario_id);
+
+CREATE TABLE IF NOT EXISTS public.buzon_limpiezas_globales (
+  mensaje_id uuid PRIMARY KEY
+    REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
+  limpiado_en timestamptz NOT NULL DEFAULT now(),
+  limpiado_por uuid REFERENCES public.perfiles(id) ON DELETE SET NULL
+);
+
+ALTER TABLE public.buzon_ocultos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.buzon_limpiezas_globales ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS buzon_ocultos_no_acceso_directo
+  ON public.buzon_ocultos;
+
+CREATE POLICY buzon_ocultos_no_acceso_directo
+  ON public.buzon_ocultos
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+DROP POLICY IF EXISTS buzon_limpiezas_globales_no_acceso_directo
+  ON public.buzon_limpiezas_globales;
+
+CREATE POLICY buzon_limpiezas_globales_no_acceso_directo
+  ON public.buzon_limpiezas_globales
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+DROP FUNCTION IF EXISTS public.buzon_limpiar_bandeja();
+DROP FUNCTION IF EXISTS public.buzon_limpiar_todos();
+DROP FUNCTION IF EXISTS public.buzon_listar();
+
+CREATE FUNCTION public.buzon_limpiar_bandeja()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_rol text;
+  v_count integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  v_rol := rol_actual();
+
+  INSERT INTO public.buzon_ocultos(usuario_id, mensaje_id)
+  SELECT auth.uid(), b.id
+  FROM public.buzon_mensajes b
+  WHERE b.activo = true
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.buzon_limpiezas_globales g
+      WHERE g.mensaje_id = b.id
+    )
+    AND (
+      b.audiencia = 'proximo_turno'
+      OR (
+        b.audiencia = 'jefes'
+        AND v_rol IN ('administracion','gerencia','sysadmin','recepcion')
+      )
+      OR (
+        b.audiencia = 'recepcion'
+        AND v_rol IN ('recepcion','administracion','gerencia','sysadmin')
+      )
+      OR b.receptor_id = auth.uid()
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.buzon_ocultos o
+      WHERE o.usuario_id = auth.uid()
+        AND o.mensaje_id = b.id
+    )
+  ON CONFLICT (usuario_id, mensaje_id) DO NOTHING;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+CREATE FUNCTION public.buzon_limpiar_todos()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_rol text;
+  v_count integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  v_rol := rol_actual();
+
+  IF v_rol NOT IN ('gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia o superior puede limpiar todos los buzones';
+  END IF;
+
+  INSERT INTO public.buzon_limpiezas_globales(
+    mensaje_id,
+    limpiado_por
+  )
+  SELECT
+    b.id,
+    auth.uid()
+  FROM public.buzon_mensajes b
+  WHERE b.activo = true
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.buzon_limpiezas_globales g
+      WHERE g.mensaje_id = b.id
+    )
+  ON CONFLICT (mensaje_id) DO NOTHING;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+CREATE FUNCTION public.buzon_listar()
+RETURNS TABLE(
+  id uuid,
+  audiencia text,
+  receptor_id uuid,
+  mensaje text,
+  creado_en timestamptz,
+  leido_en timestamptz,
+  remitente_id uuid,
+  remitente_nombre text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_rol text;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  v_rol := rol_actual();
+
+  RETURN QUERY
+  SELECT
+    b.id,
+    b.audiencia,
+    b.receptor_id,
+    b.mensaje,
+    b.creado_en,
+    l.leido_en,
+    b.remitente_id,
+    COALESCE(p.nombre_completo, 'Usuario')::text
+  FROM public.buzon_mensajes b
+  LEFT JOIN public.perfiles p
+    ON p.id = b.remitente_id
+  LEFT JOIN public.buzon_lecturas l
+    ON l.mensaje_id = b.id
+   AND l.usuario_id = auth.uid()
+  WHERE b.activo = true
+    -- Limpiado globalmente: no se muestra a nadie.
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.buzon_limpiezas_globales g
+      WHERE g.mensaje_id = b.id
+    )
+    -- Limpiado por este usuario: no se muestra solo aquí.
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.buzon_ocultos o
+      WHERE o.usuario_id = auth.uid()
+        AND o.mensaje_id = b.id
+    )
+    AND (
+      b.audiencia = 'proximo_turno'
+      OR (
+        b.audiencia = 'jefes'
+        AND v_rol IN ('administracion','gerencia','sysadmin','recepcion')
+      )
+      OR (
+        b.audiencia = 'recepcion'
+        AND v_rol IN ('recepcion','administracion','gerencia','sysadmin')
+      )
+      OR b.receptor_id = auth.uid()
+    )
+  ORDER BY b.creado_en DESC
+  LIMIT 100;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.buzon_limpiar_bandeja()
+  TO authenticated;
+
+GRANT EXECUTE ON FUNCTION public.buzon_limpiar_todos()
+  TO authenticated;
+
+GRANT EXECUTE ON FUNCTION public.buzon_listar()
+  TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
