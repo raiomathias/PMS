@@ -3136,6 +3136,81 @@ BEGIN
 END
 $$;
 
+-- ============================================================
+-- LIMPIEZA DE BANDEJA POR USUARIO
+-- No elimina mensajes: solo oculta mensajes de la bandeja del usuario.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.buzon_ocultos (
+  usuario_id uuid NOT NULL REFERENCES public.perfiles(id) ON DELETE CASCADE,
+  mensaje_id uuid NOT NULL REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
+  ocultado_en timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (usuario_id, mensaje_id)
+);
+
+CREATE INDEX IF NOT EXISTS buzon_ocultos_usuario_idx
+  ON public.buzon_ocultos(usuario_id);
+
+ALTER TABLE public.buzon_ocultos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS buzon_ocultos_no_acceso_directo ON public.buzon_ocultos;
+CREATE POLICY buzon_ocultos_no_acceso_directo
+  ON public.buzon_ocultos
+  FOR ALL TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+DROP FUNCTION IF EXISTS public.buzon_limpiar_bandeja();
+
+CREATE FUNCTION public.buzon_limpiar_bandeja()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_rol text;
+  v_count integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  v_rol := rol_actual();
+
+  INSERT INTO buzon_ocultos(usuario_id, mensaje_id)
+  SELECT auth.uid(), b.id
+  FROM buzon_mensajes b
+  WHERE b.activo
+    AND NOT EXISTS (
+      SELECT 1
+      FROM buzon_ocultos bo
+      WHERE bo.usuario_id = auth.uid()
+        AND bo.mensaje_id = b.id
+    )
+    AND (
+      b.audiencia = 'proximo_turno'
+      OR (b.audiencia = 'jefes'
+          AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
+      OR (b.audiencia = 'recepcion'
+          AND v_rol IN ('recepcion','administracion','gerencia','sysadmin'))
+      OR b.receptor_id = auth.uid()
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM buzon_ocultos o
+      WHERE o.usuario_id = auth.uid()
+        AND o.mensaje_id = b.id
+    )
+  ON CONFLICT DO NOTHING;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.buzon_limpiar_bandeja() TO authenticated;
+
 -- IMPORTANTE:
 -- PostgreSQL no permite cambiar el tipo de retorno de una función existente
 -- mediante CREATE OR REPLACE. Por eso se eliminan primero las versiones
