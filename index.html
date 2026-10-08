@@ -206,7 +206,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 #mo.stats-full{place-items:stretch!important;padding:0!important}#mo.stats-full>div{width:100vw!important;max-width:none!important;height:100vh!important;max-height:none!important;box-sizing:border-box;border-radius:0!important;padding:20px!important}.stats-shell{width:100%;height:100%;max-height:none;box-sizing:border-box;max-height:92vh;overflow:auto}.stats-head{position:sticky;top:0;background:var(--pn);z-index:2;border-bottom:1px solid var(--bd);padding-bottom:10px}.stats-filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px;margin-top:10px}.stats-filters .wide{grid-column:span 2}.stats-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.stats-tabs button.active{background:#2563eb;color:#fff;border-color:#2563eb}.stats-kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}.stats-kpi{border:1px solid var(--bd);border-radius:12px;padding:12px;background:var(--bg)}.stats-kpi .label{font-size:11px;color:var(--mu)}.stats-kpi b{display:block;font-size:22px;margin-top:5px}.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stats-card{border:1px solid var(--bd);border-radius:12px;background:var(--pn);padding:14px;min-width:0}.stats-card h4{margin:0 0 10px}.stats-table{width:100%;border-collapse:collapse;font-size:12px}.stats-table th,.stats-table td{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left}.stats-table th{color:var(--mu);font-weight:600}.stats-table td.num,.stats-table th.num{text-align:right}@media(max-width:900px){.dg{grid-template-columns:1fr}.dg>div:first-child,.dg>.dinero{grid-column:1}}.stats-insight{padding:10px 12px;border-left:4px solid #2563eb;background:rgba(37,99,235,.08);border-radius:8px;margin-bottom:8px}@media(max-width:900px){.stats-filters{grid-template-columns:repeat(2,1fr)}.stats-kpis{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:1fr}.stats-filters .wide{grid-column:span 1}}</style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
-<header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
+<header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="abrirBuzon()" title="Buzón" aria-label="Buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
@@ -658,6 +658,125 @@ function abrirNueva(p={}){
  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarNueva()">Guardar</button></div></div>`;
  $('#mo').style.display='grid';filU(p.unidad);renderParkingDates(true);$('#ne').onchange=()=>renderParkingDates(true);$('#ns').onchange=()=>renderParkingDates(true);toggleNochesEst();syncBookingRef();
  if(p.bloqueo){$('#nt').value='b';$('#nt').dispatchEvent(new Event('change'))}
+}
+function abrirRevisarDisponibilidad(){
+ const ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
+ const tk=Object.entries(S.tipos);
+ const hoy=hoyStr();
+ $('#mo').innerHTML=`
+ <div style="width:760px;max-width:calc(100vw - 40px)">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+   <h3 style="margin:0">✓ Revisar Disponibilidad</h3>
+   <button onclick="cerrar()">✕</button>
+  </div>
+  <p class="mu" style="margin:6px 0 14px">Usa el mismo motor de disponibilidad y reacomodación inteligente de las reservas, pero aquí solo se consulta: <b>no se crea ni modifica ninguna reserva</b>.</p>
+  <div class="sec c3">
+   <h4 class="st">🏠 Unidad y fechas</h4>
+   <div class="g2">
+    <label>Edificio
+     <select id="ad_ed" onchange="filDisponibilidadUnidades()">
+      <option value="">Seleccionar edificio</option>
+      ${ed.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}
+     </select>
+    </label>
+    <label>Categoría
+     <select id="ad_tipo" onchange="filDisponibilidadUnidades()">
+      <option value="">Seleccionar categoría</option>
+      ${tk.map(([id,t])=>`<option value="${id}">${esc(t.nombre||t)}</option>`).join('')}
+     </select>
+    </label>
+    <label>Unidad <span class="mu">(opcional)</span>
+     <select id="ad_unidad">
+      <option value="">Automática</option>
+     </select>
+    </label>
+    <label>Entrada<input id="ad_ent" type="date" value="${hoy}"></label>
+    <label>Salida<input id="ad_sal" type="date" value="${addD(hoy,1)}"></label>
+   </div>
+  </div>
+  <div id="ad_result" style="margin-top:12px"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+   <button onclick="cerrar()">Cerrar</button>
+   <button class="p" onclick="consultarDisponibilidad()">Revisar disponibilidad</button>
+  </div>
+ </div>`;
+ $('#mo').style.display='grid';
+}
+function filDisponibilidadUnidades(){
+ const ed=$('#ad_ed')?.value,tipo=$('#ad_tipo')?.value,sel=$('#ad_unidad');
+ if(!sel)return;
+ const unidades=S.unidades.filter(u=>u.edificio_id===ed&&(!tipo||u.tipo_unidad_id===tipo));
+ sel.innerHTML='<option value="">Automática</option>'+unidades.map(u=>`<option value="${u.id}">${esc(u.codigo)}${u.tipos_unidad?.nombre?' · '+esc(u.tipos_unidad.nombre):''}</option>`).join('');
+}
+async function consultarDisponibilidad(){
+ const ed=$('#ad_ed')?.value,tipo=$('#ad_tipo')?.value,uid=$('#ad_unidad')?.value||null;
+ const fe=$('#ad_ent')?.value,fs=$('#ad_sal')?.value,out=$('#ad_result');
+ if(!ed||!tipo)return msg('Selecciona edificio y categoría',1);
+ if(!fe||!fs||fs<=fe)return msg('La salida debe ser posterior a la entrada',1);
+ out.innerHTML='<div class="al">⏳ Analizando disponibilidad y posibles reacomodaciones…</div>';
+
+ const candidatos=S.unidades.filter(u=>u.edificio_id===ed&&u.tipo_unidad_id===tipo);
+ if(!candidatos.length){out.innerHTML='<div class="al r">No existen unidades activas de esta categoría en el edificio seleccionado.</div>';return}
+
+ const ids=candidatos.map(u=>u.id);
+ const {data:ocup,error}=await sb.from('reservas')
+   .select('id,unidad_id,fecha_entrada,fecha_salida,estado,huesped_nombre_copia')
+   .in('unidad_id',ids)
+   .lt('fecha_entrada',fs)
+   .gt('fecha_salida',fe)
+   .in('estado',['tentativa','confirmada','en_casa','bloqueado']);
+ if(error){out.innerHTML='<div class="al r">'+esc(errTxt(error))+'</div>';return}
+
+ const libres=new Set(candidatos.filter(u=>!(ocup||[]).some(r=>r.unidad_id===u.id)).map(u=>u.id));
+ if(uid&&libres.has(uid)){
+   const u=S.unidades.find(x=>x.id===uid);
+   out.innerHTML=`<div class="al" style="border-left-color:#16a34a;background:rgba(22,163,74,.08)">
+    <b>✓ Disponible</b><br>
+    La unidad <b>${esc(u.codigo)}</b> está libre durante todo el periodo <b>${fm(fe)} → ${fm(fs)}</b>.
+   </div>`;
+   return;
+ }
+
+ if(!uid&&libres.size){
+   const u=candidatos.find(x=>libres.has(x.id));
+   out.innerHTML=`<div class="al" style="border-left-color:#16a34a;background:rgba(22,163,74,.08)">
+    <b>✓ Disponibilidad encontrada</b><br>
+    Puedes asignar automáticamente la unidad <b>${esc(u.codigo)}</b> (${esc(u.tipos_unidad?.nombre||'')}) para <b>${fm(fe)} → ${fm(fs)}</b>.
+    ${libres.size>1?`<br><span class="mu">Hay ${libres.size} unidades disponibles de esta categoría.</span>`:''}
+   </div>`;
+   return;
+ }
+
+ const {data:planRaw,error:pe}=await sb.rpc('buscar_reacomodacion',{
+   p_edificio_id:ed,
+   p_tipo_unidad_id:tipo,
+   p_entrada:fe,
+   p_salida:fs
+ });
+ if(pe){out.innerHTML='<div class="al r">No se pudo calcular la reacomodación: '+esc(errTxt(pe))+'</div>';return}
+
+ const planObj=planRaw&&!Array.isArray(planRaw)&&typeof planRaw==='object'?planRaw:null;
+ const plan=Array.isArray(planObj?.plan)?planObj.plan:[];
+ const target=planObj?.unidad_id?S.unidades.find(x=>x.id===planObj.unidad_id):null;
+
+ if(!target){
+   out.innerHTML='<div class="al r"><b>✕ No hay disponibilidad</b><br>No existe una unidad libre ni una reacomodación inteligente válida para ese periodo.</div>';
+   return;
+ }
+
+ const selectedBlocked=uid&&target.id!==uid;
+ let html=`<div class="al" style="border-left-color:#2563eb;background:rgba(37,99,235,.08)">
+  <b>↔ Disponibilidad mediante reacomodación inteligente</b><br>
+  La unidad ${uid?'<b>seleccionada</b> no está libre, pero':'no está libre'} el sistema puede liberar la unidad <b>${esc(target.codigo)}</b> para <b>${fm(fe)} → ${fm(fs)}</b>.
+  ${selectedBlocked?`<br><span class="mu">La unidad seleccionada no puede liberarse con una cadena válida; esta es la mejor unidad disponible mediante reacomodación.</span>`:''}
+ </div>`;
+ if(plan.length){
+   html+=`<div class="sec c2" style="margin-top:8px"><h4 class="st">Cambios que serían necesarios</h4><div style="display:grid;gap:6px">${plan.map(x=>{
+     const rr=(ocup||[]).find(r=>r.id===x.reserva_id),uo=S.unidades.find(u=>u.id===x.unidad_origen),un=S.unidades.find(u=>u.id===x.unidad_destino);
+     return `<div class="pg">⇄ <b>${esc(rr?.huesped_nombre_copia||x.reserva_id)}</b>: ${esc(uo?.codigo||'—')} → <b>${esc(un?.codigo||'—')}</b></div>`;
+   }).join('')}</div></div>`;
+ }
+ out.innerHTML=html;
 }
 function syncBookingRef(){const b=$('#nc')?.value==='booking';const x=$('#nx');if(!x)return;x.required=b;x.placeholder=b?'Obligatorio para Booking':'Opcional';if(b)x.closest('label')?.querySelector('span')?.remove()}
 function parkingDateList(fe=$('#ne')?.value,fs=$('#ns')?.value){if(!fe||!fs||fs<=fe)return[];const a=[];for(let d=fe;d<fs;d=addD(d,1))a.push(d);return a}
