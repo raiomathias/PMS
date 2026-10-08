@@ -2052,7 +2052,7 @@ async function audCSV(){
 
 // ---------- Huéspedes hospedados / movimientos de hoy ----------
 let HOS={data:[],filtro:'todos',ed:'todos'};
-function hosEstado(r){const hoy=hoyStr(),c=[];if(r.estado==='en_casa')c.push('en_casa');if(r.fecha_entrada===hoy&&['tentativa','confirmada','en_casa'].includes(r.estado))c.push('check_in');if(r.fecha_salida===hoy&&r.estado==='en_casa')c.push('check_out');if(r.fecha_salida===hoy&&r.estado==='check_out')c.push('check_out');return c}
+function hosEstado(r){const hoy=hoyStr(),c=[];if(r.estado==='en_casa')c.push('en_casa');if(r.fecha_entrada===hoy&&['tentativa','confirmada','en_casa'].includes(r.estado))c.push('check_in');if(r.fecha_salida===hoy&&r.estado==='en_casa')c.push('check_out');if(r.estado==='check_out'&&(r.fecha_salida===hoy||fechaLocalTS(r.salida_real)===hoy))c.push('check_out');return c}
 function hosNombre(r){return r.huespedes?.nombre_completo||r.huesped_nombre_copia||'Huésped sin nombre'}
 function hosUnidad(r){return r.unidades?.codigo||S.unidades.find(u=>u.id===r.unidad_id)?.codigo||'—'}
 function hosEdificio(r){return r.unidades?.edificios||S.unidades.find(u=>u.id===r.unidad_id)?.edificios||null}
