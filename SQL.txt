@@ -3198,3 +3198,69 @@ GRANT EXECUTE ON FUNCTION public.buzon_listar() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.buzon_enviar(text,text,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.buzon_marcar_leido(uuid) TO authenticated;
 
+
+-- Lectura individual por usuario: un mensaje de "próximo turno" debe poder ser
+-- leído por cada usuario sin marcarlo como leído para todos los demás.
+CREATE TABLE IF NOT EXISTS public.buzon_lecturas (
+  mensaje_id uuid NOT NULL REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
+  usuario_id uuid NOT NULL REFERENCES public.perfiles(id) ON DELETE CASCADE,
+  leido_en timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (mensaje_id,usuario_id)
+);
+ALTER TABLE public.buzon_lecturas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS buzon_lecturas_no_acceso_directo ON public.buzon_lecturas;
+CREATE POLICY buzon_lecturas_no_acceso_directo
+  ON public.buzon_lecturas FOR ALL TO authenticated
+  USING (false) WITH CHECK (false);
+
+CREATE OR REPLACE FUNCTION public.buzon_listar()
+RETURNS TABLE(
+  id uuid,audiencia text,receptor_id uuid,mensaje text,creado_en timestamptz,
+  leido_en timestamptz,remitente_id uuid,remitente_nombre text
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_rol text;
+BEGIN
+  v_rol := rol_actual();
+  RETURN QUERY
+  SELECT b.id,b.audiencia,b.receptor_id,b.mensaje,b.creado_en,
+         l.leido_en,b.remitente_id,p.nombre_completo
+  FROM buzon_mensajes b
+  JOIN perfiles p ON p.id=b.remitente_id
+  LEFT JOIN buzon_lecturas l ON l.mensaje_id=b.id AND l.usuario_id=auth.uid()
+  WHERE b.activo
+    AND (
+      b.audiencia='proximo_turno'
+      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+      OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
+      OR b.receptor_id=auth.uid()
+    )
+  ORDER BY b.creado_en DESC
+  LIMIT 100;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buzon_marcar_leido(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
+DECLARE v_rol text;
+BEGIN
+  v_rol := rol_actual();
+  IF NOT EXISTS (
+    SELECT 1 FROM buzon_mensajes b
+    WHERE b.id=p_id AND b.activo
+      AND (
+        b.audiencia='proximo_turno'
+        OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+        OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
+        OR b.receptor_id=auth.uid()
+      )
+  ) THEN
+    RAISE EXCEPTION 'Mensaje no disponible para este usuario';
+  END IF;
+
+  INSERT INTO buzon_lecturas(mensaje_id,usuario_id,leido_en)
+  VALUES(p_id,auth.uid(),now())
+  ON CONFLICT (mensaje_id,usuario_id) DO UPDATE SET leido_en=excluded.leido_en;
+END;
+$$;
