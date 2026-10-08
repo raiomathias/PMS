@@ -3056,7 +3056,9 @@ NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
 -- BUZÓN DE TURNOS / MENSAJERÍA INTERNA
+-- Versión consolidada e idempotente.
 -- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.buzon_mensajes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   remitente_id uuid NOT NULL REFERENCES public.perfiles(id),
@@ -3073,13 +3075,22 @@ CREATE INDEX IF NOT EXISTS buzon_mensajes_creado_idx
 CREATE INDEX IF NOT EXISTS buzon_mensajes_receptor_idx
   ON public.buzon_mensajes (receptor_id, creado_en DESC);
 
-ALTER TABLE public.buzon_mensajes ENABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS public.buzon_lecturas (
+  mensaje_id uuid NOT NULL REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
+  usuario_id uuid NOT NULL REFERENCES public.perfiles(id) ON DELETE CASCADE,
+  leido_en timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (mensaje_id, usuario_id)
+);
 
--- Realtime: el cliente puede recibir INSERTs únicamente de filas que su
--- propio rol ya tendría permitido ver. Las operaciones de escritura siguen
--- bloqueadas por la política buzon_no_acceso_directo.
-GRANT SELECT ON public.buzon_mensajes TO authenticated;
+ALTER TABLE public.buzon_mensajes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.buzon_lecturas ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS buzon_realtime_select ON public.buzon_mensajes;
+DROP POLICY IF EXISTS buzon_no_acceso_directo ON public.buzon_mensajes;
+DROP POLICY IF EXISTS buzon_lecturas_no_acceso_directo ON public.buzon_lecturas;
+
+GRANT SELECT ON public.buzon_mensajes TO authenticated;
+
 CREATE POLICY buzon_realtime_select
   ON public.buzon_mensajes
   FOR SELECT
@@ -3087,28 +3098,15 @@ CREATE POLICY buzon_realtime_select
   USING (
     activo
     AND (
-      audiencia='proximo_turno'
-      OR (audiencia='jefes' AND rol_actual() IN ('administracion','gerencia','sysadmin','recepcion'))
-      OR (audiencia='recepcion' AND rol_actual() IN ('administracion','gerencia','sysadmin','recepcion'))
-      OR receptor_id=auth.uid()
+      audiencia = 'proximo_turno'
+      OR (audiencia = 'jefes'
+          AND rol_actual() IN ('administracion','gerencia','sysadmin','recepcion'))
+      OR (audiencia = 'recepcion'
+          AND rol_actual() IN ('administracion','gerencia','sysadmin','recepcion'))
+      OR receptor_id = auth.uid()
     )
   );
 
-DO $
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_publication_tables
-    WHERE pubname='supabase_realtime'
-      AND schemaname='public'
-      AND tablename='buzon_mensajes'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.buzon_mensajes;
-  END IF;
-END
-$;
-
-DROP POLICY IF EXISTS buzon_no_acceso_directo ON public.buzon_mensajes;
 CREATE POLICY buzon_no_acceso_directo
   ON public.buzon_mensajes
   FOR ALL
@@ -3116,7 +3114,37 @@ CREATE POLICY buzon_no_acceso_directo
   USING (false)
   WITH CHECK (false);
 
-CREATE OR REPLACE FUNCTION public.buzon_listar()
+CREATE POLICY buzon_lecturas_no_acceso_directo
+  ON public.buzon_lecturas
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+-- Realtime: agregar la tabla solo si todavía no pertenece a la publicación.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'buzon_mensajes'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.buzon_mensajes;
+  END IF;
+END
+$$;
+
+-- IMPORTANTE:
+-- PostgreSQL no permite cambiar el tipo de retorno de una función existente
+-- mediante CREATE OR REPLACE. Por eso se eliminan primero las versiones
+-- anteriores antes de crear la versión definitiva.
+DROP FUNCTION IF EXISTS public.buzon_listar();
+DROP FUNCTION IF EXISTS public.buzon_enviar(text,text,uuid);
+DROP FUNCTION IF EXISTS public.buzon_marcar_leido(uuid);
+
+CREATE FUNCTION public.buzon_listar()
 RETURNS TABLE(
   id uuid,
   audiencia text,
@@ -3131,28 +3159,41 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
-DECLARE v_rol text;
+DECLARE
+  v_rol text;
 BEGIN
   v_rol := rol_actual();
 
   RETURN QUERY
-  SELECT b.id,b.audiencia,b.receptor_id,b.mensaje,b.creado_en,b.leido_en,
-         b.remitente_id,p.nombre_completo
+  SELECT
+    b.id,
+    b.audiencia,
+    b.receptor_id,
+    b.mensaje,
+    b.creado_en,
+    l.leido_en,
+    b.remitente_id,
+    p.nombre_completo
   FROM buzon_mensajes b
-  JOIN perfiles p ON p.id=b.remitente_id
+  JOIN perfiles p ON p.id = b.remitente_id
+  LEFT JOIN buzon_lecturas l
+    ON l.mensaje_id = b.id
+   AND l.usuario_id = auth.uid()
   WHERE b.activo
     AND (
-      b.audiencia='proximo_turno'
-      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
-      OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
-      OR b.receptor_id=auth.uid()
+      b.audiencia = 'proximo_turno'
+      OR (b.audiencia = 'jefes'
+          AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
+      OR (b.audiencia = 'recepcion'
+          AND v_rol IN ('recepcion','administracion','gerencia','sysadmin'))
+      OR b.receptor_id = auth.uid()
     )
   ORDER BY b.creado_en DESC
   LIMIT 100;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.buzon_enviar(
+CREATE FUNCTION public.buzon_enviar(
   p_audiencia text,
   p_mensaje text,
   p_receptor_id uuid DEFAULT NULL
@@ -3167,63 +3208,103 @@ DECLARE
   v_id uuid;
 BEGIN
   v_rol := rol_actual();
-  p_mensaje := trim(coalesce(p_mensaje,''));
+  p_mensaje := trim(coalesce(p_mensaje, ''));
 
-  IF p_mensaje='' THEN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  IF p_mensaje = '' THEN
     RAISE EXCEPTION 'El mensaje no puede estar vacío';
   END IF;
-  IF length(p_mensaje)>4000 THEN
+
+  IF length(p_mensaje) > 4000 THEN
     RAISE EXCEPTION 'El mensaje no puede superar 4000 caracteres';
   END IF;
+
   IF p_audiencia NOT IN ('proximo_turno','jefes','recepcion') THEN
     RAISE EXCEPTION 'Audiencia de buzón no válida';
   END IF;
 
-  IF p_audiencia='jefes' AND v_rol NOT IN ('administracion','gerencia','sysadmin','recepcion') THEN
+  IF p_audiencia = 'jefes'
+     AND v_rol NOT IN ('administracion','gerencia','sysadmin','recepcion')
+  THEN
     RAISE EXCEPTION 'Solo Gerencia o superior puede enviar mensajes a jefes';
   END IF;
 
-  IF p_audiencia='recepcion' AND v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+  IF p_audiencia = 'recepcion'
+     AND v_rol NOT IN ('administracion','gerencia','sysadmin')
+  THEN
     RAISE EXCEPTION 'Solo Gerencia o superior puede enviar mensajes a Recepción';
   END IF;
 
-  IF p_audiencia='recepcion' AND p_receptor_id IS NOT NULL THEN
+  IF p_audiencia = 'recepcion' AND p_receptor_id IS NOT NULL THEN
     IF NOT EXISTS (
-      SELECT 1 FROM perfiles
-      WHERE id=p_receptor_id AND activo AND rol='recepcion'
+      SELECT 1
+      FROM perfiles
+      WHERE id = p_receptor_id
+        AND activo
+        AND rol = 'recepcion'
     ) THEN
       RAISE EXCEPTION 'El receptor no es un usuario de Recepción activo';
     END IF;
   END IF;
 
-  INSERT INTO buzon_mensajes(remitente_id,audiencia,receptor_id,mensaje)
-  VALUES(auth.uid(),p_audiencia,p_receptor_id,p_mensaje)
+  INSERT INTO buzon_mensajes(
+    remitente_id,
+    audiencia,
+    receptor_id,
+    mensaje
+  )
+  VALUES (
+    auth.uid(),
+    p_audiencia,
+    p_receptor_id,
+    p_mensaje
+  )
   RETURNING id INTO v_id;
 
   RETURN v_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.buzon_marcar_leido(p_id uuid)
+CREATE FUNCTION public.buzon_marcar_leido(p_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
-DECLARE v_rol text;
+DECLARE
+  v_rol text;
 BEGIN
   v_rol := rol_actual();
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM buzon_mensajes b
+    WHERE b.id = p_id
+      AND b.activo
+      AND (
+        b.audiencia = 'proximo_turno'
+        OR (b.audiencia = 'jefes'
+            AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
+        OR (b.audiencia = 'recepcion'
+            AND v_rol IN ('recepcion','administracion','gerencia','sysadmin'))
+        OR b.receptor_id = auth.uid()
+      )
+  ) THEN
+    RAISE EXCEPTION 'Mensaje no disponible para este usuario';
+  END IF;
+
+  INSERT INTO buzon_lecturas(mensaje_id, usuario_id, leido_en)
+  VALUES (p_id, auth.uid(), now())
+  ON CONFLICT (mensaje_id, usuario_id)
+  DO UPDATE SET leido_en = excluded.leido_en;
+
+  -- Mantener también el campo histórico de la tabla, si existe.
   UPDATE buzon_mensajes
-  SET leido_en=coalesce(leido_en,now())
-  WHERE id=p_id
-    AND activo
-    AND (
-      receptor_id=auth.uid()
-      OR audiencia='proximo_turno'
-      OR (audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
-      OR (audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
-    );
+  SET leido_en = COALESCE(leido_en, now())
+  WHERE id = p_id;
 END;
 $$;
 
@@ -3231,69 +3312,5 @@ GRANT EXECUTE ON FUNCTION public.buzon_listar() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.buzon_enviar(text,text,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.buzon_marcar_leido(uuid) TO authenticated;
 
+NOTIFY pgrst, 'reload schema';
 
--- Lectura individual por usuario: un mensaje de "próximo turno" debe poder ser
--- leído por cada usuario sin marcarlo como leído para todos los demás.
-CREATE TABLE IF NOT EXISTS public.buzon_lecturas (
-  mensaje_id uuid NOT NULL REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
-  usuario_id uuid NOT NULL REFERENCES public.perfiles(id) ON DELETE CASCADE,
-  leido_en timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (mensaje_id,usuario_id)
-);
-ALTER TABLE public.buzon_lecturas ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS buzon_lecturas_no_acceso_directo ON public.buzon_lecturas;
-CREATE POLICY buzon_lecturas_no_acceso_directo
-  ON public.buzon_lecturas FOR ALL TO authenticated
-  USING (false) WITH CHECK (false);
-
-CREATE OR REPLACE FUNCTION public.buzon_listar()
-RETURNS TABLE(
-  id uuid,audiencia text,receptor_id uuid,mensaje text,creado_en timestamptz,
-  leido_en timestamptz,remitente_id uuid,remitente_nombre text
-)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
-DECLARE v_rol text;
-BEGIN
-  v_rol := rol_actual();
-  RETURN QUERY
-  SELECT b.id,b.audiencia,b.receptor_id,b.mensaje,b.creado_en,
-         l.leido_en,b.remitente_id,p.nombre_completo
-  FROM buzon_mensajes b
-  JOIN perfiles p ON p.id=b.remitente_id
-  LEFT JOIN buzon_lecturas l ON l.mensaje_id=b.id AND l.usuario_id=auth.uid()
-  WHERE b.activo
-    AND (
-      b.audiencia='proximo_turno'
-      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
-      OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
-      OR b.receptor_id=auth.uid()
-    )
-  ORDER BY b.creado_en DESC
-  LIMIT 100;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.buzon_marcar_leido(p_id uuid)
-RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public AS $$
-DECLARE v_rol text;
-BEGIN
-  v_rol := rol_actual();
-  IF NOT EXISTS (
-    SELECT 1 FROM buzon_mensajes b
-    WHERE b.id=p_id AND b.activo
-      AND (
-        b.audiencia='proximo_turno'
-        OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
-        OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
-        OR b.receptor_id=auth.uid()
-      )
-  ) THEN
-    RAISE EXCEPTION 'Mensaje no disponible para este usuario';
-  END IF;
-
-  INSERT INTO buzon_lecturas(mensaje_id,usuario_id,leido_en)
-  VALUES(p_id,auth.uid(),now())
-  ON CONFLICT (mensaje_id,usuario_id) DO UPDATE SET leido_en=excluded.leido_en;
-END;
-$$;
