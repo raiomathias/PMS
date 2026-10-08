@@ -3075,6 +3075,39 @@ CREATE INDEX IF NOT EXISTS buzon_mensajes_receptor_idx
 
 ALTER TABLE public.buzon_mensajes ENABLE ROW LEVEL SECURITY;
 
+-- Realtime: el cliente puede recibir INSERTs únicamente de filas que su
+-- propio rol ya tendría permitido ver. Las operaciones de escritura siguen
+-- bloqueadas por la política buzon_no_acceso_directo.
+GRANT SELECT ON public.buzon_mensajes TO authenticated;
+DROP POLICY IF EXISTS buzon_realtime_select ON public.buzon_mensajes;
+CREATE POLICY buzon_realtime_select
+  ON public.buzon_mensajes
+  FOR SELECT
+  TO authenticated
+  USING (
+    activo
+    AND (
+      audiencia='proximo_turno'
+      OR (audiencia='jefes' AND rol_actual() IN ('administracion','gerencia','sysadmin','recepcion'))
+      OR (audiencia='recepcion' AND rol_actual() IN ('administracion','gerencia','sysadmin','recepcion'))
+      OR receptor_id=auth.uid()
+    )
+  );
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname='supabase_realtime'
+      AND schemaname='public'
+      AND tablename='buzon_mensajes'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.buzon_mensajes;
+  END IF;
+END
+$;
+
 DROP POLICY IF EXISTS buzon_no_acceso_directo ON public.buzon_mensajes;
 CREATE POLICY buzon_no_acceso_directo
   ON public.buzon_mensajes
@@ -3110,7 +3143,7 @@ BEGIN
   WHERE b.activo
     AND (
       b.audiencia='proximo_turno'
-      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
       OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
       OR b.receptor_id=auth.uid()
     )
@@ -3146,7 +3179,7 @@ BEGIN
     RAISE EXCEPTION 'Audiencia de buzón no válida';
   END IF;
 
-  IF p_audiencia='jefes' AND v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+  IF p_audiencia='jefes' AND v_rol NOT IN ('administracion','gerencia','sysadmin','recepcion') THEN
     RAISE EXCEPTION 'Solo Gerencia o superior puede enviar mensajes a jefes';
   END IF;
 
@@ -3231,7 +3264,7 @@ BEGIN
   WHERE b.activo
     AND (
       b.audiencia='proximo_turno'
-      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+      OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
       OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
       OR b.receptor_id=auth.uid()
     )
@@ -3251,7 +3284,7 @@ BEGIN
     WHERE b.id=p_id AND b.activo
       AND (
         b.audiencia='proximo_turno'
-        OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin'))
+        OR (b.audiencia='jefes' AND v_rol IN ('administracion','gerencia','sysadmin','recepcion'))
         OR (b.audiencia='recepcion' AND (v_rol='recepcion' OR v_rol IN ('administracion','gerencia','sysadmin')))
         OR b.receptor_id=auth.uid()
       )
