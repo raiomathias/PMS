@@ -3137,6 +3137,39 @@ END
 $$;
 
 -- ============================================================
+-- LIMPIEZA GLOBAL DE BUZONES (GERENCIA+)
+-- No elimina mensajes. Los oculta de todas las bandejas.
+CREATE TABLE IF NOT EXISTS public.buzon_limpiezas_globales (
+  mensaje_id uuid PRIMARY KEY REFERENCES public.buzon_mensajes(id) ON DELETE CASCADE,
+  limpiado_en timestamptz NOT NULL DEFAULT now(),
+  limpiado_por uuid REFERENCES public.perfiles(id)
+);
+
+ALTER TABLE public.buzon_limpiezas_globales ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.buzon_limpiar_todos()
+RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public
+AS $$
+DECLARE v_rol text; v_count integer;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  v_rol := rol_actual();
+  IF v_rol NOT IN ('gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia o superior puede limpiar todos los buzones';
+  END IF;
+  INSERT INTO buzon_limpiezas_globales(mensaje_id, limpiado_por)
+  SELECT id, auth.uid() FROM buzon_mensajes b
+  WHERE b.activo
+    AND NOT EXISTS (SELECT 1 FROM buzon_limpiezas_globales g WHERE g.mensaje_id=b.id)
+  ON CONFLICT DO NOTHING;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.buzon_limpiar_todos() TO authenticated;
+
 -- LIMPIEZA DE BANDEJA POR USUARIO
 -- No elimina mensajes: solo oculta mensajes de la bandeja del usuario.
 -- ============================================================
@@ -3255,6 +3288,7 @@ BEGIN
     ON l.mensaje_id = b.id
    AND l.usuario_id = auth.uid()
   WHERE b.activo
+    AND NOT EXISTS (SELECT 1 FROM buzon_limpiezas_globales g WHERE g.mensaje_id=b.id)
     AND NOT EXISTS (SELECT 1 FROM buzon_ocultos bo WHERE bo.usuario_id = auth.uid() AND bo.mensaje_id = b.id)
     AND (
       b.audiencia = 'proximo_turno'
