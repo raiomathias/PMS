@@ -1269,7 +1269,30 @@ async function guardarCambiosReservaDetalle(op={}){
  }
  RT.ignoreUntil=Date.now()+2500;
  const nuevo={...r,fecha_entrada:payload.p_fecha_entrada,fecha_salida:payload.p_fecha_salida,canal:payload.p_canal,referencia_externa:payload.p_referencia_externa,adultos:payload.p_adultos,menores:payload.p_menores,tarifa_noche:payload.p_tarifa_noche,modelo_vehiculo:payload.p_modelo_vehiculo,patente_vehiculo:payload.p_patente_vehiculo,cupo_estacionamiento:payload.p_cupo_estacionamiento,usa_estacionamiento:payload.p_usa_estacionamiento,noches_estacionamiento:payload.p_noches_estacionamiento,observaciones:payload.p_observaciones,no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad,noches:diff(payload.p_fecha_entrada,payload.p_fecha_salida)};
- S.cur=nuevo;const ri=S.res.findIndex(x=>x.id===r.id);if(ri>=0)S.res[ri]={...S.res[ri],...nuevo};
+ S.cur=nuevo;
+ const ri=S.res.findIndex(x=>x.id===r.id);
+ if(ri>=0)S.res[ri]={...S.res[ri],...nuevo};
+
+ // Refrescar inmediatamente la representación de la Grid.
+ // La tarifa nocturna y los cargos modifican saldo_reserva, por lo que
+ // actualizar solamente S.res no alcanza para reflejar el nuevo total.
+ const {data:saldoActual,error:saldoError}=await sb.from('saldo_reserva')
+   .select('reserva_id,total_a_pagar,total_pagado')
+   .eq('reserva_id',r.id)
+   .maybeSingle();
+ if(!saldoError&&saldoActual){
+   S.saldo[r.id]={
+     total:+saldoActual.total_a_pagar||0,
+     pagado:+saldoActual.total_pagado||0
+   };
+ }
+
+ // Redibujar sin cerrar la ficha ni reconstruir toda la ventana del calendario.
+ // Conservamos exactamente la posición horizontal actual.
+ const grid=$('#gw'),scrollActual=grid?grid.scrollLeft:null;
+ dibujar();
+ if(grid&&Number.isFinite(scrollActual))grid.scrollLeft=scrollActual;
+
  if(!op.silencioso)await abrirDr(r.id);
  if(!op.silencioso)msg('Cambios guardados correctamente');
  return true;
