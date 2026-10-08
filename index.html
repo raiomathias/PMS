@@ -917,19 +917,16 @@ function eliminarReservaDeMemoria(id){
 async function sincronizarReservaUI(id,abrir=true){
  const {data:actual,error}=await sb.from('reservas').select('*').eq('id',id).maybeSingle();
  if(error)return msg('La acción se realizó, pero no se pudo actualizar la vista: '+errTxt(error),1);
- const g=$('#gw');
- const liveScroll=g?g.scrollLeft:null;
  if(actual){
   actualizarReservaEnMemoria(actual);
   dibujar();
-  await cargar({preserveLiveScroll:true});
+  await cargar();
   if(abrir&&$('#dr').style.display==='block')await abrirDr(id);
  }else{
   eliminarReservaDeMemoria(id);
   $('#dr').style.display='none';
   await cargar({preserveLiveScroll:true});
  }
- if(Number.isFinite(liveScroll)&&$('#gw'))$('#gw').scrollLeft=liveScroll;
  return true;
 }
 async function accion(k){
