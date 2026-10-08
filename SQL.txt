@@ -3055,6 +3055,153 @@ NOTIFY pgrst, 'reload schema';
 
 
 -- ============================================================
+-- PAGOS: REGISTRO TRANSACCIONAL Y MÚLTIPLES PAGOS
+-- El RPC inserta el pago y todos sus motivos en una sola
+-- transacción SECURITY DEFINER, evitando RLS en pagos_motivos.
+-- No existe ninguna restricción que limite un pago por reserva:
+-- una reserva puede tener tantos pagos como sean necesarios.
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.registrar_pago_completo(
+  uuid,text,text,numeric,numeric,integer,boolean,text,text,jsonb
+);
+
+CREATE FUNCTION public.registrar_pago_completo(
+  p_reserva_id uuid,
+  p_metodo text,
+  p_moneda text,
+  p_monto_original numeric,
+  p_tipo_cambio numeric,
+  p_monto_clp integer,
+  p_anticipado boolean,
+  p_motivo_principal text,
+  p_id_transaccion text,
+  p_motivos jsonb
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_pago_id uuid;
+  v_sum_original numeric := 0;
+  v_sum_clp integer := 0;
+  v_item jsonb;
+  v_motivo text;
+  v_orig numeric;
+  v_clp integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.reservas WHERE id = p_reserva_id
+  ) THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF p_monto_original IS NULL OR p_monto_original <= 0
+     OR p_monto_clp IS NULL OR p_monto_clp <= 0
+  THEN
+    RAISE EXCEPTION 'El monto del pago debe ser mayor que cero';
+  END IF;
+
+  IF p_motivo_principal NOT IN (
+    'estadia','estacionamiento','horario_extra',
+    'penalizacion','consumos','garantia','otro'
+  ) THEN
+    RAISE EXCEPTION 'Motivo de pago no válido';
+  END IF;
+
+  IF p_motivos IS NULL
+     OR jsonb_typeof(p_motivos) <> 'array'
+     OR jsonb_array_length(p_motivos) = 0
+  THEN
+    RAISE EXCEPTION 'El pago debe tener al menos un motivo';
+  END IF;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(p_motivos)
+  LOOP
+    v_motivo := v_item->>'motivo';
+    v_orig := (v_item->>'monto_original')::numeric;
+    v_clp := (v_item->>'monto_clp')::integer;
+
+    IF v_motivo NOT IN (
+      'estadia','estacionamiento','horario_extra',
+      'penalizacion','consumos','garantia','otro'
+    ) THEN
+      RAISE EXCEPTION 'Motivo de pago no válido: %', v_motivo;
+    END IF;
+
+    IF v_orig <= 0 OR v_clp <= 0 THEN
+      RAISE EXCEPTION 'Todos los motivos deben tener un monto mayor que cero';
+    END IF;
+
+    v_sum_original := v_sum_original + v_orig;
+    v_sum_clp := v_sum_clp + v_clp;
+  END LOOP;
+
+  IF abs(v_sum_original - p_monto_original) > 0.005 THEN
+    RAISE EXCEPTION 'Los motivos no coinciden con el monto total del pago';
+  END IF;
+
+  IF abs(v_sum_clp - p_monto_clp) > 1 THEN
+    RAISE EXCEPTION 'Los motivos en CLP no coinciden con el monto total del pago';
+  END IF;
+
+  INSERT INTO public.pagos(
+    reserva_id,
+    metodo,
+    moneda,
+    monto_original,
+    tipo_cambio,
+    monto_clp,
+    anticipado,
+    motivo,
+    id_transaccion,
+    creado_por
+  )
+  VALUES (
+    p_reserva_id,
+    p_metodo::metodo_pago,
+    p_moneda::bpchar,
+    p_monto_original,
+    p_tipo_cambio,
+    p_monto_clp,
+    COALESCE(p_anticipado,false),
+    p_motivo_principal,
+    NULLIF(trim(p_id_transaccion),''),
+    auth.uid()
+  )
+  RETURNING id INTO v_pago_id;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(p_motivos)
+  LOOP
+    INSERT INTO public.pagos_motivos(
+      pago_id,
+      motivo,
+      monto_original,
+      monto_clp
+    )
+    VALUES (
+      v_pago_id,
+      v_item->>'motivo',
+      (v_item->>'monto_original')::numeric,
+      (v_item->>'monto_clp')::integer
+    );
+  END LOOP;
+
+  RETURN v_pago_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.registrar_pago_completo(
+  uuid,text,text,numeric,numeric,integer,boolean,text,text,jsonb
+) TO authenticated;
+
+-- ============================================================
 -- BUZÓN DE TURNOS / MENSAJERÍA INTERNA
 -- Versión consolidada e idempotente.
 -- ============================================================
