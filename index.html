@@ -331,7 +331,7 @@ function protegerMutacionesRealtime(){
 }
 
 
-let MAIL={open:false,preview:false,previewRows:[],rows:[],timer:null,channel:null,known:new Set(),initialized:false};
+let MAIL={open:false,preview:false,previewRows:[],rows:[],timer:null,channel:null,known:new Set(),initialized:false,draft:{audiencia:'recepcion_egana',text:''}};
 
 function mailPuedeJefes(){return esAdminPlus(S.perfil?.rol)}
 function mailPuedeRecepcion(){return mailPuedeJefes()}
@@ -397,7 +397,7 @@ async function enviarMensajeBuzon(){
  if(!mailPuedeEnviar(a))return msg('No tienes permiso para enviar a ese destino.',1);
  const {error}=await sb.rpc('buzon_enviar',{p_audiencia:a,p_mensaje:t,p_receptor_id:null});
  if(error)return msg(error.message,1);
- $('#mailText').value='';msg('Mensaje enviado a '+mailAudienciaLabel(a)+'.');
+ MAIL.draft={audiencia:'recepcion_egana',text:''};$('#mailText').value='';msg('Mensaje enviado a '+mailAudienciaLabel(a)+'.');
  await cargarBuzon(false);
 }
 async function limpiarBandejaBuzon(){
@@ -421,11 +421,19 @@ async function limpiarTodosBuzones(){
 }
 function renderBuzon(){
  const b=$('#mailBox');if(!b)return;
+ if(!MAIL.preview&&document.activeElement?.id==='mailText'){
+  MAIL.draft={audiencia:$('#mailAudience')?.value||MAIL.draft.audiencia||'recepcion_egana',text:$('#mailText')?.value||''};
+ }
  const opts=[['recepcion_egana','Recepción Egaña'],['recepcion_huasco','Recepción Huasco'],['administracion','Administración'],['gerencia','Gerencia']];
  const rows=MAIL.preview&&MAIL.previewRows.length?MAIL.previewRows:MAIL.rows;
  const preview=MAIL.preview;
  b.classList.toggle('mail-preview',preview);
  b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3>${preview?'<span class="mu">Nuevo mensaje</span>':'<button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button class="mail-clear-btn" onclick="limpiarBandejaBuzon()" title="Limpiar bandeja" aria-label="Limpiar bandeja">🗑️ <span>Limpiar</span></button><button class="mail-clear-all-btn" onclick="limpiarTodosBuzones()" title="Limpiar todos los buzones">🗑️ <span>Todos</span></button>'}<button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${preview?'<div class="mail-preview-actions"><button class="p" onclick="mostrarBuzonCompleto()">Ver más</button></div>':`<div class="mail-compose"><select id="mailAudience">${opts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="Escribe un mensaje para Recepción Egaña, Recepción Huasco, Administración o Gerencia…"></textarea></div>`}`;
+ if(!preview){
+  const sel=$('#mailAudience'),ta=$('#mailText');
+  if(sel)sel.value=MAIL.draft.audiencia||'recepcion_egana';
+  if(ta)ta.value=MAIL.draft.text||'';
+ }
 }
 function abrirBuzon(auto=false,rows=null){
  MAIL.open=true;MAIL.preview=!!(auto&&rows?.length);MAIL.previewRows=rows||[];
