@@ -415,6 +415,7 @@ async function iniciar(){
  const {data:p}=await sb.from('perfiles').select('id,nombre_completo,rol,activo').eq('id',session.user.id).maybeSingle();
  if(!p||!p.activo){await sb.auth.signOut();$('#login').style.display='grid';return msg('Usuario sin perfil activo',1)}
  S.perfil=p;S.vista=hoyStr();S.ini=addD(S.vista,-30);ND=90;
+ $('#hf').min=esRecepcion()?S.vista:'';
  const pe=await cargarPermisosEdificios();if(!pe)return;
  await cargarPermisosEdicion();
  $('#login').style.display='none';$('#app').style.display='block';
