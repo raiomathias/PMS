@@ -2499,7 +2499,7 @@ BEGIN
   SET
     fecha_entrada = p_nueva_entrada,
     fecha_salida = p_nueva_salida,
-    noches = p_nueva_salida - p_nueva_entrada,
+    noches = DEFAULT,
     actualizado_en = now()
   WHERE id = p_reserva_id;
 
