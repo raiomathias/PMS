@@ -108,7 +108,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 #gal .th{display:flex;gap:6px;justify-content:center;padding:10px;overflow:auto}
 #gal .th img{height:60px;width:90px;flex:none;object-fit:cover;border-radius:6px;opacity:.5;cursor:pointer}#gal .th img.on{opacity:1;outline:2px solid #fff}
 .lc{position:absolute;top:0;bottom:0;width:var(--w);pointer-events:none;box-sizing:border-box}
-.lc.limpia{background:rgba(22,163,74,.30)}.lc.en_proceso{background:rgba(37,99,235,.30)}.lc.sucia{background:rgba(234,179,8,.34)}.lc.defectuosa{background:rgba(234,88,12,.38)}
+.lc.limpia{background:rgba(22,163,74,.30)}.lc.en_proceso{background:rgba(37,99,235,.30)}.lc.sucia{background:rgba(220,38,38,.36)}.lc.defectuosa{background:rgba(234,179,8,.38)}
 /* ---- Estacionamiento ---- */
 #est{position:fixed;inset:0;z-index:9;background:var(--bg);display:none;flex-direction:column}
 #est .ch{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;background:var(--pn);border-bottom:1px solid var(--bd);box-shadow:0 1px 3px rgba(0,0,0,.06)}
@@ -207,7 +207,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#eab308">■</span> sucia · <span style="color:#ea580c">■</span> defectuosa</div>
+<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="abrirBuzon()" title="Buzón de turnos" aria-label="Buzón de turnos">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -220,7 +220,7 @@ const CAL_BATCH=30;
 const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,vista:null,cur:null,g:null,gar:{},edificios:[],edificiosPermitidos:[],permisosEdificios:new Set(),permisosEdicion:new Set()};
 const ED_ROLES_TODOS=['administracion','gerencia','sysadmin','system_admin','systemadmin'];
 const MOV=['tentativa','confirmada','en_casa','bloqueado'];let DRG=null,DRGsup=false,PT=null;
-const LIM={sucia:['🧹','S','#d97706','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#ea580c','Defectuosa']};
+const LIM={sucia:['🧹','S','#dc2626','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#eab308','Defectuosa']};
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n||0);
 const addD=(s,n)=>{const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
@@ -329,6 +329,86 @@ function protegerMutacionesRealtime(){
  }
 }
 
+
+let MAIL={open:false,rows:[],timer:null,known:new Set(),initialized:false};
+
+function mailPuedeJefes(){return esAdminPlus(S.perfil?.rol)}
+function mailPuedeRecepcion(){return mailPuedeJefes()}
+function mailFormato(v){if(!v)return '';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function mailAudienciaLabel(a){return a==='jefes'?'Jefaturas':a==='recepcion'?'Recepción':'Próximo turno'}
+function mailBeep(){
+ try{
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  const c=new C(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=880;g.gain.value=.045;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.16);
+  setTimeout(()=>c.close().catch(()=>{}),300);
+ }catch(e){}
+}
+function mailHayAcceso(r){
+ if(r==='jefes')return mailPuedeJefes();
+ if(r==='recepcion')return mailPuedeRecepcion();
+ return true;
+}
+async function cargarBuzon(autopopup=false){
+ if(!S.perfil)return;
+ const {data,error}=await sb.rpc('buzon_listar');
+ if(error){
+  if(!MAIL.sqlWarned){MAIL.sqlWarned=true;msg('Buzón: debes ejecutar el SQL del sistema de mensajería en Supabase.',1)}
+  return;
+ }
+ const rows=(data||[]).map(x=>({...x,unread:!x.leido_en}));
+ const ids=new Set(rows.map(x=>x.id));
+ const nuevos=rows.filter(x=>!MAIL.known.has(x.id)&&x.remitente_id!==S.perfil.id);
+ const unread=rows.filter(x=>x.unread);
+ const first=!MAIL.initialized;
+ MAIL.rows=rows;MAIL.known=ids;MAIL.initialized=true;
+ actualizarBadge(unread.length);
+ if((first&&unread.length)||(!first&&nuevos.length)){
+  if(nuevos.length)mailBeep();
+  abrirBuzon(true);
+ }
+ if(MAIL.open)renderBuzon();
+}
+function actualizarBadge(n){const b=$('#mailBadge');if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
+function cerrarBuzon(){MAIL.open=false;const b=$('#mailBox');if(b)b.style.display='none'}
+async function marcarMensajeLeido(id){
+ const r=await sb.rpc('buzon_marcar_leido',{p_id:id});
+ if(!r.error){
+  const x=MAIL.rows.find(m=>m.id===id);if(x)x.unread=false;
+  actualizarBadge(MAIL.rows.filter(x=>x.unread).length);
+  renderBuzon();
+ }
+}
+async function marcarTodosBuzon(){
+ const ids=MAIL.rows.filter(x=>x.unread).map(x=>x.id);
+ for(const id of ids)await sb.rpc('buzon_marcar_leido',{p_id:id});
+ MAIL.rows.forEach(x=>x.unread=false);actualizarBadge(0);renderBuzon();
+}
+async function enviarMensajeBuzon(){
+ const a=$('#mailAudience')?.value||'proximo_turno',t=$('#mailText')?.value.trim()||'';
+ if(!t)return msg('Escribe el mensaje antes de enviarlo.',1);
+ const {error}=await sb.rpc('buzon_enviar',{p_audiencia:a,p_mensaje:t,p_receptor_id:null});
+ if(error)return msg(error.message,1);
+ $('#mailText').value='';msg('Mensaje enviado al buzón.');
+ await cargarBuzon(false);
+}
+function renderBuzon(){
+ const b=$('#mailBox');if(!b)return;
+ const opts=[`<option value="proximo_turno">Próximo turno</option>`];
+ if(mailPuedeJefes())opts.push('<option value="jefes">Jefaturas</option>','<option value="recepcion">Recepción</option>');
+ const rows=MAIL.rows;
+ b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón de turnos</h3><button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${`<div class="mail-compose"><select id="mailAudience">${opts.join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="${mailPuedeJefes()?'Escribe una novedad, instrucción o mensaje para el siguiente turno…':'Escribe las novedades que deba conocer el siguiente turno…'}"></textarea></div>`}`;
+}
+function abrirBuzon(auto=false){
+ MAIL.open=true;const b=$('#mailBox');if(!b)return;
+ b.style.display='block';renderBuzon();
+ if(auto&&MAIL.rows.some(x=>x.unread))setTimeout(()=>$('#mailText')?.focus(),100);
+}
+function iniciarBuzon(){
+ cargarBuzon(true);
+ clearInterval(MAIL.timer);
+ MAIL.timer=setInterval(()=>cargarBuzon(false),10000);
+}
+
 async function iniciar(){
  const {data:{session}}=await sb.auth.getSession();
  if(!session){$('#login').style.display='grid';$('#app').style.display='none';return}
@@ -343,7 +423,8 @@ async function iniciar(){
  iniciarRealtime();
  if(p.rol==='limpieza')return vistaLimpieza();
  const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
- await cargar({scrollAnchor:30*W});
+ await cargar({scrollAnchor:esRecepcion()?0:30*W});
+ iniciarBuzon();
 
 }
 
@@ -1231,8 +1312,8 @@ async function tareasLimp(){
  $('#lr').textContent=L.length?`Por limpiar: ${n0} · Aún ocupadas: ${n1} · Limpias: ${n2}`:'Sin tareas pendientes';
  $('#tl').innerHTML=L.length?L.map(t=>{
   const oc=t.reserva_estado==='en_casa',lim=t.estado==='limpia',Lm=LIM[t.estado],id=t.limpieza_id;
-  const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#eab308':t.estado==='en_proceso'?'#2563eb':'#ea580c';
-  const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(234,88,12,.12)';
+  const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#dc2626':t.estado==='en_proceso'?'#2563eb':'#eab308';
+  const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(220,38,38,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(234,179,8,.14)';
   const etq=oc?'Sin iniciar':(Lm?Lm[0]+' '+Lm[3]:'Pendiente');
   const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+(t.pendiente_desde?fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'})):'hoy');
   const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
