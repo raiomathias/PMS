@@ -53,10 +53,10 @@ header{padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}header b{font-size
 .et{flex:0 0 160px;padding:6px 12px}.et b{font-size:15px}
 .tp{display:block;font-size:11px;color:var(--mu);font-weight:500}
 #bar .tp{display:inline;background:var(--bg);padding:2px 8px;border-radius:99px}
-.ed .et{font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.ed .et{font-size:12px;letter-spacing:.06em;text-transform:uppercase}.fila.ed{position:relative}.fila.ed .et{height:32px;min-height:32px;z-index:5}.fila.ed .dias{height:32px;cursor:default;background:transparent}
 .dias{height:56px;cursor:cell}
 .blq{top:6px;bottom:6px;border-radius:8px;padding:5px 9px;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-.blq b{display:block;overflow:hidden;text-overflow:ellipsis}.blq small{font-size:11px}
+.blq b{display:block;overflow:hidden;text-overflow:ellipsis}.blq small{font-size:11px}.blq.has-parking{padding-right:30px}.park-badge{position:absolute;top:4px;right:5px;width:20px;height:20px;display:grid;place-items:center;border-radius:5px;background:rgba(255,255,255,.20);font-size:15px;line-height:1;z-index:2}.lim-obs{display:flex;align-items:center;gap:5px;max-width:480px;min-width:220px;height:32px;padding:0 9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);box-sizing:border-box;overflow:hidden}.lim-obs>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lc{cursor:pointer;pointer-events:auto}.lc.con-obs{box-shadow:inset 0 0 0 2px rgba(234,88,12,.75)}
 .sl{position:absolute;top:0;bottom:0;background:rgba(37,99,235,.16);border:2px solid var(--ac);border-radius:4px;box-sizing:border-box;pointer-events:none;z-index:1}
 .d b{font-size:15px;color:var(--tx)}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:10px}
@@ -107,7 +107,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 #gal .th{display:flex;gap:6px;justify-content:center;padding:10px;overflow:auto}
 #gal .th img{height:60px;width:90px;flex:none;object-fit:cover;border-radius:6px;opacity:.5;cursor:pointer}#gal .th img.on{opacity:1;outline:2px solid #fff}
 .lc{position:absolute;top:0;bottom:0;width:var(--w);pointer-events:none;box-sizing:border-box}
-.lc.limpia{background:rgba(22,163,74,.30)}.lc.en_proceso{background:rgba(37,99,235,.30)}.lc.sucia,.lc.defectuosa{background:rgba(220,38,38,.34)}
+.lc.limpia{background:rgba(22,163,74,.30)}.lc.en_proceso{background:rgba(37,99,235,.30)}.lc.sucia{background:rgba(234,179,8,.34)}.lc.defectuosa{background:rgba(234,88,12,.38)}
 /* ---- Estacionamiento ---- */
 #est{position:fixed;inset:0;z-index:9;background:var(--bg);display:none;flex-direction:column}
 #est .ch{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;background:var(--pn);border-bottom:1px solid var(--bd);box-shadow:0 1px 3px rgba(0,0,0,.06)}
@@ -206,7 +206,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="S.vista=this.value;S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})"><button class="p big" onclick="abrirNueva()">＋ Nueva reserva</button><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia o defectuosa</div>
+<div class="mu" style="padding:6px 16px"><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#eab308">■</span> sucia · <span style="color:#ea580c">■</span> defectuosa</div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div>
 <script>
@@ -219,7 +219,7 @@ const CAL_BATCH=30;
 const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,vista:null,cur:null,g:null,gar:{},edificios:[],edificiosPermitidos:[],permisosEdificios:new Set(),permisosEdicion:new Set()};
 const ED_ROLES_TODOS=['administracion','gerencia','sysadmin','system_admin','systemadmin'];
 const MOV=['tentativa','confirmada','en_casa','bloqueado'];let DRG=null,DRGsup=false,PT=null;
-const LIM={sucia:['🧹','S','#d97706','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#dc2626','Defectuosa']};
+const LIM={sucia:['🧹','S','#d97706','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#ea580c','Defectuosa']};
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n||0);
 const addD=(s,n)=>{const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
@@ -404,13 +404,15 @@ async function cargarPermisosEdicion(){
 // ---------- Planificador ----------
 function mover(n){if(n===0){S.vista=hoyStr()}else S.vista=addD(S.vista||hoyStr(),n);S.ini=addD(S.vista,-30);ND=90;S.sel=null;cargar({scrollAnchor:30*W})}
 async function cargar(op={}){
- const gScroll=$('#gw'),oldScroll=gScroll?gScroll.scrollLeft:null;
  const fin=addD(S.ini,ND);$('#hf').value=S.vista||S.ini;
  const edIds=S.edificiosPermitidos.map(e=>e.id);
  if(!edIds.length){
   S.unidades=[];S.res=[];S.lim={};S.gar={};S.lh={};
   $('#bar').innerHTML='<span class="mu">No tienes edificios asignados para visualizar. Administración → Usuarios → Permisos de edificios.</span>';
-  dibujar();return;
+  const g0=$('#gw'),live0=g0?g0.scrollLeft:null;
+  dibujar();
+  if(Number.isFinite(live0))$('#gw').scrollLeft=live0;
+  return;
  }
  const {data:ud,error:ue}=await sb.from('unidades').select('id,codigo,orden,edificio_id,tipo_unidad_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true).in('edificio_id',edIds);
  if(ue)return msg(ue.message,1);
@@ -432,27 +434,34 @@ async function cargar(op={}){
  S.tipos={};S.unidades.forEach(u=>S.tipos[u.tipo_unidad_id||'']=Object.assign({},u.tipos_unidad||{nombre:'Sin categoría',tarifa_base:0},{ed:u.edificios.nombre}));
  S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));S.saldo=Object.fromEntries((sv.data||[]).map(x=>[x.reserva_id,{total:+x.total_a_pagar||0,pagado:+x.total_pagado||0} ]));S.res=r.data||[];S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));
  S.lh={};if(lh.error){if(!S.lhMsg){S.lhMsg=1;msg('Falta correr el SQL de limpieza: '+lh.error.message,1)}}else(lh.data||[]).filter(x=>uids.includes(x.unidad_id)).forEach(x=>(S.lh[x.unidad_id]=S.lh[x.unidad_id]||[]).push(x));
- Object.values(S.lh).forEach(a=>a.sort((p,q)=>Date.parse(p.creado_en)-Date.parse(q.creado_en)));dibujar();
- const target=Number.isFinite(op.scrollAnchor)?op.scrollAnchor:Number.isFinite(oldScroll)?oldScroll:null;
+ Object.values(S.lh).forEach(a=>a.sort((p,q)=>Date.parse(p.creado_en)-Date.parse(q.creado_en)));
+ const gBeforeDraw=$('#gw'),liveScroll=gBeforeDraw?gBeforeDraw.scrollLeft:null;
+ dibujar();
+ let target=null;
+ if(Number.isFinite(op.scrollDelta))target=Math.max(0,(Number.isFinite(liveScroll)?liveScroll:0)+op.scrollDelta);
+ else if(Number.isFinite(op.scrollAnchor))target=op.scrollAnchor;
+ else if(Number.isFinite(liveScroll))target=liveScroll;
  if(Number.isFinite(target))$('#gw').scrollLeft=target;
 }
+
 function dibujar(){
  const hoy=hoyStr(),hi=diff(S.ini,hoy);let h='<div class="fila cab"><div class="et"></div><div class="dias" style="width:'+ND*W+'px">';
  for(let i=0;i<ND;i++){const d=addD(S.ini,i),t=new Date(d+'T00:00:00Z'),n=t.getUTCDate();
   h+=`<div class="d" ${d===hoy?'style="background:rgba(37,99,235,.18)"':''}>${'DLMMJVS'[t.getUTCDay()]}<br><b>${n}</b>${n===1?'<br>'+t.toLocaleDateString('es',{month:'short',timeZone:'UTC'}):''}</div>`}
  h+='</div></div>';let ed=null;
  for(const u of S.unidades){
-  if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div></div>`}
+  if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div><div class="dias ed-spacer" style="width:${ND*W}px"></div></div>`}
   let b=hi>=0&&hi<ND?`<div class="hoy" style="left:${hi*W}px"></div>`:'';b+=celdasLimp(u.id,hi);
   for(const r of S.res.filter(x=>x.unidad_id===u.id)){
    const a=diff(S.ini,r.fecha_entrada),z=diff(S.ini,r.fecha_salida),left=Math.max(a,0)*W,right=Math.min(z,ND)*W;
    const sr=S.saldo[r.id]||{total:0,pagado:0},debe=Math.max(0,sr.total-sr.pagado);
    const txt=r.estado==='bloqueado'?'🔒 '+esc(r.observaciones||'Bloqueo'):`<b>${esc(r.huesped_nombre_copia)}</b><small><strong>${clp(debe)}</strong> · ${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)} · ${clp(sr.total)}</small>`;
-   b+=`<div class="blq ${r.estado}${S.gar[r.id]?' gar':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
+   const parkIcon=r.usa_estacionamiento?'<span class="park-badge" title="Esta reserva tiene estacionamiento">🅿️</span>':'';
+   b+=`<div class="blq ${r.estado}${S.gar[r.id]?' gar':''}${parkIcon?' has-parking':''}" data-r="${r.id}" style="left:${left}px;width:${right-left-2}px" title="${esc(r.huesped_nombre_copia||'')} · ${r.estado} · ${r.fecha_entrada} → ${r.fecha_salida}">${parkIcon}${txt}${MOV.includes(r.estado)&&z<=ND?'<span class="rz" title="Arrastra para extender o acortar"></span>':''}</div>`}
   h+=`<div class="fila"><div class="et" data-u="${u.id}" style="cursor:pointer" title="Limpieza"><div><b>${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span></div></div><div class="dias" data-u="${u.id}" style="width:${ND*W}px">${b}${selHtml(u.id)}</div></div>`}
  $('#gw').innerHTML=h;barra();
 }
-$('#gw').onclick=e=>{if(DRGsup)return;const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
+$('#gw').onclick=e=>{if(DRGsup)return;const et=e.target.closest('.et[data-u]');if(et)return abrirLimp(et.dataset.u);const lc=e.target.closest('.lc[data-u]');if(lc){S.sel={u:lc.dataset.u,a:lc.dataset.date,b:lc.dataset.date};dibujar();return}const b=e.target.closest('.blq');if(b)return abrirDr(b.dataset.r);
  const d=e.target.closest('.dias[data-u]');if(d){const f=addD(S.ini,Math.floor((e.clientX-d.getBoundingClientRect().left)/W)),q=S.sel;S.sel=e.shiftKey&&q&&q.u===d.dataset.u?{u:q.u,a:q.a,b:f}:{u:d.dataset.u,a:f,b:f};dibujar()}};
 // ---------- Scroll horizontal nativo + expansión por bordes ----------
 let EDGE={loading:false,timer:0};
@@ -472,7 +481,6 @@ async function ampliarVentanaCalendario(dir){
  if(EDGE.loading)return;
  const g=$('#gw');if(!g)return;
  EDGE.loading=true;
- const before=g.scrollLeft;
  if(dir<0){
   S.ini=addD(S.ini,-CAL_BATCH);
   ND+=CAL_BATCH;
@@ -480,8 +488,11 @@ async function ampliarVentanaCalendario(dir){
   ND+=CAL_BATCH;
  }
  try{
-  await cargar({scrollAnchor:dir<0?before+CAL_BATCH*W:before});
- }finally{EDGE.loading=false;}
+  await cargar({scrollDelta:dir<0?CAL_BATCH*W:0});
+ }finally{
+  EDGE.loading=false;
+  requestAnimationFrame(revisarBordeCalendario);
+}
 }
 function revisarBordeCalendario(){
  const g=$('#gw');if(!g||EDGE.loading)return;
@@ -587,15 +598,37 @@ function estLimp(uid,ts){
  else if(r.estado==='en_proceso')st=ini&&ts>=ini?'en_proceso':'sucia';
  else st=(fin===null||ts>=fin)?r.estado:(ini&&ts>=ini)?'en_proceso':'sucia';
  return st}
+function registroLimpiezaEn(uid,ts){
+ const a=S.lh?.[uid]||[];let r=null;
+ for(const x of a){if(Date.parse(x.creado_en)<=ts)r=x;else break}
+ return r;
+}
+function observacionLimpiezaSeleccionada(q){
+ if(!q)return '';
+ const [a]=ord(q),hoy=hoyStr(),ayer=addD(hoy,-1);
+ if(a!==hoy&&a!==ayer)return '';
+ const l=S.lim?.[q.u];if(!l)return '';
+ const parts=[];
+ if(l.observacion_recepcion)parts.push('Recepción: '+String(l.observacion_recepcion));
+ if(l.observacion_limpieza)parts.push('Limpieza: '+String(l.observacion_limpieza));
+ return parts.join(' · ');
+}
 function celdasLimp(uid,hi){
  const fin=[medianoche(hoyStr())-1,Date.now()];let h='';
- [hi-1,hi].forEach((i,k)=>{if(i<0||i>=ND)return;const st=estLimp(uid,fin[k]);if(st)h+=`<div class="lc ${st}" style="left:${i*W}px" title="${LIM[st][3]} · ${k?'hoy':'ayer'}"></div>`});
- return h}
+ [hi-1,hi].forEach((i,k)=>{
+  if(i<0||i>=ND)return;
+  const ts=fin[k],r=registroLimpiezaEn(uid,ts),st=r?.estado||estLimp(uid,ts);
+  if(st)h+=`<div class="lc ${st}${r?.observacion_recepcion||r?.observacion_limpieza?' con-obs':''}" data-u="${uid}" data-date="${addD(S.ini,i)}" style="left:${i*W}px" title="${LIM[st][3]} · ${k?'hoy':'ayer'}${r?.observacion_recepcion?' · Con observación':''}"></div>`;
+ });
+ return h;
+}
 const ord=q=>q.a<q.b?[q.a,q.b]:[q.b,q.a];
 function barra(){const q=S.sel,B=$('#bar');
  if(!q){B.innerHTML='<span class="mu">Haz clic en una celda para seleccionar una noche · Shift+clic amplía el rango en la misma unidad</span>';return}
- const [a,z]=ord(q),n=diff(a,z)+1,u=S.unidades.find(x=>x.id===q.u);
- B.innerHTML=`<b>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span> ${fm(a)} → ${fm(addD(z,1))} · ${n} noche${n>1?'s':''} <button class="p" onclick="desdeSel(0)">＋ Crear reserva</button><button onclick="desdeSel(1)">🔒 Bloquear</button><button ${a<=hoyStr()&&hoyStr()<=z?'':'disabled title="Solo se puede marcar sucia una unidad con la casilla de hoy seleccionada"'} onclick="marcarSucia()">🧹 Marcar sucia</button><button onclick="S.sel=null;dibujar()">✕</button>`}
+ const [a,z]=ord(q),n=diff(a,z)+1,u=S.unidades.find(x=>x.id===q.u),obs=observacionLimpiezaSeleccionada(q);
+ const obsBox=obs?`<span class="lim-obs" title="${esc(obs)}">📝 <span>${esc(obs)}</span></span>`:'';
+ B.innerHTML=`<b>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span> ${fm(a)} → ${fm(addD(z,1))} · ${n} noche${n>1?'s':''} <button class="p" onclick="desdeSel(0)">＋ Crear reserva</button><button onclick="desdeSel(1)">🔒 Bloquear</button><button ${a<=hoyStr()&&hoyStr()<=z?'':'disabled title="Solo se puede marcar sucia una unidad con la casilla de hoy seleccionada"'} onclick="marcarSucia()">🧹 Marcar sucia</button>${obsBox}<button onclick="S.sel=null;dibujar()">✕</button>`;
+}
 async function marcarSucia(){const q=S.sel;if(!q)return;const o=prompt('Mensaje para limpieza (opcional):');if(o===null)return;
  const {error}=await sb.rpc('pedir_limpieza',{p_unidad_id:q.u,p_observacion:o.trim()||null});if(error)return msg(error.message,1);msg('Marcada como sucia: '+nomU(q.u));cargar()}
 function desdeSel(b){const [a,z]=ord(S.sel);abrirNueva({unidad:S.sel.u,entrada:a,salida:addD(z,1),bloqueo:b})}
@@ -871,6 +904,34 @@ async function ejecutarExtensionEstadia(){
  S.extensionEstadia=null;
 }
 
+async function actualizarReservaEnMemoria(actual){
+ const i=S.res.findIndex(x=>x.id===actual.id);
+ if(i>=0)S.res[i]={...S.res[i],...actual};
+ else if(!['cancelada','no_show'].includes(actual.estado))S.res.push(actual);
+ if(S.cur?.id===actual.id)S.cur={...S.cur,...actual};
+}
+function eliminarReservaDeMemoria(id){
+ S.res=S.res.filter(x=>x.id!==id);
+ if(S.cur?.id===id)S.cur=null;
+}
+async function sincronizarReservaUI(id,abrir=true){
+ const {data:actual,error}=await sb.from('reservas').select('*').eq('id',id).maybeSingle();
+ if(error)return msg('La acción se realizó, pero no se pudo actualizar la vista: '+errTxt(error),1);
+ const g=$('#gw');
+ const liveScroll=g?g.scrollLeft:null;
+ if(actual){
+  actualizarReservaEnMemoria(actual);
+  dibujar();
+  await cargar({preserveLiveScroll:true});
+  if(abrir&&$('#dr').style.display==='block')await abrirDr(id);
+ }else{
+  eliminarReservaDeMemoria(id);
+  $('#dr').style.display='none';
+  await cargar({preserveLiveScroll:true});
+ }
+ if(Number.isFinite(liveScroll)&&$('#gw'))$('#gw').scrollLeft=liveScroll;
+ return true;
+}
 async function accion(k){
  const r0=S.cur;if(!r0)return;
  if(k!=='del'&&$('#gname')){
@@ -898,9 +959,9 @@ async function accion(k){
   // Si Supabase confirma que la reserva REAL está confirmada, ejecutamos el cambio
   // directamente para no bloquear el check-in por una validación defectuosa del RPC.
   if(e && /reserva no (está|esta) confirmada/i.test(e.message||'') && r.estado==='confirmada'){
-    const fb=await sb.from('reservas').update({estado:'en_casa',entrada_real:new Date().toISOString()}).eq('id',r.id).eq('estado','confirmada').select('id').maybeSingle();
-    e=fb.error;
-    if(!e&&!fb.data)e=new Error('La reserva cambió de estado antes de completar el check-in');
+   const fb=await sb.from('reservas').update({estado:'en_casa',entrada_real:new Date().toISOString()}).eq('id',r.id).eq('estado','confirmada').select('id').maybeSingle();
+   e=fb.error;
+   if(!e&&!fb.data)e=new Error('La reserva cambió de estado antes de completar el check-in');
   }
  }
  if(k==='out')return abrirCheckOut();
@@ -920,8 +981,11 @@ async function accion(k){
  }
  if(k==='del')({error:e}=await sb.from('reservas').delete().eq('id',r.id));
  if(e)return msg(errTxt(e),1);
- await abrirDr(r.id);
- refrescar();
+ if(k==='del'){
+  await sincronizarReservaUI(r.id,false);
+  return;
+ }
+ await sincronizarReservaUI(r.id,true);
 }
 
 async function abrirReclamoReserva(reservaId=S.cur?.id){
@@ -967,10 +1031,26 @@ function abrirCheckOut(){const r=S.cur;
  <label style="margin-top:8px">Nota para el perfil del huésped (opcional)<textarea id="co2" rows="2" placeholder="Ej.: cliente ruidoso, dejó olvidado un objeto, VIP"></textarea></label><div class="rec-box" style="margin-top:10px"><h4>Observaciones de reclamos o sugerencias</h4><textarea id="co3" class="rec-text" rows="7" placeholder="Registra aquí un reclamo, sugerencia, felicitación u observación comunicada por el huésped…"></textarea></div>
  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="hacerCheckOut()">Confirmar check-out</button></div></div>`;
  $('#mo').style.display='grid';$('#co1').focus()}
-async function hacerCheckOut(){const r=S.cur,o=$('#co1').value.trim(),n=$('#co2').value.trim(),rec=$('#co3').value.trim();
+async function hacerCheckOut(){
+ const r=S.cur;if(!r)return;
+ const {data:actual,error:ae}=await sb.from('reservas').select('*').eq('id',r.id).maybeSingle();
+ if(ae)return msg('No se pudo verificar la reserva antes del check-out: '+errTxt(ae),1);
+ if(!actual)return msg('La reserva ya no existe',1);
+ if(actual.estado!=='en_casa'){
+  S.cur={...S.cur,...actual};
+  cerrar();
+  await abrirDr(r.id);
+  return msg('No se puede hacer check-out: el huésped no está en casa. Estado actual: '+String(actual.estado||'sin estado').replace('_',' '),1);
+ }
+ S.cur={...S.cur,...actual};
+ const o=$('#co1').value.trim(),n=$('#co2').value.trim(),rec=$('#co3').value.trim();
  if(rec){const {error:re}=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id,contenido:rec,creado_por:S.perfil.id},{onConflict:'reserva_id'});if(re)return msg('No se pudo guardar el reclamo: '+re.message,1)}
  const {error}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n||null,p_obs_limpieza:o||null});
- if(error)return msg(errTxt(error),1);cerrar();msg('Check-out realizado'+(o?' · observación enviada a limpieza':'')+(rec?' · reclamo/sugerencia guardado':''));refrescar()}
+ if(error)return msg(errTxt(error),1);
+ cerrar();
+ await sincronizarReservaUI(r.id,true);
+ msg('Check-out realizado'+(o?' · observación enviada a limpieza':'')+(rec?' · reclamo/sugerencia guardado':''));
+}
 
 async function guardarDesglosePrecio(id,iva,otro){await sb.from('cargos').delete().eq('reserva_id',id).in('descripcion',['__PMS_IVA__','__PMS_OTRO_PRECIO__']);const rows=[];if(iva)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_IVA__',cantidad:1,monto_unitario:iva});if(otro)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_OTRO_PRECIO__',cantidad:1,monto_unitario:otro});if(rows.length){const {error}=await sb.from('cargos').insert(rows);if(error)return msg(errTxt(error),1)}return true}
 async function guardarR(){const v=i=>$('#'+i).value||null;
@@ -1146,8 +1226,8 @@ async function tareasLimp(){
  $('#lr').textContent=L.length?`Por limpiar: ${n0} · Aún ocupadas: ${n1} · Limpias: ${n2}`:'Sin tareas pendientes';
  $('#tl').innerHTML=L.length?L.map(t=>{
   const oc=t.reserva_estado==='en_casa',lim=t.estado==='limpia',Lm=LIM[t.estado],id=t.limpieza_id;
-  const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#eab308':t.estado==='en_proceso'?'#2563eb':'#dc2626';
-  const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(220,38,38,.10)';
+  const col=oc?'#9ca3af':lim?'#16a34a':t.estado==='sucia'?'#eab308':t.estado==='en_proceso'?'#2563eb':'#ea580c';
+  const bg=oc?'rgba(156,163,175,.10)':lim?'rgba(22,163,74,.10)':t.estado==='sucia'?'rgba(234,179,8,.14)':t.estado==='en_proceso'?'rgba(37,99,235,.08)':'rgba(234,88,12,.12)';
   const etq=oc?'Sin iniciar':(Lm?Lm[0]+' '+Lm[3]:'Pendiente');
   const fch=t.fecha_salida?fm(t.fecha_salida)+' · hoy':'Pendiente desde '+(t.pendiente_desde?fm(new Date(t.pendiente_desde).toLocaleDateString('sv',{timeZone:'America/Santiago'})):'hoy');
   const ing=t.hay_ingreso?(t.hora_llegada?hm(t.hora_llegada):'Sin hora'):'Nadie hoy';
