@@ -837,8 +837,11 @@ async function abrirDr(id){
  if(r.estado==='bloqueado'){D.innerHTML=top+`<p>🔒 ${esc(r.observaciones)}</p><p>${r.fecha_entrada} → ${r.fecha_salida}</p><button class="r" onclick="accion('del')">Quitar bloqueo</button>`;return}
  D.innerHTML=top+'<p>Cargando…</p>';
  const q=(t,c,v)=>sb.from(t).select('*').eq(c,v);
- const [c,p,pm,a,n,s,g,gq,hq,pd]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('pagos_motivos','pago_id',id),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single(),q('garantia_reserva','reserva_id',id).maybeSingle(),sb.from('reservas').select('estado').eq('huesped_id',r.huesped_id).in('estado',['cancelada','no_show']).neq('id',id),sb.from('estacionamiento_reserva_fechas').select('fecha').eq('reserva_id',id).order('fecha')]);
- const G=g.data||{},sa=s.data||{},pmL=pm.data||[],parkDates=fechasParkingReserva(r,pd.data||[]),dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
+ const [c,p,a,n,s,g,gq,hq,pd]=await Promise.all([q('cargos','reserva_id',id).order('creado_en'),q('pagos','reserva_id',id).order('pagado_en'),q('acompanantes','reserva_id',id),q('notas_huesped','huesped_id',r.huesped_id).order('creado_en',{ascending:false}).limit(6),q('saldo_reserva','reserva_id',id).maybeSingle(),q('huespedes','id',r.huesped_id).single(),q('garantia_reserva','reserva_id',id).maybeSingle(),sb.from('reservas').select('estado').eq('huesped_id',r.huesped_id).in('estado',['cancelada','no_show']).neq('id',id),sb.from('estacionamiento_reserva_fechas').select('fecha').eq('reserva_id',id).order('fecha')]);
+ const pagoIds=(p.data||[]).map(x=>x.id);
+ const {data:pmRows,error:pmError}=pagoIds.length?await sb.from('pagos_motivos').select('*').in('pago_id',pagoIds):{data:[],error:null};
+ if(pmError)msg('No se pudieron cargar los motivos de los pagos: '+errTxt(pmError),1);
+ const G=g.data||{},sa=s.data||{},pmL=pmRows||[],parkDates=fechasParkingReserva(r,pd.data||[]),dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
  const nsOK=r.fecha_entrada<=hoyStr(),B=({confirmada:[['in','Check-in','p'],['ns','No-show',''],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['ns','No-show',''],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[]).filter(b=>b[0]!=='ns'||nsOK),
  gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
@@ -1336,10 +1339,19 @@ async function guardarPagoFormulario(){
  if(Math.abs(sum-mo)>eps)return new Error('Los motivos no coinciden con el monto total del pago');
  const totalClp=Math.round(usd?mo*tc:mo),allocClp=alloc.map(x=>({...x,monto_clp:Math.round(usd?x.monto_original*tc:x.monto_original)}));
  const ajuste=totalClp-allocClp.reduce((a,x)=>a+x.monto_clp,0);if(ajuste)allocClp[allocClp.length-1].monto_clp+=ajuste;
- const {data:pay,error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:mt,moneda:usd?'USD':'CLP',monto_original:mo,tipo_cambio:usd?tc:null,monto_clp:totalClp,anticipado:$('#pn').checked,motivo:alloc[0].motivo,id_transaccion:tx||null}).select('id').single();
+ const {error}=await sb.rpc('registrar_pago_completo',{
+   p_reserva_id:S.cur.id,
+   p_metodo:mt,
+   p_moneda:usd?'USD':'CLP',
+   p_monto_original:mo,
+   p_tipo_cambio:usd?tc:null,
+   p_monto_clp:totalClp,
+   p_anticipado:$('#pn').checked,
+   p_motivo_principal:alloc[0].motivo,
+   p_id_transaccion:tx||null,
+   p_motivos:allocClp
+ });
  if(error)return error;
- const {error:ae}=await sb.from('pagos_motivos').insert(allocClp.map(x=>({pago_id:pay.id,motivo:x.motivo,monto_original:x.monto_original,monto_clp:x.monto_clp})));
- if(ae){await sb.from('pagos').delete().eq('id',pay.id);return ae}
  return null;
 }
 async function addPago(){const e=await guardarPagoFormulario();if(e)return msg(errTxt(e),1);refrescar()}
