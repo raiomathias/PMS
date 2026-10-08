@@ -3091,6 +3091,7 @@ DECLARE
   v_motivo text;
   v_orig numeric;
   v_clp integer;
+  v_metodo_type regtype;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Sesión no válida';
@@ -3151,22 +3152,32 @@ BEGIN
     RAISE EXCEPTION 'Los motivos en CLP no coinciden con el monto total del pago';
   END IF;
 
-  INSERT INTO public.pagos(
-    reserva_id,
-    metodo,
-    moneda,
-    monto_original,
-    tipo_cambio,
-    monto_clp,
-    anticipado,
-    motivo,
-    id_transaccion,
-    creado_por
+  SELECT a.atttypid::regtype
+    INTO v_metodo_type
+  FROM pg_attribute a
+  WHERE a.attrelid='public.pagos'::regclass
+    AND a.attname='metodo'
+    AND NOT a.attisdropped;
+
+  IF v_metodo_type IS NULL THEN
+    RAISE EXCEPTION 'No se pudo determinar el tipo de método de pago';
+  END IF;
+
+  EXECUTE format(
+    'INSERT INTO public.pagos(
+       reserva_id, metodo, moneda, monto_original, tipo_cambio,
+       monto_clp, anticipado, motivo, id_transaccion, creado_por
+     )
+     VALUES (
+       $1, $2::%s, $3::bpchar, $4, $5, $6, $7, $8, $9, $10
+     )
+     RETURNING id',
+    v_metodo_type
   )
-  VALUES (
+  USING
     p_reserva_id,
-    p_metodo::metodo_pago,
-    p_moneda::bpchar,
+    p_metodo,
+    p_moneda,
     p_monto_original,
     p_tipo_cambio,
     p_monto_clp,
@@ -3174,8 +3185,7 @@ BEGIN
     p_motivo_principal,
     NULLIF(trim(p_id_transaccion),''),
     auth.uid()
-  )
-  RETURNING id INTO v_pago_id;
+  INTO v_pago_id;
 
   FOR v_item IN SELECT value FROM jsonb_array_elements(p_motivos)
   LOOP
