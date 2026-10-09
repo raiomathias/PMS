@@ -5175,6 +5175,8 @@ NOTIFY pgrst, 'reload schema';
 -- Ejecutar este bloque en Supabase SQL Editor después de desplegar index.html.
 -- ============================================================
 
+BEGIN;
+
 ALTER TABLE public.estacionamiento_reserva_fechas ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.estacionamiento_reserva_fechas FROM anon, authenticated, PUBLIC;
@@ -5255,7 +5257,8 @@ BEGIN
     INTO v_edificio_id, v_cupos
     FROM public.unidades AS u
     JOIN public.edificios AS e ON e.id = u.edificio_id
-   WHERE u.id = v_reserva.unidad_id;
+   WHERE u.id = v_reserva.unidad_id
+   FOR UPDATE OF e;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'No se pudo determinar el edificio de la reserva';
   END IF;
@@ -5363,3 +5366,5 @@ GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid, bo
   TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
