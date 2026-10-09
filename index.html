@@ -1901,7 +1901,6 @@ $('#gw').addEventListener('pointerdown',e=>{
  // pero sí puede extender su salida desde el tirador derecho.
  if(r.estado==='en_casa'&&!rz)return;
  if(r.estado==='bloqueado')return;
- e.preventDefault();
  const g=$('#gw');
  DRG={r,b,rz,pointerId:e.pointerId,x0:e.clientX,y0:e.clientY,
   scrollLeft0:g?.scrollLeft||0,mov:false,dd:0,u:r.unidad_id,w0:b.offsetWidth};
@@ -1912,7 +1911,7 @@ window.addEventListener('pointermove',e=>{
  const dx=(e.clientX-d.x0)+scrollDelta,dy=e.clientY-d.y0;
  if(!d.mov){
   if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
-  d.mov=true;d.b.classList.add('arr');document.body.style.cursor=d.rz?'ew-resize':'grabbing';
+  d.mov=true;e.preventDefault();d.b.classList.add('arr');document.body.style.cursor=d.rz?'ew-resize':'grabbing';
  }
  d.dd=Math.round(dx/W);
  if(d.r.estado==='en_casa'){
@@ -2027,7 +2026,7 @@ async function moverReserva(r,uid,ent,sal){
  let tar=null;
  if(cambiaUnidad){
   const uo=S.unidades.find(x=>x.id===r.unidad_id),un=S.unidades.find(x=>x.id===uid);
-  if(!un||!un.activo&&un.activo!==undefined){dibujar();return msg('La unidad de destino ya no está disponible.',1)}
+  if(!un){dibujar();return msg('La unidad de destino ya no está disponible.',1)}
   const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
   if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}
  }
