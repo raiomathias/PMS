@@ -259,7 +259,7 @@ function solicitarRealtime(tabla=''){
  clearTimeout(RT.timer);
  RT.timer=setTimeout(()=>{
   if(Date.now()<RT.ignoreUntil){RT.pending=false;RT.pendingTable='';return}
-  if(RT.mutating||RT.working||DRG?.mov){RT.pending=true;return}
+  if(RT.mutating||RT.working||DRG){RT.pending=true;return}
   const t=RT.pendingTable;RT.pendingTable='';
   actualizarRealtime(t).catch(e=>msg(e?.message||'Error actualizando Realtime',1));
  },350);
@@ -285,7 +285,7 @@ function iniciarRealtime(){
 
 async function actualizarRealtime(tabla){
  if(Date.now()<RT.ignoreUntil)return;
- if(RT.mutating||RT.working||DRG?.mov){RT.pending=true;RT.pendingTable=tabla||RT.pendingTable||'';return}
+ if(RT.mutating||RT.working||DRG){RT.pending=true;RT.pendingTable=tabla||RT.pendingTable||'';return}
  RT.working=true;
  try{
   if(['perfiles','perfiles_edificios','perfiles_permisos_edicion','edificios'].includes(tabla)){
@@ -620,7 +620,7 @@ function programarRevisionBorde(){
  clearTimeout(EDGE.timer);
  EDGE.timer=setTimeout(()=>{
   const g=$('#gw');
-  if(DRG?.mov)return;
+  if(DRG)return;
   if(g&&g.offsetParent){
    S.vista=addD(S.ini,Math.max(0,Math.floor(g.scrollLeft/W)));
    $('#hf').value=S.vista;
@@ -657,7 +657,7 @@ function cambiarFechaGrid(v){
  cargar({scrollAnchor:esRecepcion()?Math.max(0,diff(S.ini,S.vista))*W:30*W});
 }
 function revisarBordeCalendario(){
- const g=$('#gw');if(!g||EDGE.loading||DRG?.mov)return;
+ const g=$('#gw');if(!g||EDGE.loading||DRG)return;
  if(esRecepcion()&&g.scrollLeft<=EDGE_TRIGGER_DAYS*W){
   if(g.scrollLeft<0)g.scrollLeft=0;
   return;
