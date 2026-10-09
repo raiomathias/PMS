@@ -2341,10 +2341,10 @@ async function estCargar(){
  const edDe=Object.fromEntries(S.unidades.map(u=>[u.id,u.edificio_id])),pend=[];
  data.forEach(r=>{
   r._e=edDe[r.unidad_id];
-  const fechas=[...new Set(by[r.id]||fechasParkingFallback(r))];
-  // La fecha de salida no es una noche ocupada; tampoco aceptamos fechas
-  // antiguas/accidentales fuera del periodo contractual de la reserva.
-  r._pf=fechas.filter(d=>d>=r.fecha_entrada&&d<r.fecha_salida).sort();
+  // Conservamos las fechas guardadas para los avisos visuales de llegada/salida,
+  // pero estAsignar() y noche() solo cuentan las fechas dentro de la estadía.
+  // Así una fecha de salida puede mostrarse como liberación diurna sin inflar noches.
+  r._pf=[...new Set(by[r.id]||fechasParkingFallback(r))].sort();
  });
  E.eds.forEach(ed=>pend.push(...estAsignar(data.filter(r=>r._e===ed.id&&r._pf.length),ed.cupos_estacionamiento)));
  E.rs=data;estDibujar();
