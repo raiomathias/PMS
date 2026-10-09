@@ -4637,3 +4637,35 @@ WHERE lower(trim(coalesce(canal, ''))) = 'booking'
   AND NULLIF(trim(coalesce(referencia_externa, '')), '') IS NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+
+
+-- ============================================================
+-- PMS v1.9.2: estacionamiento basado exclusivamente en fechas manuales
+-- ============================================================
+-- 1) Booking: completar referencia externa vacía con N/A.
+-- canal es un ENUM; se compara como texto para evitar errores de tipo.
+UPDATE public.reservas
+SET referencia_externa = 'N/A'
+WHERE lower(trim(canal::text)) = 'booking'
+  AND NULLIF(trim(coalesce(referencia_externa, '')), '') IS NULL;
+
+-- 2) Migración inicial de reservas históricas:
+-- seleccionar todas las noches desde entrada hasta el día anterior a salida.
+-- En adelante, la disponibilidad depende exclusivamente de las filas de esta tabla.
+-- ON CONFLICT evita duplicados al volver a ejecutar la migración.
+INSERT INTO public.estacionamiento_reserva_fechas (reserva_id, fecha)
+SELECT r.id, gs.fecha::date
+FROM public.reservas AS r
+CROSS JOIN LATERAL generate_series(
+    r.fecha_entrada::timestamp,
+    (r.fecha_salida - 1)::timestamp,
+    interval '1 day'
+) AS gs(fecha)
+WHERE r.usa_estacionamiento IS TRUE
+  AND r.fecha_entrada IS NOT NULL
+  AND r.fecha_salida IS NOT NULL
+  AND r.fecha_salida > r.fecha_entrada
+ON CONFLICT (reserva_id, fecha) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
