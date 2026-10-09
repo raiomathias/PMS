@@ -4547,3 +4547,59 @@ REVOKE ALL ON FUNCTION public.buzon_puede_ver_audiencia(text)
 GRANT EXECUTE ON FUNCTION public.buzon_puede_ver_audiencia(text)
   TO authenticated;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- HARDENING INICIAL 2026-10-09
+-- Bloquea acceso SQL anónimo a tablas/secuencias del esquema public.
+-- No concede permisos nuevos a usuarios autenticados.
+-- Ejecutar una sola vez; es idempotente.
+-- ============================================================
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT schemaname, tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format(
+      'REVOKE ALL PRIVILEGES ON TABLE %I.%I FROM anon, PUBLIC',
+      r.schemaname, r.tablename
+    );
+  END LOOP;
+END $$;
+
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, PUBLIC;
+
+-- ============================================================
+-- AUDITORÍA: comprobar RLS real en la base de datos.
+-- Ejecutar en Supabase SQL Editor y revisar cada fila.
+-- No es una migración: solo consulta el estado actual.
+-- ============================================================
+SELECT
+  n.nspname AS esquema,
+  c.relname AS tabla,
+  c.relrowsecurity AS rls_habilitado,
+  c.relforcerowsecurity AS rls_forzado,
+  COALESCE(
+    string_agg(
+      DISTINCT format('%s [%s] USING (%s) WITH CHECK (%s)',
+        p.polname,
+        CASE p.polcmd WHEN 'r' THEN 'SELECT' WHEN 'a' THEN 'INSERT'
+          WHEN 'w' THEN 'UPDATE' WHEN 'd' THEN 'DELETE' ELSE 'ALL' END,
+        COALESCE(pg_get_expr(p.polqual, p.polrelid), '—'),
+        COALESCE(pg_get_expr(p.polwithcheck, p.polrelid), '—')
+      ),
+      E'\\n'
+    ) FILTER (WHERE p.polname IS NOT NULL),
+    'SIN POLÍTICAS'
+  ) AS politicas
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_policy p ON p.polrelid = c.oid
+WHERE n.nspname = 'public'
+  AND c.relkind IN ('r','p')
+ORDER BY c.relname;
+
+NOTIFY pgrst, 'reload schema';
