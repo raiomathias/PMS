@@ -2277,30 +2277,28 @@ async function abrirEst(){
 function cerrarEst(){$('#est').style.display='none'}
 // Asigna cada reserva a un cupo usando las fechas exactas de estacionamiento.
 function estAsignar(rs,cap){
- // Asignación global por coloreo de conflictos. El cupo guardado es una preferencia,
- // no un bloqueo: si conservarlo impide acomodar todas las reservas, se reubica.
+ // Colorea globalmente el grafo de conflictos para no declarar "sin cupo"
+ // solo por conservar asignaciones antiguas que pueden reorganizarse.
  const items=rs.filter(r=>(r._pf||[]).length>0);
  if(!items.length)return [];
  const daySet=items.map(r=>new Set((r._pf||[]).filter(d=>d>=r.fecha_entrada&&d<r.fecha_salida)));
  const neighbors=items.map(()=>new Set());
  for(let i=0;i<items.length;i++){
   for(let j=i+1;j<items.length;j++){
-   let clash=false;
-   const A=daySet[i],B=daySet[j];
-   const small=A.size<=B.size?A:B,large=small===A?B:A;
+   let clash=false;const A=daySet[i],B=daySet[j],small=A.size<=B.size?A:B,large=small===A?B:A;
    for(const d of small){if(large.has(d)){clash=true;break}}
    if(clash){neighbors[i].add(j);neighbors[j].add(i)}
   }
  }
  const colors=Array(items.length).fill(0);
  const validOld=items.map(r=>Number.isInteger(Number(r.cupo_estacionamiento))&&Number(r.cupo_estacionamiento)>=1&&Number(r.cupo_estacionamiento)<=cap?Number(r.cupo_estacionamiento):0);
- let nodesTried=0;
+ let nodesTried=0,bestCount=-1,bestColors=Array(items.length).fill(0);
  const maxSearch=300000;
  function chooseNode(){
   let best=-1,bestSat=-1,bestDegree=-1,bestOld=-1;
   for(let i=0;i<items.length;i++){
-   if(colors[i])continue;
-   const used=new Set();for(const j of neighbors[i])if(colors[j])used.add(colors[j]);
+   if(colors[i]!==0)continue;
+   const used=new Set();for(const j of neighbors[i])if(colors[j]>0)used.add(colors[j]);
    const sat=used.size,deg=neighbors[i].size,old=validOld[i]?1:0;
    if(sat>bestSat||(sat===bestSat&&deg>bestDegree)||(sat===bestSat&&deg===bestDegree&&old>bestOld)){
     best=i;bestSat=sat;bestDegree=deg;bestOld=old;
@@ -2308,26 +2306,32 @@ function estAsignar(rs,cap){
   }
   return best;
  }
- function solve(done){
-  if(done===items.length)return true;
+ function solve(done,assigned){
+  if(assigned>bestCount){bestCount=assigned;bestColors=colors.map(x=>x>0?x:0)}
+  if(bestCount===items.length)return true;
+  if(assigned+(items.length-done)<=bestCount)return false;
   if(++nodesTried>maxSearch)return false;
-  const i=chooseNode(),blocked=new Set();
-  for(const j of neighbors[i])if(colors[j])blocked.add(colors[j]);
+  const i=chooseNode();
+  if(i<0)return false;
+  const blocked=new Set();for(const j of neighbors[i])if(colors[j]>0)blocked.add(colors[j]);
   const preferred=validOld[i],candidates=[];
   if(preferred)candidates.push(preferred);
   for(let color=1;color<=cap;color++)if(color!==preferred)candidates.push(color);
   for(const color of candidates){
    if(blocked.has(color))continue;
    colors[i]=color;
-   if(solve(done+1))return true;
+   if(solve(done+1,assigned+1))return true;
    colors[i]=0;
   }
-  return false;
+  // Se permite dejar sin cupo un nodo para maximizar la cantidad que sí cabe,
+  // en vez de borrar visualmente todas las asignaciones cuando hay exceso real.
+  colors[i]=-1;
+  const solved=solve(done+1,assigned);
+  colors[i]=0;
+  return solved;
  }
- const ok=cap>0&&solve(0);
- items.forEach((r,i)=>{r._c=ok?colors[i]:null});
- // Si no hay coloreo posible, la reserva queda explícitamente sin cupo; no se
- // inventa una asignación que pudiera duplicar un estacionamiento en una fecha.
+ if(cap>0)solve(0,0);
+ items.forEach((r,i)=>{r._c=bestColors[i]||null});
  return items.filter(r=>(r._c||null)!==(r.cupo_estacionamiento||null)&&r.estado!=='check_out');
 }
 async function estCargar(){
