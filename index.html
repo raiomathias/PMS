@@ -211,7 +211,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.9.12</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.9.13</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -2032,12 +2032,9 @@ async function moverReserva(r,uid,ent,sal){
  const cambiaFechas=ent!==r.fecha_entrada||sal!==r.fecha_salida;
  if(!cambiaUnidad&&!cambiaFechas){dibujar();return}
  if(cambiaUnidad&&r.no_mover_unidad&&!confirm('⚠ Esta reserva está marcada como “No mover de esta unidad”.\\n\\nEl movimiento manual que estás realizando puede moverla igualmente.\\n\\n¿Confirmas que deseas moverla?')){dibujar();return}
- let tar=null;
- if(cambiaUnidad){
-  const uo=S.unidades.find(x=>x.id===r.unidad_id),un=S.unidades.find(x=>x.id===uid);
-  if(!un){dibujar();return msg('La unidad de destino ya no está disponible.',1)}
-  const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
-  if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}
+ const tar=null;
+ if(cambiaUnidad&&!S.unidades.some(x=>x.id===uid)){
+  dibujar();return msg('La unidad de destino ya no está disponible.',1)
  }
  // Compare against the live row before doing any writes; don't overwrite another
  // user's change from a stale calendar copy.
@@ -2773,7 +2770,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='1.9.12';
+const VERSION_ACTUAL='1.9.13';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
