@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PMS</title>
+<title>PMS</title><link rel="manifest" href="./manifest.webmanifest">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f4f5f7;--pn:#fff;--tx:#1c2430;--mu:#6b7686;--bd:#dfe3ea;--ac:#2563eb;--w:46px}
@@ -204,13 +204,15 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .au-dt{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}.au-dt th,.au-dt td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
 .au-dt .bf{background:rgba(220,38,38,.09)}.au-dt .nf{background:rgba(22,163,74,.10)}
 .au-pre{background:var(--bg);padding:10px;border-radius:8px;overflow:auto;font-size:12px;max-height:260px}
-#mo.stats-full{place-items:stretch!important;padding:0!important}#mo.stats-full>div{width:100vw!important;max-width:none!important;height:100vh!important;max-height:none!important;box-sizing:border-box;border-radius:0!important;padding:20px!important}.stats-shell{width:100%;height:100%;max-height:none;box-sizing:border-box;max-height:92vh;overflow:auto}.stats-head{position:sticky;top:0;background:var(--pn);z-index:2;border-bottom:1px solid var(--bd);padding-bottom:10px}.stats-filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px;margin-top:10px}.stats-filters .wide{grid-column:span 2}.stats-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.stats-tabs button.active{background:#2563eb;color:#fff;border-color:#2563eb}.stats-kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}.stats-kpi{border:1px solid var(--bd);border-radius:12px;padding:12px;background:var(--bg)}.stats-kpi .label{font-size:11px;color:var(--mu)}.stats-kpi b{display:block;font-size:22px;margin-top:5px}.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stats-card{border:1px solid var(--bd);border-radius:12px;background:var(--pn);padding:14px;min-width:0}.stats-card h4{margin:0 0 10px}.stats-table{width:100%;border-collapse:collapse;font-size:12px}.stats-table th,.stats-table td{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left}.stats-table th{color:var(--mu);font-weight:600}.stats-table td.num,.stats-table th.num{text-align:right}@media(max-width:900px){.dg{grid-template-columns:1fr}.dg>div:first-child,.dg>.dinero{grid-column:1}}.stats-insight{padding:10px 12px;border-left:4px solid #2563eb;background:rgba(37,99,235,.08);border-radius:8px;margin-bottom:8px}@media(max-width:900px){.stats-filters{grid-template-columns:repeat(2,1fr)}.stats-kpis{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:1fr}.stats-filters .wide{grid-column:span 1}}</style></head><body>
+#mo.stats-full{place-items:stretch!important;padding:0!important}#mo.stats-full>div{width:100vw!important;max-width:none!important;height:100vh!important;max-height:none!important;box-sizing:border-box;border-radius:0!important;padding:20px!important}.stats-shell{width:100%;height:100%;max-height:none;box-sizing:border-box;max-height:92vh;overflow:auto}.stats-head{position:sticky;top:0;background:var(--pn);z-index:2;border-bottom:1px solid var(--bd);padding-bottom:10px}.stats-filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px;margin-top:10px}.stats-filters .wide{grid-column:span 2}.stats-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.stats-tabs button.active{background:#2563eb;color:#fff;border-color:#2563eb}.stats-kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}.stats-kpi{border:1px solid var(--bd);border-radius:12px;padding:12px;background:var(--bg)}.stats-kpi .label{font-size:11px;color:var(--mu)}.stats-kpi b{display:block;font-size:22px;margin-top:5px}.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stats-card{border:1px solid var(--bd);border-radius:12px;background:var(--pn);padding:14px;min-width:0}.stats-card h4{margin:0 0 10px}.stats-table{width:100%;border-collapse:collapse;font-size:12px}.stats-table th,.stats-table td{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left}.stats-table th{color:var(--mu);font-weight:600}.stats-table td.num,.stats-table th.num{text-align:right}@media(max-width:900px){.dg{grid-template-columns:1fr}.dg>div:first-child,.dg>.dinero{grid-column:1}}.stats-insight{padding:10px 12px;border-left:4px solid #2563eb;background:rgba(37,99,235,.08);border-radius:8px;margin-bottom:8px}@media(max-width:900px){.stats-filters{grid-template-columns:repeat(2,1fr)}.stats-kpis{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:1fr}.stats-filters .wide{grid-column:span 1}}
+@media(max-width:600px){.mail-box{left:10px;right:10px;bottom:62px;width:auto;height:min(62dvh,520px);max-height:calc(100dvh - 86px);border-radius:14px}.mail-head{gap:4px;padding:7px}.mail-head h3{font-size:14px}.mail-head button{padding:6px;font-size:12px}.mail-clear-btn span,.mail-clear-all-btn span{display:none}.mail-body{padding:7px}.mail-item{padding:7px}.mail-compose{padding:7px;gap:5px}.mail-compose textarea{height:58px}.mail-bell{left:12px;bottom:12px;width:44px;height:44px}.mail-box.mail-preview{max-height:230px;height:auto}.mail-preview .mail-body{max-height:120px}.lim-mail-tools{display:flex;gap:6px;align-items:center}.lim-mail-tools .mail-bell{position:static;display:grid!important;flex:none}.lim-mail-tools .mail-box{left:8px;right:8px;bottom:64px;width:auto;height:min(58dvh,480px);max-height:calc(100dvh - 80px)}}
+</style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
 <div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span style="margin-left:auto;font-weight:700;white-space:nowrap">v1.6</span></div>
 <div id="bar"></div><div id="gw"></div></div>
-<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="abrirBuzon()" title="Buzón" aria-label="Buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
+<div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
 // ====== CONFIGURACIÓN: pega aquí tus datos (Supabase → Project Settings → API) ======
 const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
@@ -331,7 +333,9 @@ function protegerMutacionesRealtime(){
 }
 
 
-let MAIL={open:false,preview:false,previewRows:[],rows:[],timer:null,channel:null,known:new Set(),initialized:false,draft:{audiencia:'recepcion_egana',text:''}};
+let MAIL={mode:'grid',open:false,preview:false,previewRows:[],rows:[],timer:null,channel:null,known:new Set(),initialized:false,draft:{audiencia:'recepcion_egana',text:''}};
+function mailBoxEl(){return document.getElementById(MAIL.mode==='limpieza'?'mailBoxLimp':'mailBox')}
+function mailBadgeEl(){return document.getElementById(MAIL.mode==='limpieza'?'mailBadgeLimp':'mailBadge')}
 
 function mailPuedeJefes(){return esAdminPlus(S.perfil?.rol)}
 function mailPuedeRecepcion(){return mailPuedeJefes()}
@@ -373,9 +377,10 @@ async function cargarBuzon(autopopup=false){
  // No renderizar el Buzón completo durante el polling: así no se destruye
  // el textarea ni se pierde lo que el usuario está escribiendo.
 }
-function actualizarBadge(n){const b=$('#mailBadge');if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
-function cerrarBuzon(){MAIL.open=false;MAIL.preview=false;MAIL.previewRows=[];const b=$('#mailBox');if(b){b.style.display='none';b.classList.remove('mail-preview')}}
-function mostrarBuzonCompleto(){MAIL.preview=false;MAIL.previewRows=[];const b=$('#mailBox');if(b)b.classList.remove('mail-preview');renderBuzon()}
+function actualizarBadge(n){const b=mailBadgeEl();if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
+function cerrarBuzon(){MAIL.open=false;MAIL.preview=false;MAIL.previewRows=[];const b=mailBoxEl();if(b){b.style.display='none';b.classList.remove('mail-preview')}}
+function toggleBuzon(){if(MAIL.open)cerrarBuzon();else abrirBuzon()}
+function mostrarBuzonCompleto(){MAIL.preview=false;MAIL.previewRows=[];const b=mailBoxEl();if(b)b.classList.remove('mail-preview');renderBuzon()}
 async function marcarMensajeLeido(id){
  const r=await sb.rpc('buzon_marcar_leido',{p_id:id});
  if(!r.error){
@@ -420,7 +425,7 @@ async function limpiarTodosBuzones(){
  msg('Todos los buzones fueron limpiados.');
 }
 function renderBuzon(){
- const b=$('#mailBox');if(!b)return;
+ const b=mailBoxEl();if(!b)return;
  if(!MAIL.preview&&$('#mailText')){
   MAIL.draft={audiencia:$('#mailAudience')?.value||MAIL.draft.audiencia||'recepcion_egana',text:$('#mailText')?.value||''};
  }
@@ -437,11 +442,13 @@ function renderBuzon(){
 }
 function abrirBuzon(auto=false,rows=null){
  MAIL.open=true;MAIL.preview=!!(auto&&rows?.length);MAIL.previewRows=rows||[];
- const b=$('#mailBox');if(!b)return;
+ const b=mailBoxEl();if(!b)return;
  b.style.display='flex';renderBuzon();
  if(auto&&rows?.length)rows.forEach(x=>marcarMensajeLeido(x.id));
 }
-function iniciarBuzon(){
+function iniciarBuzon(mode='grid'){
+ MAIL.mode=mode;
+ const bell=document.getElementById(mode==='limpieza'?'mailBellLimp':'mailBell'),box=mailBoxEl();if(bell)bell.style.display='grid';if(box)box.style.display='none';
  cargarBuzon(true);
  clearInterval(MAIL.timer);
  MAIL.timer=setInterval(()=>cargarBuzon(false),30000);
@@ -1368,6 +1375,7 @@ async function hacerCheckOut(){
  cerrar();
  await sincronizarReservaUI(r.id,true);
  msg('Check-out realizado'+(o?' · observación enviada a limpieza':'')+(rec?' · reclamo/sugerencia guardado':''));
+ notificarLimpiezaPush(r.id).catch(()=>{});
 }
 
 async function guardarDesglosePrecio(id,iva,otro){await sb.from('cargos').delete().eq('reserva_id',id).in('descripcion',['__PMS_IVA__','__PMS_OTRO_PRECIO__']);const rows=[];if(iva)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_IVA__',cantidad:1,monto_unitario:iva});if(otro)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_OTRO_PRECIO__',cantidad:1,monto_unitario:otro});if(rows.length){const {error}=await sb.from('cargos').insert(rows);if(error)return msg(errTxt(error),1)}return true}
@@ -1539,18 +1547,28 @@ async function guardarPagoFormulario(){
  return null;
 }
 async function addPago(){const e=await guardarPagoFormulario();if(e)return msg(errTxt(e),1);refrescar()}
+const PUSH_VAPID_PUBLIC_KEY='CONFIGURAR_CLAVE_PUBLICA_VAPID';
+function urlBase64ToUint8Array(v){const p='='.repeat((4-v.length%4)%4),b=(v+p).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b),a=new Uint8Array(r.length);for(let i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a}
+async function registrarSWLimpieza(){if('serviceWorker'in navigator)try{await navigator.serviceWorker.register('./sw.js',{scope:'./'})}catch(e){console.warn(e)}}
+async function activarNotificacionesLimpieza(){
+ if(!('Notification'in window)||!('serviceWorker'in navigator)||!('PushManager'in window))return msg('Este navegador no admite notificaciones push.',1);
+ if(PUSH_VAPID_PUBLIC_KEY.startsWith('CONFIGURAR_'))return msg('Falta configurar VAPID: revisa las instrucciones de notificaciones push en SQL.txt.',1);
+ if(await Notification.requestPermission()!=='granted')return msg('Debes permitir las notificaciones en el navegador.',1);
+ try{const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(PUSH_VAPID_PUBLIC_KEY)});const {error}=await sb.from('push_subscriptions').upsert({user_id:S.perfil.id,endpoint:sub.endpoint,subscription:sub.toJSON(),user_agent:navigator.userAgent,updated_at:new Date().toISOString()},{onConflict:'endpoint'});if(error)throw error;msg('Notificaciones activadas en este dispositivo');const b=$('#pushLimpBtn');if(b)b.textContent='🔔 Activadas'}catch(e){msg('No se pudieron activar las notificaciones: '+e.message,1)}
+}
+async function notificarLimpiezaPush(reservaId){try{const {error}=await sb.functions.invoke('notificar-limpieza',{body:{reserva_id:reservaId}});if(error)console.warn(error)}catch(e){console.warn(e)}}
 // ---------- Limpieza: vista móvil (rol limpieza) ----------
 let LB={e:''};const hm=t=>t?String(t).slice(0,5):'';
 async function vistaLimpieza(){
  const lk='le_limpieza_'+S.perfil.id;
- $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><button onclick="salir()">Salir</button></header><div style="padding:10px 12px;max-width:560px;margin:0 auto"><select id="le" style="width:100%;font-size:16px;padding:10px" onchange="LB.e=this.value;try{localStorage.setItem('${lk}',this.value)}catch(e){};tareasLimp()"></select><div id="lr" class="mu" style="margin-top:8px"></div></div><div id="tl"></div>`;
+ $('#app').innerHTML=`<header><b>🧹 Limpieza · ${esc(S.perfil.nombre_completo)}</b><div class="lim-mail-tools"><button id="mailBellLimp" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadgeLimp" class="mail-badge" style="display:none">0</span></button></div><button onclick="salir()">Salir</button></header><div style="padding:10px 12px;max-width:560px;margin:0 auto"><div style="display:flex;gap:8px;align-items:center"><select id="le" style="width:100%;font-size:16px;padding:10px" onchange="LB.e=this.value;try{localStorage.setItem('${lk}',this.value)}catch(e){};tareasLimp()"></select><button id="pushLimpBtn" onclick="activarNotificacionesLimpieza()" style="flex:none;font-size:12px;padding:9px">🔔 Avisos</button></div><div id="lr" class="mu" style="margin-top:8px"></div></div><div id="tl"></div><div id="mailBoxLimp" class="mail-box" style="display:none"></div>`;
  const E=S.edificiosPermitidos||[];
  if(!E.length){$('#le').innerHTML='<option value="">Sin edificios autorizados</option>';$('#tl').innerHTML='<p class="mu" style="padding:20px;text-align:center">No tienes edificios asignados para limpieza.</p>';return}
  let sv='';try{sv=localStorage.getItem(lk)||''}catch(e){}
  LB.e=sv&&E.some(x=>x.id===sv)?sv:'';
  $('#le').innerHTML='<option value="">Todos mis edificios</option>'+E.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');$('#le').value=LB.e;
  await tareasLimp();
-
+ iniciarBuzon('limpieza');registrarSWLimpieza();
 }
 async function cambiarLimp(id,estado){
  let o=null;
@@ -2283,7 +2301,8 @@ async function estCargar(){
 function estDibujar(){
  const hoy=hoyStr(),D=E.f,ed=E.eds.find(x=>x.id===E.ed),cap=ed.cupos_estacionamiento,ah=ahoraHM();
  const fase=D===hoy?(ah>='13:00'?'despues':'antes'):'dia';
- const noche=(eid,d)=>E.rs.filter(r=>r._e===eid&&(r._pf||[]).includes(d)).length;
+ // Cuenta noches reales de estadía: entrada incluida y salida excluida.
+ const noche=(eid,d)=>E.rs.filter(r=>r._e===eid&&r.fecha_entrada<=d&&d<r.fecha_salida&&(r._pf||[]).includes(d)).length;
  const nU=id=>{const u=S.unidades.find(x=>x.id===id);return u?{t:u.edificios.nombre+' · '+u.codigo,c:u.tipos_unidad?.nombre||''}:{t:'—',c:''}};
  const veh=r=>`<div class="pkv">🚗 ${r.modelo_vehiculo?esc(r.modelo_vehiculo):'<span class="pkw">sin modelo</span>'} · <b>${r.patente_vehiculo?esc(r.patente_vehiculo.toUpperCase()):'<span class="pkw">sin patente</span>'}</b></div>`;
  const nx=n=>n?`<div class="pkn">➡ ${D<hoy?'Llegó':'Llega'} a las 13:00: <b>${esc(n.huesped_nombre_copia)}</b> · ${esc(nU(n.unidad_id).t)}${n.patente_vehiculo?' · '+esc(n.patente_vehiculo.toUpperCase()):''}</div>`:'';
