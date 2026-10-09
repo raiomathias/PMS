@@ -4603,3 +4603,27 @@ WHERE n.nspname = 'public'
 ORDER BY c.relname;
 
 NOTIFY pgrst, 'reload schema';
+
+
+
+-- PMS v1.9.1: estacionamiento automático para todas las noches de la estadía.
+-- Idempotente: agrega fechas faltantes sin duplicar las ya existentes.
+INSERT INTO public.estacionamiento_reserva_fechas (reserva_id, fecha)
+SELECT r.id, gs.fecha::date
+FROM public.reservas r
+CROSS JOIN LATERAL generate_series(
+  r.fecha_entrada::timestamp,
+  (r.fecha_salida - 1)::timestamp,
+  interval '1 day'
+) AS gs(fecha)
+WHERE r.usa_estacionamiento = true
+  AND r.fecha_salida > r.fecha_entrada
+ON CONFLICT (reserva_id, fecha) DO NOTHING;
+
+UPDATE public.reservas r
+SET noches_estacionamiento = CASE
+  WHEN r.usa_estacionamiento THEN GREATEST(0, r.fecha_salida - r.fecha_entrada)
+  ELSE 0
+END;
+
+NOTIFY pgrst, 'reload schema';
