@@ -5944,3 +5944,344 @@ GRANT EXECUTE ON FUNCTION public.ejecutar_extension_estadia(uuid, date, date, js
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;
+
+-- ============================================================
+-- PMS v1.10.1 — CANCELACIÓN Y ARRASTRE DE RESERVAS
+-- Ejecutar este bloque completo en Supabase SQL Editor.
+-- ============================================================
+
+BEGIN;
+
+-- Retirar validaciones heredadas que bloqueaban el movimiento por todo el rango
+-- de estadía o intentaban escribir la columna generada noches.
+DROP TRIGGER IF EXISTS reservas_validar_estacionamiento
+  ON public.reservas;
+DROP TRIGGER IF EXISTS reservas_sincronizar_noches
+  ON public.reservas;
+
+CREATE OR REPLACE FUNCTION public.pms_validar_noches_estacionamiento()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_noches_estadia integer := NEW.fecha_salida - NEW.fecha_entrada;
+  v_fechas_seleccionadas integer := 0;
+BEGIN
+  IF COALESCE(NEW.usa_estacionamiento, false) = false THEN
+    NEW.noches_estacionamiento := 0;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.noches_estacionamiento IS NULL THEN
+    IF TG_OP = 'UPDATE' THEN
+      SELECT count(*)::integer INTO v_fechas_seleccionadas
+      FROM public.estacionamiento_reserva_fechas f
+      WHERE f.reserva_id = NEW.id;
+      NEW.noches_estacionamiento := v_fechas_seleccionadas;
+    ELSE
+      NEW.noches_estacionamiento := 0;
+    END IF;
+  END IF;
+
+  IF NEW.noches_estacionamiento < 0
+     OR NEW.noches_estacionamiento > v_noches_estadia THEN
+    RAISE EXCEPTION
+      'Las noches con estacionamiento deben estar entre 0 y %',
+      v_noches_estadia;
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_pms_validar_noches_estacionamiento
+  ON public.reservas;
+CREATE TRIGGER trg_pms_validar_noches_estacionamiento
+BEFORE INSERT OR UPDATE OF usa_estacionamiento, fecha_entrada, fecha_salida, noches_estacionamiento
+ON public.reservas
+FOR EACH ROW
+EXECUTE FUNCTION public.pms_validar_noches_estacionamiento();
+
+CREATE OR REPLACE FUNCTION public.validar_reserva_pms_precio_estacionamiento()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_noches_estadia integer := NEW.fecha_salida - NEW.fecha_entrada;
+  v_validar_canal boolean := (TG_OP = 'INSERT');
+  v_fechas_seleccionadas integer := 0;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    v_validar_canal :=
+      NEW.canal IS DISTINCT FROM OLD.canal
+      OR NEW.referencia_externa IS DISTINCT FROM OLD.referencia_externa;
+  END IF;
+
+  IF v_validar_canal
+     AND lower(trim(NEW.canal::text)) = 'booking'
+     AND NULLIF(trim(COALESCE(NEW.referencia_externa, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'El código externo es obligatorio para reservas de Booking';
+  END IF;
+
+  IF COALESCE(NEW.usa_estacionamiento, false) = false THEN
+    NEW.noches_estacionamiento := 0;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.noches_estacionamiento IS NULL THEN
+    IF TG_OP = 'UPDATE' THEN
+      SELECT count(*)::integer INTO v_fechas_seleccionadas
+      FROM public.estacionamiento_reserva_fechas f
+      WHERE f.reserva_id = NEW.id;
+      NEW.noches_estacionamiento := v_fechas_seleccionadas;
+    ELSE
+      NEW.noches_estacionamiento := 0;
+    END IF;
+  END IF;
+
+  IF NEW.noches_estacionamiento < 0
+     OR NEW.noches_estacionamiento > v_noches_estadia THEN
+    RAISE EXCEPTION 'Las noches con estacionamiento no pueden superar la estadía';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_validar_reserva_pms_precio_estacionamiento
+  ON public.reservas;
+CREATE TRIGGER trg_validar_reserva_pms_precio_estacionamiento
+BEFORE INSERT OR UPDATE OF canal, referencia_externa, fecha_entrada, fecha_salida, usa_estacionamiento, noches_estacionamiento
+ON public.reservas
+FOR EACH ROW
+EXECUTE FUNCTION public.validar_reserva_pms_precio_estacionamiento();
+
+-- Limpiar firmas invertidas/antiguas y dejar una única RPC canónica.
+DROP FUNCTION IF EXISTS public.mover_reserva_arrastrada(date, uuid, date, integer, uuid);
+DROP FUNCTION IF EXISTS public.mover_reserva_arrastrada(uuid, uuid, date, date, integer);
+
+CREATE FUNCTION public.mover_reserva_arrastrada(
+  p_reserva_id uuid,
+  p_unidad_id uuid,
+  p_entrada date,
+  p_salida date,
+  p_tarifa integer
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_rol text := lower(trim(COALESCE(public.rol_actual()::text, '')));
+  v_reserva public.reservas%rowtype;
+  v_edificio_id uuid;
+  v_cupos integer;
+  v_shift integer;
+  v_fechas_antiguas date[] := ARRAY[]::date[];
+  v_fechas_nuevas date[] := ARRAY[]::date[];
+  v_count integer := 0;
+  v_inconsistente uuid;
+  v_fecha_llena date;
+BEGIN
+  IF v_user IS NULL OR NOT COALESCE(public.es_personal(), false) THEN
+    RAISE EXCEPTION 'Sesión no válida o sin perfil de personal activo';
+  END IF;
+
+  SELECT r.* INTO v_reserva
+  FROM public.reservas r
+  WHERE r.id = p_reserva_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF v_reserva.estado IN ('en_casa','bloqueado','cancelada','no_show','check_out') THEN
+    RAISE EXCEPTION 'Esta reserva no puede moverse mediante arrastre en su estado actual';
+  END IF;
+
+  IF p_entrada IS NULL OR p_salida IS NULL OR p_salida <= p_entrada THEN
+    RAISE EXCEPTION 'La salida debe ser posterior a la entrada';
+  END IF;
+
+  IF p_unidad_id IS NULL THEN
+    RAISE EXCEPTION 'Debes indicar una unidad de destino';
+  END IF;
+
+  IF (p_entrada IS DISTINCT FROM v_reserva.fecha_entrada
+      OR p_salida IS DISTINCT FROM v_reserva.fecha_salida)
+     AND NOT COALESCE(public.tiene_permiso_edicion(v_user, 'dates'), false) THEN
+    RAISE EXCEPTION 'No tienes permiso para modificar las fechas de la reserva';
+  END IF;
+
+  IF p_unidad_id IS DISTINCT FROM v_reserva.unidad_id
+     AND NOT COALESCE(public.tiene_permiso_edicion(v_user, 'building_category_unit'), false) THEN
+    RAISE EXCEPTION 'No tienes permiso para cambiar la unidad de esta reserva';
+  END IF;
+
+  SELECT u.edificio_id, e.cupos_estacionamiento
+    INTO v_edificio_id, v_cupos
+  FROM public.unidades u
+  JOIN public.edificios e ON e.id = u.edificio_id
+  WHERE u.id = p_unidad_id AND u.activo
+  FOR UPDATE OF u, e;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';
+  END IF;
+
+  IF v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+     AND (
+       NOT EXISTS (
+         SELECT 1 FROM public.perfiles_edificios pe
+         WHERE pe.perfil_id = v_user
+           AND pe.edificio_id = (
+             SELECT u.edificio_id FROM public.unidades u
+             WHERE u.id = v_reserva.unidad_id
+           )
+       )
+       OR NOT EXISTS (
+         SELECT 1 FROM public.perfiles_edificios pe
+         WHERE pe.perfil_id = v_user
+           AND pe.edificio_id = v_edificio_id
+       )
+     ) THEN
+    RAISE EXCEPTION 'No tienes permiso para mover reservas entre estos edificios';
+  END IF;
+
+  -- Si hay solapamiento, no se modifica ni la reserva ni las fechas de parking.
+  IF EXISTS (
+    SELECT 1 FROM public.reservas q
+    WHERE q.unidad_id = p_unidad_id
+      AND q.id <> p_reserva_id
+      AND q.fecha_entrada < p_salida
+      AND q.fecha_salida > p_entrada
+      AND q.estado IN ('tentativa','confirmada','en_casa','bloqueado')
+  ) THEN
+    RAISE EXCEPTION 'La unidad de destino está ocupada durante una parte de esas fechas';
+  END IF;
+
+  v_shift := p_entrada - v_reserva.fecha_entrada;
+
+  SELECT COALESCE(array_agg(f.fecha ORDER BY f.fecha), ARRAY[]::date[])
+    INTO v_fechas_antiguas
+  FROM public.estacionamiento_reserva_fechas f
+  WHERE f.reserva_id = p_reserva_id;
+
+  IF COALESCE(v_reserva.usa_estacionamiento, false) THEN
+    IF cardinality(v_fechas_antiguas) <> COALESCE(v_reserva.noches_estacionamiento, 0) THEN
+      RAISE EXCEPTION
+        'Las fechas manuales de estacionamiento no coinciden con el contador actual (% frente a %). Corrige la reserva antes de moverla.',
+        cardinality(v_fechas_antiguas), COALESCE(v_reserva.noches_estacionamiento, 0);
+    END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM unnest(v_fechas_antiguas) AS f(fecha)
+      WHERE f.fecha < v_reserva.fecha_entrada OR f.fecha >= v_reserva.fecha_salida
+    ) THEN
+      RAISE EXCEPTION 'Hay noches de estacionamiento fuera de la estadía actual';
+    END IF;
+
+    SELECT COALESCE(array_agg(x.fecha + v_shift ORDER BY x.fecha + v_shift), ARRAY[]::date[])
+      INTO v_fechas_nuevas
+    FROM unnest(v_fechas_antiguas) AS x(fecha)
+    WHERE x.fecha + v_shift >= p_entrada
+      AND x.fecha + v_shift < p_salida;
+  ELSE
+    v_fechas_nuevas := ARRAY[]::date[];
+  END IF;
+
+  IF cardinality(v_fechas_nuevas) > 0 THEN
+    IF COALESCE(v_cupos, 0) <= 0 THEN
+      RAISE EXCEPTION 'El edificio de destino no tiene cupos de estacionamiento definidos';
+    END IF;
+
+    SELECT r.id INTO v_inconsistente
+    FROM public.reservas r
+    JOIN public.unidades u ON u.id = r.unidad_id
+    WHERE r.id <> p_reserva_id
+      AND r.usa_estacionamiento
+      AND r.estado IN ('tentativa','confirmada','en_casa')
+      AND u.edificio_id = v_edificio_id
+      AND EXISTS (
+        SELECT 1 FROM unnest(v_fechas_nuevas) AS x(fecha)
+        WHERE x.fecha >= r.fecha_entrada AND x.fecha < r.fecha_salida
+      )
+      AND (
+        COALESCE(r.noches_estacionamiento,0) <>
+          (SELECT count(*)::integer
+           FROM public.estacionamiento_reserva_fechas f
+           WHERE f.reserva_id=r.id)
+        OR EXISTS (
+          SELECT 1 FROM public.estacionamiento_reserva_fechas f
+          WHERE f.reserva_id=r.id
+            AND (f.fecha<r.fecha_entrada OR f.fecha>=r.fecha_salida)
+        )
+      )
+    LIMIT 1;
+
+    IF v_inconsistente IS NOT NULL THEN
+      RAISE EXCEPTION 'La reserva % tiene fechas de estacionamiento incompletas. Corrígela antes de continuar.', v_inconsistente;
+    END IF;
+
+    SELECT x.fecha INTO v_fecha_llena
+    FROM unnest(v_fechas_nuevas) AS x(fecha)
+    WHERE (
+      SELECT count(DISTINCT r.id)::integer
+      FROM public.estacionamiento_reserva_fechas f
+      JOIN public.reservas r ON r.id=f.reserva_id
+      JOIN public.unidades u ON u.id=r.unidad_id
+      WHERE f.fecha=x.fecha AND r.id<>p_reserva_id
+        AND r.usa_estacionamiento
+        AND r.estado IN ('tentativa','confirmada','en_casa')
+        AND u.edificio_id=v_edificio_id
+        AND x.fecha>=r.fecha_entrada AND x.fecha<r.fecha_salida
+    ) >= v_cupos
+    ORDER BY x.fecha LIMIT 1;
+
+    IF v_fecha_llena IS NOT NULL THEN
+      RAISE EXCEPTION 'Estacionamiento sin cupo para la noche %', v_fecha_llena;
+    END IF;
+  END IF;
+
+  -- 'noches' es GENERATED: PostgreSQL lo recalcula automáticamente.
+  -- Solo se actualiza unidad_id si corresponde, y las fechas.
+  UPDATE public.reservas r
+  SET unidad_id = p_unidad_id,
+      fecha_entrada = p_entrada,
+      fecha_salida = p_salida
+  WHERE r.id = p_reserva_id;
+
+  -- Preservar la selección manual de noches de estacionamiento.
+  DELETE FROM public.estacionamiento_reserva_fechas
+  WHERE reserva_id = p_reserva_id;
+
+  IF cardinality(v_fechas_nuevas) > 0 THEN
+    INSERT INTO public.estacionamiento_reserva_fechas(reserva_id, fecha)
+    SELECT p_reserva_id, x.fecha
+    FROM unnest(v_fechas_nuevas) AS x(fecha)
+    ORDER BY x.fecha;
+  END IF;
+
+  SELECT count(*)::integer INTO v_count
+  FROM public.estacionamiento_reserva_fechas
+  WHERE reserva_id = p_reserva_id;
+
+  IF v_count <> cardinality(v_fechas_nuevas) THEN
+    RAISE EXCEPTION 'El movimiento no conservó las fechas de estacionamiento seleccionadas';
+  END IF;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION
+  public.mover_reserva_arrastrada(uuid, uuid, date, date, integer)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION
+  public.mover_reserva_arrastrada(uuid, uuid, date, date, integer)
+  TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+
+COMMIT;
