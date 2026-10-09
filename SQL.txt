@@ -5370,8 +5370,8 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ============================================================
--- PMS v1.9.10: ARRASTRE TRANSACCIONAL DE RESERVAS EN LA CUADRÍCULA
--- Usada por index.html v1.9.10.
+-- PMS v1.9.11: ARRASTRE TRANSACCIONAL DE RESERVAS EN LA CUADRÍCULA
+-- Usada por index.html v1.9.11.
 -- Cambia habitación/fechas y traslada las noches de estacionamiento
 -- dentro de una sola transacción. No depende de la función histórica
 -- mover_reserva, cuya definición no estaba incluida en este archivo.
