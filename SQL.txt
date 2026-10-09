@@ -5370,12 +5370,14 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ============================================================
--- PMS v1.9.9: ARRASTRE TRANSACCIONAL DE RESERVAS EN LA CUADRÍCULA
--- Usada por index.html v1.9.9.
+-- PMS v1.9.10: ARRASTRE TRANSACCIONAL DE RESERVAS EN LA CUADRÍCULA
+-- Usada por index.html v1.9.10.
 -- Cambia habitación/fechas y traslada las noches de estacionamiento
 -- dentro de una sola transacción. No depende de la función histórica
 -- mover_reserva, cuya definición no estaba incluida en este archivo.
 -- ============================================================
+
+BEGIN;
 
 DROP TRIGGER IF EXISTS reservas_validar_estacionamiento
   ON public.reservas;
@@ -5448,7 +5450,7 @@ BEGIN
     JOIN public.edificios AS e ON e.id = u.edificio_id
    WHERE u.id = p_unidad_id
      AND u.activo
-   FOR UPDATE OF e;
+   FOR UPDATE OF u, e;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';
@@ -5637,3 +5639,5 @@ GRANT EXECUTE ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,in
   TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
