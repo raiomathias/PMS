@@ -2365,7 +2365,7 @@ async function estCargar(){
   // Conservamos las fechas guardadas para los avisos visuales de llegada/salida,
   // pero estAsignar() y noche() solo cuentan las fechas dentro de la estadía.
   // Así una fecha de salida puede mostrarse como liberación diurna sin inflar noches.
-  r._pf=[...new Set(by[r.id]||[])].sort();
+  r._pf=[...new Set((by[r.id]&&by[r.id].length?by[r.id]:fechasParkingFallback(r))||[])].sort();
  });
  E.eds.forEach(ed=>pend.push(...estAsignar(data.filter(r=>r._e===ed.id&&r._pf.length),ed.cupos_estacionamiento)));
  E.rs=data;estDibujar();
