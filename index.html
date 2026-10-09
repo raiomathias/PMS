@@ -211,7 +211,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.9.8</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.9.9</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -223,7 +223,7 @@ let ND=90;
 const CAL_BATCH=30;
 const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,vista:null,cur:null,g:null,gar:{},edificios:[],edificiosPermitidos:[],permisosEdificios:new Set(),permisosEdicion:new Set()};
 const ED_ROLES_TODOS=['administracion','gerencia','sysadmin','system_admin','systemadmin'];
-const MOV=['tentativa','confirmada','en_casa','bloqueado'];let DRG=null,DRGsup=false,PT=null;
+const MOV=['tentativa','confirmada','en_casa'];let DRG=null,DRGsup=false,PT=null;
 const LIM={sucia:['🧹','S','#dc2626','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#eab308','Defectuosa']};
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n||0);
@@ -314,7 +314,7 @@ function protegerMutacionesRealtime(){
   'guardarNueva','guardarEditorReserva','marcarPagadaHistorica','guardarPermisosEdicion','guardarCambiosReservaDetalle','accion',
   'guardarReclamo','hacerCheckOut','guardarR','guardarG','notaNueva','addAc','delAc','addCargo','addPago',
   'cambiarLimp','marcarSucia','gd','nw','guardarRanking','gCfg','guardarPermisos','borrarU',
-  'addGarantia','omitirGarantia','reactivarGarantia','moverReserva','gAplicar','gQuitarFecha','gDet',
+  'addGarantia','omitirGarantia','reactivarGarantia','moverReserva','extenderReservaDesdeArrastre','gAplicar','gQuitarFecha','gDet',
   'guardarRankingFotos','subirFotos','delFoto','borrarReserva','bDelR','bDelH','bDelTodos'
  ];
  for(const nombre of nombres){
@@ -620,6 +620,7 @@ function programarRevisionBorde(){
  clearTimeout(EDGE.timer);
  EDGE.timer=setTimeout(()=>{
   const g=$('#gw');
+  if(DRG?.mov)return;
   if(g&&g.offsetParent){
    S.vista=addD(S.ini,Math.max(0,Math.floor(g.scrollLeft/W)));
    $('#hf').value=S.vista;
@@ -656,7 +657,7 @@ function cambiarFechaGrid(v){
  cargar({scrollAnchor:esRecepcion()?Math.max(0,diff(S.ini,S.vista))*W:30*W});
 }
 function revisarBordeCalendario(){
- const g=$('#gw');if(!g||EDGE.loading)return;
+ const g=$('#gw');if(!g||EDGE.loading||DRG?.mov)return;
  if(esRecepcion()&&g.scrollLeft<=EDGE_TRIGGER_DAYS*W){
   if(g.scrollLeft<0)g.scrollLeft=0;
   return;
@@ -1319,6 +1320,11 @@ async function ejecutarExtensionEstadia(){
   p_plan:e.plan||[]
  });
  if(error)return msg('No se pudo ejecutar la extensión: '+errTxt(error),1);
+ const {data:actual,error:ve}=await sb.from('reservas')
+  .select('fecha_entrada,fecha_salida,noches').eq('id',e.reservaId).maybeSingle();
+ if(ve||!actual)return msg('La extensión se ejecutó, pero no se pudo verificar en reservas: '+(ve?.message||'reserva no encontrada'),1);
+ if(actual.fecha_entrada!==e.nuevaEntrada||actual.fecha_salida!==e.nuevaSalida||Number(actual.noches)!==diff(e.nuevaEntrada,e.nuevaSalida))
+  return msg('La extensión no quedó guardada con las fechas solicitadas. No se cerró la ventana para que puedas revisar.',1);
  cerrar();
  await cargar();
  await abrirDr(e.reservaId);
@@ -1887,47 +1893,190 @@ async function reactivarGarantia(){
 
 // ---------- Mover / extender / cambiar unidad ----------
 $('#gw').addEventListener('pointerdown',e=>{
- if(e.button||e.target.closest('.et'))return;const b=e.target.closest('.blq');if(!b)return;
+ if(e.button!==0||e.target.closest('.et'))return;
+ const b=e.target.closest('.blq');if(!b)return;
  const r=S.res.find(x=>x.id===b.dataset.r);if(!r||!MOV.includes(r.estado))return;
  const rz=!!e.target.closest('.rz');
- DRG={r,b,rz,x0:e.clientX,y0:e.clientY,mov:false,dd:0,u:r.unidad_id,w0:b.offsetWidth}});
+ // Una reserva en casa no puede cambiar de unidad ni mover sus fechas,
+ // pero sí puede extender su salida desde el tirador derecho.
+ if(r.estado==='en_casa'&&!rz)return;
+ if(r.estado==='bloqueado')return;
+ e.preventDefault();
+ const g=$('#gw');
+ DRG={r,b,rz,pointerId:e.pointerId,x0:e.clientX,y0:e.clientY,
+  scrollLeft0:g?.scrollLeft||0,mov:false,dd:0,u:r.unidad_id,w0:b.offsetWidth};
+});
 window.addEventListener('pointermove',e=>{
- const d=DRG;if(!d)return;const dx=e.clientX-d.x0,dy=e.clientY-d.y0;
- if(!d.mov){if(Math.abs(dx)<5&&Math.abs(dy)<5)return;d.mov=true;d.b.classList.add('arr');document.body.style.cursor=d.rz?'ew-resize':'grabbing'}
- d.dd=Math.round(dx/W);if(d.r.estado==='en_casa'&&!d.rz)d.dd=0;
- if(d.rz){const min=1-diff(d.r.fecha_entrada,d.r.fecha_salida);if(d.dd<min)d.dd=min;d.b.style.width=(d.w0+d.dd*W)+'px';return}
+ const d=DRG;if(!d||e.pointerId!==d.pointerId)return;
+ const g=$('#gw'),scrollDelta=(g?.scrollLeft||0)-d.scrollLeft0;
+ const dx=(e.clientX-d.x0)+scrollDelta,dy=e.clientY-d.y0;
+ if(!d.mov){
+  if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
+  d.mov=true;d.b.classList.add('arr');document.body.style.cursor=d.rz?'ew-resize':'grabbing';
+ }
+ d.dd=Math.round(dx/W);
+ if(d.r.estado==='en_casa'){
+  if(!d.rz)d.dd=0;
+  else if(d.dd<0)d.dd=0; // In-house: do not shorten or backdate via drag.
+ }
+ if(d.rz){
+  const min=1-diff(d.r.fecha_entrada,d.r.fecha_salida);
+  if(d.dd<min)d.dd=min;
+  d.b.style.width=(d.w0+d.dd*W)+'px';
+  return;
+ }
  d.b.style.transform=`translate(${d.dd*W}px,${dy}px)`;
- const f=document.elementsFromPoint(e.clientX,e.clientY).find(x=>x.matches&&x.matches('.dias[data-u]'));
- d.u=f?f.dataset.u:d.r.unidad_id;
+ // elementFromPoint can return a child (.blq, .small, etc.), not the row cell itself.
+ // closest() resolves the containing unit row reliably.
+ const hit=document.elementFromPoint(e.clientX,e.clientY);
+ const cell=hit?.closest('.dias[data-u]');
+ if(cell)d.u=cell.dataset.u; // Keep the last valid row while the pointer crosses gaps.
  document.querySelectorAll('.dst').forEach(x=>x.classList.remove('dst'));
- if(f&&d.u!==d.r.unidad_id)f.classList.add('dst')});
-window.addEventListener('pointerup',async()=>{
- const d=DRG;DRG=null;if(!d)return;document.body.style.cursor='';
+ if(cell&&d.u!==d.r.unidad_id)cell.classList.add('dst');
+});
+window.addEventListener('pointerup',async e=>{
+ const d=DRG;if(!d||e.pointerId!==d.pointerId)return;
+ DRG=null;document.body.style.cursor='';
  document.querySelectorAll('.dst').forEach(x=>x.classList.remove('dst'));
- if(!d.mov)return;DRGsup=true;setTimeout(()=>DRGsup=false,80);
- const r=d.r,u=d.rz?r.unidad_id:d.u,ent=d.rz?r.fecha_entrada:addD(r.fecha_entrada,d.dd),sal=addD(r.fecha_salida,d.dd);
- if(u===r.unidad_id&&d.dd===0){dibujar();return}
- await moverReserva(r,u,ent,sal)});
-window.addEventListener('pointercancel',()=>{if(DRG&&DRG.mov){DRG=null;document.body.style.cursor='';dibujar()}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&DRG&&DRG.mov){DRG=null;document.body.style.cursor='';document.querySelectorAll('.dst').forEach(x=>x.classList.remove('dst'));dibujar()}});
+ if(!d.mov)return;
+ DRGsup=true;setTimeout(()=>DRGsup=false,120);
+ const r=d.r,u=d.rz?r.unidad_id:d.u;
+ const ent=d.rz?r.fecha_entrada:addD(r.fecha_entrada,d.dd);
+ const sal=addD(r.fecha_salida,d.dd);
+ if(u===r.unidad_id&&ent===r.fecha_entrada&&sal===r.fecha_salida){dibujar();requestAnimationFrame(revisarBordeCalendario);return}
+ try{
+  if(d.rz&&u===r.unidad_id&&ent===r.fecha_entrada&&sal>r.fecha_salida){
+   await extenderReservaDesdeArrastre(r,ent,sal);
+  }else{
+   await moverReserva(r,u,ent,sal);
+  }
+ }catch(err){
+  msg('No se pudo completar el arrastre: '+(err?.message||String(err)),1);
+  await cargar();
+ }finally{
+  requestAnimationFrame(revisarBordeCalendario);
+ }});
+window.addEventListener('pointercancel',e=>{
+ if(DRG&&e.pointerId===DRG.pointerId){
+  const hadMove=DRG.mov;DRG=null;document.body.style.cursor='';
+  document.querySelectorAll('.dst').forEach(x=>x.classList.remove('dst'));
+  if(hadMove)dibujar();
+ }});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&DRG&&DRG.mov){
+  DRG=null;document.body.style.cursor='';
+  document.querySelectorAll('.dst').forEach(x=>x.classList.remove('dst'));
+  dibujar();
+ }});
 function preguntarTarifa(act,nue){return new Promise(res=>{
  $('#mo').innerHTML=`<div style="width:460px"><h3 style="margin:0 0 8px">La tarifa de la nueva unidad es distinta</h3><p>Tarifa actual de la reserva: <b>${clp(act)}</b><br>Tarifa de la nueva categoría: <b>${clp(nue)}</b></p><div style="display:grid;gap:8px"><button class="p big" id="tq1">Mantener ${clp(act)} por noche</button><button class="big" id="tq2">Usar ${clp(nue)} por noche</button><button id="tq3">Cancelar el movimiento</button></div></div>`;
  $('#mo').style.display='grid';PT=res;
  const f=v=>{PT=null;$('#mo').style.display='none';res(v)};$('#tq1').onclick=()=>f(act);$('#tq2').onclick=()=>f(nue);$('#tq3').onclick=()=>f(null)})}
+async function extenderReservaDesdeArrastre(r,ent,sal){
+ if(ent!==r.fecha_entrada||sal<=r.fecha_salida){
+  dibujar();msg('Una reserva en casa solo puede extender su fecha de salida mediante arrastre.',1);return false;
+ }
+ const {data:resultado,error}=await sb.rpc('buscar_extension_estadia',{
+  p_reserva_id:r.id,p_nueva_entrada:ent,p_nueva_salida:sal
+ });
+ if(error){msg('No se pudo verificar la extensión: '+errTxt(error),1);await cargar();return false}
+ if(!resultado?.posible){
+  msg('No se puede extender la estadía: '+(resultado?.razon||'no existe una extensión válida'),1);
+  await cargar();return false;
+ }
+ const plan=Array.isArray(resultado.plan)?resultado.plan:[];
+ if(plan.length){
+  // If the extension requires moving other reservations, expose the existing
+  // review-and-confirm flow instead of silently executing a chain on drag.
+  dibujar();S.cur={...r};
+  await abrirExtensionEstadia();
+  const ei=$('#ext_ent'),es=$('#ext_sal');
+  if(!ei||!es)return false;
+  ei.value=ent;es.value=sal;
+  S.extensionEstadia={reservaId:r.id,nuevaEntrada:ent,nuevaSalida:sal,plan};
+  extRenderPlan(plan,ent,sal);
+  msg('La extensión requiere reacomodar otras reservas. Revisa el plan y confirma en la ventana.',0);
+  return false;
+ }
+ const {error:runError}=await sb.rpc('ejecutar_extension_estadia',{
+  p_reserva_id:r.id,p_nueva_entrada:ent,p_nueva_salida:sal,p_plan:[]
+ });
+ if(runError){msg('No se pudo guardar la extensión: '+errTxt(runError),1);await cargar();return false}
+ const {data:actual,error:verifyError}=await sb.from('reservas')
+  .select('fecha_entrada,fecha_salida,noches').eq('id',r.id).maybeSingle();
+ if(verifyError||!actual){
+  msg('La extensión se ejecutó, pero no se pudo verificar en reservas: '+(verifyError?.message||'reserva no encontrada'),1);
+  await cargar();return false;
+ }
+ if(actual.fecha_entrada!==ent||actual.fecha_salida!==sal||Number(actual.noches)!==diff(ent,sal)){
+  msg('La base de datos no conservó las fechas solicitadas. Se recargó el calendario para mostrar el estado real.',1);
+  await cargar();return false;
+ }
+ await cargar();
+ if($('#dr').style.display==='block'&&S.cur?.id===r.id)await abrirDr(r.id);
+ msg('Estadía extendida: '+fm(ent)+' → '+fm(sal));
+ return true;
+}
 async function moverReserva(r,uid,ent,sal){
- if(r.estado==='en_casa'){msg('Una reserva en casa nunca puede ser movida de unidad',1);return}
- if(r.estado==='bloqueado'){msg('Los bloqueos no se pueden mover mediante movimiento automático',1);return}
- if(r.no_mover_unidad&&!confirm('⚠ Esta reserva está marcada como “No mover de esta unidad”.\\n\\nEl movimiento manual que estás realizando puede moverla igualmente.\\n\\n¿Confirmas que deseas moverla?')){dibujar();return}
- if(uid===r.unidad_id)return;
- let tar=null;const uo=S.unidades.find(x=>x.id===r.unidad_id),un=S.unidades.find(x=>x.id===uid);
- const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
- if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}
- const {data:oldPark}=await sb.from('estacionamiento_reserva_fechas').select('fecha').eq('reserva_id',r.id).order('fecha');
- const {error}=await sb.rpc('mover_reserva',{p_reserva_id:r.id,p_unidad_id:uid,p_entrada:ent,p_salida:sal,p_tarifa:tar});
- if(error){msg(errTxt(error),1);dibujar();return}
- if(r.usa_estacionamiento){const oldDates=fechasParkingReserva(r,oldPark||[]),shift=diff(r.fecha_entrada,ent),newDates=oldDates.map(d=>addD(d,shift)).filter(d=>d>=ent&&d<sal);const pe=await guardarFechasParking(r.id,newDates);if(pe)return msg('La reserva se movió, pero no se pudieron actualizar sus fechas de estacionamiento: '+pe.message,1);await sb.from('reservas').update({noches_estacionamiento:newDates.length}).eq('id',r.id)}
+ if(r.estado==='en_casa'){dibujar();return msg('Una reserva en casa no se puede mover de unidad ni cambiar de fechas con arrastre; usa Extender estadía para ampliar su salida.',1)}
+ if(r.estado==='bloqueado'){dibujar();return msg('Los bloqueos no se pueden mover ni extender arrastrando.',1)}
+ const cambiaUnidad=uid!==r.unidad_id;
+ const cambiaFechas=ent!==r.fecha_entrada||sal!==r.fecha_salida;
+ if(!cambiaUnidad&&!cambiaFechas){dibujar();return}
+ if(cambiaUnidad&&r.no_mover_unidad&&!confirm('⚠ Esta reserva está marcada como “No mover de esta unidad”.\\n\\nEl movimiento manual que estás realizando puede moverla igualmente.\\n\\n¿Confirmas que deseas moverla?')){dibujar();return}
+ let tar=null;
+ if(cambiaUnidad){
+  const uo=S.unidades.find(x=>x.id===r.unidad_id),un=S.unidades.find(x=>x.id===uid);
+  if(!un||!un.activo&&un.activo!==undefined){dibujar();return msg('La unidad de destino ya no está disponible.',1)}
+  const bo=uo?.tipos_unidad?.tarifa_base||0,bn=un?.tipos_unidad?.tarifa_base||0;
+  if(bo!==bn){const v=await preguntarTarifa(r.tarifa_noche,bn);if(v===null){dibujar();return}tar=v===r.tarifa_noche?null:v}
+ }
+ // Read before moving so the exact manually selected parking nights can be
+ // shifted and verified. A read failure must never be interpreted as no nights.
+ const {data:oldPark,error:parkReadError}=await sb.from('estacionamiento_reserva_fechas')
+  .select('fecha').eq('reserva_id',r.id).order('fecha');
+ if(parkReadError){dibujar();return msg('No se pudo leer el estacionamiento antes del movimiento: '+parkReadError.message,1)}
+ const oldDates=r.usa_estacionamiento?fechasParkingReserva(r,oldPark||[]):[];
+ const shift=diff(r.fecha_entrada,ent);
+ const expectedPark=oldDates.map(d=>addD(d,shift)).filter(d=>d>=ent&&d<sal).sort();
+
+ // This RPC performs the unit/date update and parking-date transfer atomically.
+ const {error}=await sb.rpc('mover_reserva_arrastrada',{
+  p_reserva_id:r.id,p_unidad_id:uid,p_entrada:ent,p_salida:sal,p_tarifa:tar
+ });
+ if(error){msg('No se guardó el arrastre: '+errTxt(error),1);await cargar();return}
+
+ const {data:actual,error:verifyError}=await sb.from('reservas')
+  .select('unidad_id,fecha_entrada,fecha_salida,noches,noches_estacionamiento,usa_estacionamiento,tarifa_noche')
+  .eq('id',r.id).maybeSingle();
+ if(verifyError||!actual){
+  msg('Se envió el movimiento, pero no se pudo verificar en Supabase: '+(verifyError?.message||'reserva no encontrada'),1);
+  await cargar();return;
+ }
+ const tarifaEsperada=tar===null?r.tarifa_noche:tar;
+ const camposOK=actual.unidad_id===uid&&actual.fecha_entrada===ent&&actual.fecha_salida===sal
+  &&Number(actual.noches)===diff(ent,sal)&&Number(actual.tarifa_noche)===Number(tarifaEsperada)
+  &&Number(actual.noches_estacionamiento||0)===expectedPark.length;
+ if(!camposOK){
+  msg('El servidor no conservó todos los valores del arrastre. Se recargó la cuadrícula con los datos reales.',1);
+  await cargar();return;
+ }
+ const {data:parkNow,error:parkVerifyError}=await sb.from('estacionamiento_reserva_fechas')
+  .select('fecha').eq('reserva_id',r.id).order('fecha');
+ if(parkVerifyError){
+  msg('La reserva se movió, pero no se pudo verificar su estacionamiento: '+parkVerifyError.message,1);
+  await cargar();return;
+ }
+ const persistedPark=(parkNow||[]).map(x=>String(x.fecha).slice(0,10)).sort();
+ if(JSON.stringify(persistedPark)!==JSON.stringify(expectedPark)){
+  msg('La reserva se movió, pero las fechas de estacionamiento no coinciden con el movimiento. Se recargó la cuadrícula; revisa la reserva.',1);
+  await cargar();return;
+ }
+ const un=S.unidades.find(x=>x.id===uid);
  msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo:'')+' · '+fm(ent)+' → '+fm(sal));
- await cargar();if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)abrirDr(r.id)}
+ await cargar();
+ if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)await abrirDr(r.id);
+}
 async function abrirCambioUnidad(){
  const r=S.cur;if(r.estado==='en_casa')return msg('Una reserva en casa nunca puede ser movida de unidad',1);
  const {data,error}=await sb.from('reservas').select('id,unidad_id,uid_reserva,huesped_nombre_copia,fecha_entrada,fecha_salida,estado,no_mover_unidad').lt('fecha_entrada',r.fecha_salida).gt('fecha_salida',r.fecha_entrada).in('estado',['tentativa','confirmada','en_casa','bloqueado']);
@@ -2595,7 +2744,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='1.9.8';
+const VERSION_ACTUAL='1.9.9';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
