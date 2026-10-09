@@ -4959,3 +4959,94 @@ GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid)
 TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- PMS v1.9.6: verificar fechas dentro de una función SECURITY DEFINER
+-- Evita falsos negativos porque el frontend no puede leer la tabla por RLS.
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(date[], uuid);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(uuid, date[]);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento_verificado(date[], uuid);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento_verificado(uuid, date[]);
+
+CREATE FUNCTION public.guardar_fechas_estacionamiento(
+  p_fechas date[],
+  p_reserva_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_reserva public.reservas%rowtype;
+  v_fechas date[] := COALESCE(p_fechas, ARRAY[]::date[]);
+BEGIN
+  IF v_user IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+
+  SELECT rr.* INTO v_reserva
+  FROM public.reservas rr WHERE rr.id = p_reserva_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Reserva no encontrada'; END IF;
+
+  IF NOT public.tiene_permiso_edicion(v_user, 'vehicle') THEN
+    RAISE EXCEPTION 'No tienes permiso para editar el estacionamiento';
+  END IF;
+
+  IF COALESCE(v_reserva.usa_estacionamiento, false) = false
+     AND cardinality(v_fechas) > 0 THEN
+    RAISE EXCEPTION 'La reserva no tiene estacionamiento habilitado';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM unnest(v_fechas) x(fecha)
+    WHERE x.fecha IS NULL OR x.fecha < v_reserva.fecha_entrada
+       OR x.fecha >= v_reserva.fecha_salida
+  ) THEN RAISE EXCEPTION 'Hay fechas fuera de la estadía'; END IF;
+
+  IF cardinality(v_fechas) <>
+    (SELECT count(DISTINCT x.fecha)::integer FROM unnest(v_fechas) x(fecha)) THEN
+    RAISE EXCEPTION 'Hay fechas duplicadas'; END IF;
+
+  DELETE FROM public.estacionamiento_reserva_fechas
+  WHERE reserva_id = p_reserva_id;
+
+  INSERT INTO public.estacionamiento_reserva_fechas(reserva_id, fecha)
+  SELECT p_reserva_id, x.fecha FROM unnest(v_fechas) x(fecha) ORDER BY x.fecha;
+
+  UPDATE public.reservas rr
+  SET noches_estacionamiento = cardinality(v_fechas),
+      referencia_externa = CASE
+        WHEN lower(trim(rr.canal::text)) = 'booking'
+          AND NULLIF(trim(COALESCE(rr.referencia_externa,'')), '') IS NULL
+        THEN 'N/A' ELSE rr.referencia_externa END
+  WHERE rr.id = p_reserva_id;
+END;
+$function$;
+
+CREATE FUNCTION public.guardar_fechas_estacionamiento_verificado(
+  p_fechas date[],
+  p_reserva_id uuid
+)
+RETURNS SETOF date
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  PERFORM public.guardar_fechas_estacionamiento(p_fechas, p_reserva_id);
+  RETURN QUERY
+    SELECT erf.fecha
+    FROM public.estacionamiento_reserva_fechas erf
+    WHERE erf.reserva_id = p_reserva_id
+    ORDER BY erf.fecha;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento_verificado(date[], uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento_verificado(date[], uuid) TO authenticated;
+NOTIFY pgrst, 'reload schema';
