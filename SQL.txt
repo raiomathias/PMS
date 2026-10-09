@@ -4477,3 +4477,73 @@ CREATE POLICY push_subscriptions_own_delete ON public.push_subscriptions FOR DEL
 -- SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY como secretos de Edge Functions.
 -- Nunca publiques VAPID_PRIVATE_KEY ni SERVICE_ROLE. Copia solo VAPID_PUBLIC_KEY a index.html y despliega
 -- supabase/functions/notificar-limpieza/index.ts. En cada móvil pulsa "Avisos". Requiere HTTPS y permiso.
+
+
+-- ============================================================
+-- FIX 2026-10-09: sysadmin puede ver TODOS los buzones.
+-- No depende de perfiles_permisos_buzon ni de su rol de recepción.
+-- Afecta a buzón normal y a la política RLS de Realtime.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.buzon_puede_ver_audiencia(
+  p_audiencia text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_rol text;
+  v_egana boolean;
+  v_huasco boolean;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT lower(rol::text)
+    INTO v_rol
+  FROM public.perfiles
+  WHERE id = auth.uid()
+    AND activo = true;
+
+  IF v_rol IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Sysadmin tiene acceso de supervisión a todas las audiencias.
+  IF v_rol IN ('sysadmin', 'system_admin', 'systemadmin') THEN
+    RETURN true;
+  END IF;
+
+  IF p_audiencia = 'recepcion_egana' THEN
+    SELECT COALESCE(recepcion_egana, false)
+      INTO v_egana
+    FROM public.perfiles_permisos_buzon
+    WHERE perfil_id = auth.uid();
+    RETURN COALESCE(v_egana, false);
+
+  ELSIF p_audiencia = 'recepcion_huasco' THEN
+    SELECT COALESCE(recepcion_huasco, false)
+      INTO v_huasco
+    FROM public.perfiles_permisos_buzon
+    WHERE perfil_id = auth.uid();
+    RETURN COALESCE(v_huasco, false);
+
+  ELSIF p_audiencia = 'administracion' THEN
+    RETURN v_rol IN ('administracion', 'gerencia');
+
+  ELSIF p_audiencia = 'gerencia' THEN
+    RETURN v_rol = 'gerencia';
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.buzon_puede_ver_audiencia(text)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.buzon_puede_ver_audiencia(text)
+  TO authenticated;
+NOTIFY pgrst, 'reload schema';
