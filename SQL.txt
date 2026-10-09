@@ -4669,3 +4669,43 @@ WHERE r.usa_estacionamiento IS TRUE
 ON CONFLICT (reserva_id, fecha) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- FIX v1.9.2: verificación segura de fechas de estacionamiento
+-- Evita depender de SELECT directo sujeto a RLS en la tabla hija.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.guardar_fechas_estacionamiento_verificado(
+    p_fechas date[],
+    p_reserva_id uuid
+)
+RETURNS SETOF date
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+    v_fecha date;
+BEGIN
+    -- La función original valida sesión/permisos y guarda la selección.
+    PERFORM public.guardar_fechas_estacionamiento(p_fechas, p_reserva_id);
+
+    -- Leer de forma segura lo realmente persistido tras guardar.
+    FOR v_fecha IN
+        SELECT erf.fecha
+        FROM public.estacionamiento_reserva_fechas AS erf
+        WHERE erf.reserva_id = p_reserva_id
+        ORDER BY erf.fecha
+    LOOP
+        RETURN NEXT v_fecha;
+    END LOOP;
+    RETURN;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento_verificado(date[], uuid)
+FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento_verificado(date[], uuid)
+TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
