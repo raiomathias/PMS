@@ -4627,3 +4627,13 @@ SET noches_estacionamiento = CASE
 END;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- PMS: completar código externo faltante en reservas de Booking.
+-- Usa N/A como valor explícito para satisfacer la validación existente.
+UPDATE public.reservas
+SET codigo_externo = 'N/A'
+WHERE lower(trim(coalesce(canal_reserva, ''))) = 'booking'
+  AND NULLIF(trim(coalesce(codigo_externo, '')), '') IS NULL;
+
+NOTIFY pgrst, 'reload schema';
