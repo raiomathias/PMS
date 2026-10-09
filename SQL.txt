@@ -5379,6 +5379,36 @@ COMMIT;
 
 BEGIN;
 
+-- Mantener el contador noches sincronizado con las fechas nuevas incluso
+-- cuando las fechas se cambian desde el RPC de extensión existente.
+CREATE OR REPLACE FUNCTION public.pms_sincronizar_noches_reserva()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  IF NEW.fecha_entrada IS NULL OR NEW.fecha_salida IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.fecha_salida <= NEW.fecha_entrada THEN
+    RAISE EXCEPTION 'La salida debe ser posterior a la entrada';
+  END IF;
+
+  NEW.noches := NEW.fecha_salida - NEW.fecha_entrada;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS reservas_sincronizar_noches
+  ON public.reservas;
+
+CREATE TRIGGER reservas_sincronizar_noches
+BEFORE INSERT OR UPDATE ON public.reservas
+FOR EACH ROW
+EXECUTE FUNCTION public.pms_sincronizar_noches_reserva();
+
+-- Desactivar la validación antigua que ocupa cada noche de toda la estadía.
 DROP TRIGGER IF EXISTS reservas_validar_estacionamiento
   ON public.reservas;
 
@@ -5596,7 +5626,7 @@ BEGIN
      SET unidad_id = p_unidad_id,
          fecha_entrada = p_entrada,
          fecha_salida = p_salida,
-         noches = DEFAULT,
+         noches = p_salida - p_entrada,
          tarifa_noche = COALESCE(p_tarifa, v_reserva.tarifa_noche),
          noches_estacionamiento = cardinality(v_fechas_nuevas),
          cupo_estacionamiento = CASE
