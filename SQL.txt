@@ -4457,3 +4457,23 @@ USING (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- NOTIFICACIONES PUSH PARA LIMPIEZA (WEB PUSH)
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL REFERENCES public.perfiles(id) ON DELETE CASCADE,endpoint text NOT NULL UNIQUE,subscription jsonb NOT NULL,user_agent text,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON public.push_subscriptions(user_id);
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.push_subscriptions FROM anon, public;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.push_subscriptions TO authenticated;
+DROP POLICY IF EXISTS push_subscriptions_own_select ON public.push_subscriptions;
+DROP POLICY IF EXISTS push_subscriptions_own_insert ON public.push_subscriptions;
+DROP POLICY IF EXISTS push_subscriptions_own_update ON public.push_subscriptions;
+DROP POLICY IF EXISTS push_subscriptions_own_delete ON public.push_subscriptions;
+CREATE POLICY push_subscriptions_own_select ON public.push_subscriptions FOR SELECT TO authenticated USING (user_id=auth.uid());
+CREATE POLICY push_subscriptions_own_insert ON public.push_subscriptions FOR INSERT TO authenticated WITH CHECK (user_id=auth.uid());
+CREATE POLICY push_subscriptions_own_update ON public.push_subscriptions FOR UPDATE TO authenticated USING (user_id=auth.uid()) WITH CHECK (user_id=auth.uid());
+CREATE POLICY push_subscriptions_own_delete ON public.push_subscriptions FOR DELETE TO authenticated USING (user_id=auth.uid());
+-- Genera VAPID con "npx web-push generate-vapid-keys". Guarda VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT,
+-- SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY como secretos de Edge Functions.
+-- Nunca publiques VAPID_PRIVATE_KEY ni SERVICE_ROLE. Copia solo VAPID_PUBLIC_KEY a index.html y despliega
+-- supabase/functions/notificar-limpieza/index.ts. En cada móvil pulsa "Avisos". Requiere HTTPS y permiso.
