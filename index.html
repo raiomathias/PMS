@@ -2050,6 +2050,9 @@ async function moverReserva(r,uid,ent,sal){
   msg('La reserva cambió desde que se cargó el calendario. No se aplicó el arrastre; revisa los datos actualizados.',1);
   await cargar();return;
  }
+ if(cambiaUnidad&&live.no_mover_unidad&&!r.no_mover_unidad&&!confirm('⚠ Esta reserva fue marcada como “No mover de esta unidad” después de cargar el calendario.\\n\\n¿Confirmas que deseas moverla igualmente?')){
+  await cargar();return;
+ }
  r={...r,...live};S.res=S.res.map(x=>x.id===r.id?{...x,...live}:x);
  // Read before moving so the exact manually selected parking nights can be
  // shifted and verified. A read failure must never be interpreted as no nights.
