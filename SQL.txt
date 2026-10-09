@@ -1013,6 +1013,13 @@ CROSS JOIN LATERAL generate_series(
 ) AS gs(n)
 WHERE r.usa_estacionamiento
   AND COALESCE(r.noches_estacionamiento,0) > 0
+  -- No rellenar reservas que ya tienen una selección manual parcial/no consecutiva.
+  -- Solo reconstruir las antiguas que aún no poseen ninguna fila de fechas.
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.estacionamiento_reserva_fechas AS existing
+    WHERE existing.reserva_id = r.id
+  )
 ON CONFLICT (reserva_id, fecha) DO NOTHING;
 
 -- Mantener la tabla disponible para Realtime si la publicación existe.
