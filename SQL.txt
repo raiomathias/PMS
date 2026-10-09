@@ -5050,3 +5050,115 @@ REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento_verificado(date[], 
 GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento_verificado(date[], uuid) TO authenticated;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- PMS v1.9.7: guardado final de fechas manuales de estacionamiento
+-- ============================================================
+-- Este bloque reemplaza las funciones previas con firmas potencialmente
+-- ambiguas. La misma RPC actualiza el padre, reescribe las fechas hijas y
+-- devuelve las fechas reales dentro de la misma transacción.
+
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento_verificado(date[], uuid);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento_verificado(uuid, date[]);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(date[], uuid);
+DROP FUNCTION IF EXISTS public.guardar_fechas_estacionamiento(uuid, date[]);
+
+CREATE FUNCTION public.guardar_fechas_estacionamiento(
+  p_fechas date[],
+  p_reserva_id uuid
+)
+RETURNS SETOF date
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_reserva public.reservas%rowtype;
+  v_fechas date[] := COALESCE(p_fechas, ARRAY[]::date[]);
+  v_guardadas integer;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT rr.* INTO v_reserva
+  FROM public.reservas AS rr
+  WHERE rr.id = p_reserva_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Reserva no encontrada';
+  END IF;
+
+  IF NOT (
+    COALESCE(public.tiene_permiso_edicion(v_user, 'vehicle'), false)
+    OR COALESCE(public.tiene_permiso_edicion(v_user, 'parking_nights'), false)
+  ) THEN
+    RAISE EXCEPTION 'No tienes permiso para editar las fechas de estacionamiento';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM unnest(v_fechas) AS x(fecha)
+    WHERE x.fecha IS NULL
+       OR x.fecha < v_reserva.fecha_entrada
+       OR x.fecha >= v_reserva.fecha_salida
+  ) THEN
+    RAISE EXCEPTION 'Hay fechas nulas o fuera de la estadía';
+  END IF;
+
+  IF cardinality(v_fechas) <>
+     (SELECT count(DISTINCT x.fecha)::integer
+      FROM unnest(v_fechas) AS x(fecha)) THEN
+    RAISE EXCEPTION 'Hay fechas de estacionamiento duplicadas';
+  END IF;
+
+  -- Actualizar primero el registro padre. La selección manual se escribe al
+  -- final para evitar que triggers sobre reservas limpien las fechas después.
+  UPDATE public.reservas AS rr
+  SET noches_estacionamiento = cardinality(v_fechas),
+      usa_estacionamiento = CASE
+        WHEN cardinality(v_fechas) > 0 THEN true
+        ELSE COALESCE(v_reserva.usa_estacionamiento, false)
+      END,
+      referencia_externa = CASE
+        WHEN lower(trim(rr.canal::text)) = 'booking'
+          AND NULLIF(trim(COALESCE(rr.referencia_externa, '')), '') IS NULL
+        THEN 'N/A'
+        ELSE rr.referencia_externa
+      END
+  WHERE rr.id = p_reserva_id;
+
+  DELETE FROM public.estacionamiento_reserva_fechas AS erf
+  WHERE erf.reserva_id = p_reserva_id;
+
+  INSERT INTO public.estacionamiento_reserva_fechas (reserva_id, fecha)
+  SELECT p_reserva_id, x.fecha
+  FROM unnest(v_fechas) AS x(fecha)
+  ORDER BY x.fecha;
+
+  SELECT count(*)::integer INTO v_guardadas
+  FROM public.estacionamiento_reserva_fechas AS erf
+  WHERE erf.reserva_id = p_reserva_id;
+
+  IF v_guardadas <> cardinality(v_fechas) THEN
+    RAISE EXCEPTION 'Solo persistieron % de % fechas de estacionamiento',
+      v_guardadas, cardinality(v_fechas);
+  END IF;
+
+  RETURN QUERY
+  SELECT erf.fecha
+  FROM public.estacionamiento_reserva_fechas AS erf
+  WHERE erf.reserva_id = p_reserva_id
+  ORDER BY erf.fecha;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.guardar_fechas_estacionamiento(date[], uuid)
+TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
