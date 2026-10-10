@@ -6335,7 +6335,10 @@ END;
 $function$;
 
 
--- 2) Arrastre: contrato exacto del frontend; nunca actualiza reservas.noches.
+-- 2) Limpiar la firma antigua cuyos argumentos estaban en otro orden.
+DROP FUNCTION IF EXISTS public.mover_reserva_arrastrada(date, uuid, date, integer, uuid);
+
+-- Arrastre: contrato exacto del frontend; nunca actualiza reservas.noches.
 CREATE OR REPLACE FUNCTION public.mover_reserva_arrastrada(
   p_reserva_id uuid,
   p_unidad_id uuid,
@@ -6520,9 +6523,11 @@ REVOKE ALL ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,integ
 GRANT EXECUTE ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,integer) TO authenticated;
 
 
--- 3) Reacomodación inteligente. No se llama a mover_reserva antiguo:
---    todas las reservas del plan se validan primero y se mueven en una
---    transacción, excluyéndose entre sí al comprobar conflictos.
+-- 3) Eliminar la firma histórica de cinco argumentos para evitar ambigüedad RPC.
+DROP FUNCTION IF EXISTS public.ejecutar_reacomodacion_cambio_unidad(uuid, uuid, date, date, jsonb);
+
+-- Reacomodación inteligente. No se llama a mover_reserva antiguo:
+-- todas las reservas del plan se validan primero y se mueven en una transacción.
 CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
   p_reserva_id uuid,
   p_unidad_destino uuid,
