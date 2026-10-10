@@ -6538,11 +6538,15 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $function$
 DECLARE
+  v_user uuid := auth.uid();
   v_plan jsonb;
   v_bloqueadores integer;
   v_cadenas integer;
   v_conflicto boolean;
 BEGIN
+  IF v_user IS NULL OR NOT COALESCE(public.es_personal(),false) THEN
+    RAISE EXCEPTION 'Sesión no válida o sin perfil de personal activo';
+  END IF;
   IF p_salida <= p_entrada THEN RETURN '[]'::jsonb; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.unidades WHERE id=p_unidad_destino AND activo) THEN
     RETURN '[]'::jsonb;
@@ -6701,6 +6705,7 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.buscar_reacomodacion_cambio_unidad(uuid,uuid,date,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.buscar_reacomodacion_cambio_unidad(uuid,uuid,date,date) TO authenticated;
 
 -- 3) Eliminar la firma histórica de cinco argumentos para evitar ambigüedad RPC.
