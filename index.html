@@ -1377,15 +1377,33 @@ async function sincronizarReservaUI(id,abrir=true){
  }
  return true;
 }
+async function cancelarReservaFallbackPMS(r,motivo){
+ const rpc=await sb.rpc('cancelar_reserva_pms_v1101',{p_reserva_id:r.id,p_motivo:motivo});
+ if(!rpc.error)return {ok:true,cargo:Number(rpc.data)||0};
+ const {data,error}=await sb.from('reservas').update({
+  estado:'cancelada',cancelada_en:new Date().toISOString(),
+  cancelada_por:S.perfil?.id||null,motivo_cancelacion:motivo
+ }).eq('id',r.id).in('estado',['tentativa','confirmada']).select('id,estado').maybeSingle();
+ if(error)return {ok:false,error:new Error('Falló la RPC segura ('+rpc.error.message+') y también la actualización compatible ('+error.message+').')};
+ if(data?.estado==='cancelada')return {ok:true,cargo:0};
+ const {data:check,error:checkError}=await sb.from('reservas').select('estado').eq('id',r.id).maybeSingle();
+ if(checkError)return {ok:false,error:new Error('No se pudo verificar la cancelación: '+checkError.message)};
+ if(check?.estado==='cancelada')return {ok:true,cargo:0};
+ return {ok:false,error:new Error('La cancelación no modificó el registro. Estado actual: '+String(check?.estado||'reserva no encontrada')+'. Error RPC: '+rpc.error.message)};
+}
 async function accion(k){
  const r0=S.cur;if(!r0)return;
- let cancelacionFallback=false,cargoCancelacion=null,motivoCancelacionUsado=null;
+ let cancelacionFallback=false,cargoCancelacion=null,motivoCancelacionUsado=null,cancelacionPreSaveFallida=false;
  // Guardar la ficha antes de una acción solo si realmente hay cambios.
  // Antes el guardado integral se ejecutaba en cada clic y podía bloquear
  // cancelar/check-in/no-show por una validación ajena a la acción.
  if(k!=='del'&&$('#dr').style.display==='block'&&$('#gname')&&formularioReservaModificado(r0.id)){
   const ok=await guardarCambiosReservaDetalle({silencioso:true});
-  if(!ok)return;
+  if(!ok){
+   if(k!=='can')return;
+   // No dejar bloqueada la cancelación por un campo editado que no pudo guardarse.
+   cancelacionPreSaveFallida=true;
+  }
  }
  // Las acciones críticas deben trabajar con el estado REAL de Supabase,
  // no con una copia que pudo quedar desactualizada en S.cur.
@@ -1422,22 +1440,11 @@ async function accion(k){
   if(!['confirmada','tentativa'].includes(r.estado))
    return msg('Solo se pueden cancelar reservas en estado tentativa o confirmada. Estado actual: '+String(r.estado||'sin estado').replace('_',' '),1);
   const x=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:motivoCancelacionUsado});
-  cargoCancelacion=x.data;
-  if(x.error){
-   const rpcAusente=x.error.code==='PGRST202'||/could not find the function|schema cache/i.test(x.error.message||'');
-   if(!rpcAusente)e=x.error;
-   else{
-    // Compatibilidad si la RPC falta. RLS y triggers de auditoría siguen activos.
-    const {data:fb,error:fe}=await sb.from('reservas').update({
-      estado:'cancelada',
-      cancelada_en:new Date().toISOString(),
-      cancelada_por:S.perfil?.id||null,
-      motivo_cancelacion:motivoCancelacionUsado
-    }).eq('id',r.id).in('estado',['tentativa','confirmada']).select('id,estado').maybeSingle();
-    if(fe)e=fe;
-    else if(!fb)e=new Error('No se canceló: la reserva cambió de estado o no tienes permisos para actualizarla.');
-    else cancelacionFallback=true;
-   }
+  if(!x.error)cargoCancelacion=x.data;
+  else{
+   const fb=await cancelarReservaFallbackPMS(r,motivoCancelacionUsado);
+   if(!fb.ok)e=fb.error;
+   else{cargoCancelacion=fb.cargo;cancelacionFallback=true;}
   }
  }
  if(k==='conf'){
@@ -1456,16 +1463,12 @@ async function accion(k){
   let {data:posterior,error:pe}=await sb.from('reservas').select('id,estado').eq('id',r.id).maybeSingle();
   if(pe)return msg('La acción se envió, pero no se pudo verificar su estado en Supabase: '+errTxt(pe),1);
   if(k==='can'&&posterior&&posterior.estado!=='cancelada'&&!cancelacionFallback){
-   // Un RPC que responde sin error pero no cambia el estado no cuenta como éxito.
-   const {data:fb,error:fe}=await sb.from('reservas').update({
-     estado:'cancelada',
-     cancelada_en:new Date().toISOString(),
-     cancelada_por:S.perfil?.id||null,
-     motivo_cancelacion:motivoCancelacionUsado
-   }).eq('id',r.id).in('estado',['tentativa','confirmada']).select('id,estado').maybeSingle();
-   if(fe)return msg('La función de cancelación no cambió el estado y tampoco se pudo aplicar la actualización compatible: '+errTxt(fe),1);
-   if(!fb)return msg('La función de cancelación no cambió el estado y la actualización compatible no pudo modificar la reserva.',1);
-   cancelacionFallback=true;posterior=fb;
+   const fb=await cancelarReservaFallbackPMS(r,motivoCancelacionUsado);
+   if(!fb.ok)return msg('La función histórica no cambió el estado y falló la cancelación compatible: '+errTxt(fb.error),1);
+   cancelacionFallback=true;cargoCancelacion=fb.cargo;
+   const ver=await sb.from('reservas').select('id,estado').eq('id',r.id).maybeSingle();
+   if(ver.error)return msg('La cancelación se intentó, pero no se pudo verificar el estado: '+errTxt(ver.error),1);
+   posterior=ver.data;
   }
   if(!posterior||posterior.estado!==estadoEsperado){
    await cargar();
@@ -1478,9 +1481,12 @@ async function accion(k){
  }
  await sincronizarReservaUI(r.id,true);
  if(k==='can'){
-  if(cancelacionFallback)msg('Reserva cancelada. Se usó la actualización compatible porque cancelar_reserva no estaba disponible; no se aplicó un cargo automático. Revisa si corresponde registrar una penalización.',0);
-  else if(Number(cargoCancelacion)>0)msg('Reserva cancelada. Cargo aplicado: '+clp(cargoCancelacion),0);
-  else msg('Reserva cancelada correctamente.',0);
+  if(cancelacionFallback)msg('Reserva cancelada mediante la vía compatible. No se aplicó un cargo automático.'+
+   (cancelacionPreSaveFallida?' Los cambios pendientes de la ficha no se pudieron guardar antes de cancelar; revisa esos campos.':' Revisa si corresponde registrar una penalización.'),cancelacionPreSaveFallida?1:0);
+  else if(Number(cargoCancelacion)>0)msg('Reserva cancelada. Cargo aplicado: '+clp(cargoCancelacion)+
+   (cancelacionPreSaveFallida?'. Atención: algunos cambios pendientes no se guardaron.':''),cancelacionPreSaveFallida?1:0);
+  else msg('Reserva cancelada correctamente.'+
+   (cancelacionPreSaveFallida?' Atención: algunos cambios pendientes no se guardaron.':''),cancelacionPreSaveFallida?1:0);
  }
 }
 
@@ -2258,17 +2264,31 @@ async function cambiarUnidad(uid){
  });
 
  if(ee){
-  return msg('No se pudo ejecutar la reacomodación: '+errTxt(ee),1);
+  const texto=errTxt(ee);
+  const nochesGeneradas=/column ["']?noches["']? can only be updated to DEFAULT/i.test(texto);
+  return msg(nochesGeneradas
+   ?'No se pudo ejecutar la reacomodación porque Supabase aún ejecuta una función antigua que escribe la columna generada noches. Ejecuta el hotfix SQL v1.10.1 del final de SQL.txt.'
+   :'No se pudo ejecutar la reacomodación: '+texto,1);
  }
-
+ const {data:principal,error:verError}=await sb.from('reservas')
+  .select('id,unidad_id,fecha_entrada,fecha_salida,tarifa_noche').eq('id',r.id).maybeSingle();
+ if(verError||!principal){await cargar();return msg('La reacomodación terminó, pero no se pudo verificar la reserva principal: '+(verError?.message||'no encontrada'),1)}
+ if(principal.unidad_id!==uid||principal.fecha_entrada!==r.fecha_entrada||principal.fecha_salida!==r.fecha_salida){
+  await cargar();return msg('La reacomodación no dejó la reserva principal en la unidad solicitada. Se recargaron los datos reales.',1);
+ }
+ const idsPlan=[...new Set(plan.map(x=>x.reserva_id).filter(Boolean))];
+ if(idsPlan.length){
+  const {data:filas,error:ve}=await sb.from('reservas').select('id,unidad_id').in('id',idsPlan);
+  if(ve){await cargar();return msg('La unidad principal cambió, pero no se pudo verificar el resto de la cadena: '+ve.message,1)}
+  const byActual=Object.fromEntries((filas||[]).map(x=>[x.id,x]));
+  if(plan.some(x=>!byActual[x.reserva_id]||byActual[x.reserva_id].unidad_id!==x.unidad_destino)){
+   await cargar();return msg('La reacomodación quedó incompleta: una reserva de la cadena no terminó en su unidad destino. No se informa éxito.',1);
+  }
+ }
  msg('Reserva actualizada: '+(un?un.edificios.nombre+' · '+un.codigo:'')+
    ' · '+fm(r.fecha_entrada)+' → '+fm(r.fecha_salida));
-
  await cargar();
-
- if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id){
-  abrirDr(r.id);
- }
+ if($('#dr').style.display==='block'&&S.cur&&S.cur.id===r.id)await abrirDr(r.id);
 }
 // ---------- Admin: garantías por fecha y unidad ----------
 
