@@ -1378,18 +1378,52 @@ async function sincronizarReservaUI(id,abrir=true){
  return true;
 }
 async function cancelarReservaFallbackPMS(r,motivo){
- const rpc=await sb.rpc('cancelar_reserva_pms_v1101',{p_reserva_id:r.id,p_motivo:motivo});
- if(!rpc.error)return {ok:true,cargo:Number(rpc.data)||0};
+ const motivoLimpio=String(motivo||'').trim();
+ if(!motivoLimpio)return {ok:false,error:new Error('Debes indicar el motivo de cancelación')};
+
+ // El RPC seguro puede existir en Supabase y aun así estar desactualizado.
+ // Nunca damos éxito hasta comprobar el estado real del registro.
+ const rpc=await sb.rpc('cancelar_reserva_pms_v1101',{
+  p_reserva_id:r.id,p_motivo:motivoLimpio
+ });
+ let rpcCargo=0;
+ if(!rpc.error)rpcCargo=Number(rpc.data)||0;
+
+ const comprobar=async()=>{
+  const {data,error}=await sb.from('reservas').select('id,estado')
+   .eq('id',r.id).maybeSingle();
+  if(error)return {error:new Error('No se pudo verificar la cancelación: '+error.message)};
+  if(data?.estado==='cancelada')return {ok:true,cargo:rpcCargo};
+  return {data};
+ };
+ const primera=await comprobar();
+ if(primera.error)return {ok:false,error:primera.error};
+ if(primera.ok)return primera;
+
+ // Si el RPC devolvió éxito sin cambiar la fila, o no existe en la instalación,
+ // usar una actualización condicionada al estado válido y verificarla otra vez.
  const {data,error}=await sb.from('reservas').update({
-  estado:'cancelada',cancelada_en:new Date().toISOString(),
-  cancelada_por:S.perfil?.id||null,motivo_cancelacion:motivo
- }).eq('id',r.id).in('estado',['tentativa','confirmada']).select('id,estado').maybeSingle();
- if(error)return {ok:false,error:new Error('Falló la RPC segura ('+rpc.error.message+') y también la actualización compatible ('+error.message+').')};
- if(data?.estado==='cancelada')return {ok:true,cargo:0};
- const {data:check,error:checkError}=await sb.from('reservas').select('estado').eq('id',r.id).maybeSingle();
- if(checkError)return {ok:false,error:new Error('No se pudo verificar la cancelación: '+checkError.message)};
- if(check?.estado==='cancelada')return {ok:true,cargo:0};
- return {ok:false,error:new Error('La cancelación no modificó el registro. Estado actual: '+String(check?.estado||'reserva no encontrada')+'. Error RPC: '+rpc.error.message)};
+  estado:'cancelada',
+  cancelada_en:new Date().toISOString(),
+  cancelada_por:S.perfil?.id||null,
+  motivo_cancelacion:motivoLimpio
+ }).eq('id',r.id).in('estado',['tentativa','confirmada'])
+   .select('id,estado').maybeSingle();
+
+ if(error)return {ok:false,error:new Error(
+  'No se pudo cancelar mediante el RPC'+(rpc.error?' ('+rpc.error.message+')':'')+
+  ' ni mediante la actualización compatible ('+error.message+').'
+ )};
+ if(data?.estado==='cancelada')return {ok:true,cargo:rpcCargo};
+
+ const final=await comprobar();
+ if(final.error)return {ok:false,error:final.error};
+ if(final.ok)return final;
+ return {ok:false,error:new Error(
+  'La cancelación no modificó el registro. Estado actual: '+
+  String(final.data?.estado||'reserva no encontrada')+
+  (rpc.error?'. Error RPC: '+rpc.error.message:'. El RPC terminó sin error, pero no cambió el estado.')
+ )};
 }
 async function accion(k){
  const r0=S.cur;if(!r0)return;
@@ -1462,7 +1496,7 @@ async function accion(k){
  if(estadoEsperado){
   let {data:posterior,error:pe}=await sb.from('reservas').select('id,estado').eq('id',r.id).maybeSingle();
   if(pe)return msg('La acción se envió, pero no se pudo verificar su estado en Supabase: '+errTxt(pe),1);
-  if(k==='can'&&posterior&&posterior.estado!=='cancelada'&&!cancelacionFallback){
+  if(k==='can'&&posterior?.estado!=='cancelada'){
    const fb=await cancelarReservaFallbackPMS(r,motivoCancelacionUsado);
    if(!fb.ok)return msg('La función histórica no cambió el estado y falló la cancelación compatible: '+errTxt(fb.error),1);
    cancelacionFallback=true;cargoCancelacion=fb.cargo;
