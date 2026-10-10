@@ -6286,14 +6286,56 @@ NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 -- ============================================================
--- PMS v1.10.1 — HOTFIX FINAL: CANCELACIÓN, ARRASTRE Y REACOMODACIÓN
--- Ejecutar este bloque completo en Supabase SQL Editor.
--- No actualiza explícitamente la columna generada reservas.noches.
+
 -- ============================================================
+-- PMS v1.10.1 — HOTFIX DEFINITIVO
+-- Cancelación verificada, noches GENERATED y reacomodación atómica.
+-- Ejecutar este bloque completo en Supabase SQL Editor.
+-- ============================================================
+
 BEGIN;
+
+-- 1) Eliminar triggers en reservas que intentan escribir reservas.noches.
+--    La columna es GENERATED: solo las fechas fuente deben cambiar.
+DO $cleanup$
+DECLARE
+  t record;
+BEGIN
+  FOR t IN
+    SELECT tg.tgname
+      FROM pg_trigger tg
+      JOIN pg_proc p ON p.oid = tg.tgfoid
+     WHERE tg.tgrelid = 'public.reservas'::regclass
+       AND NOT tg.tgisinternal
+       AND (
+         p.proname = 'pms_sincronizar_noches_reserva'
+         OR lower(p.prosrc) LIKE '%new.noches :=%'
+         OR lower(p.prosrc) LIKE '%new.noches:=%'
+         OR p.prosrc ~* 'UPDATE[[:space:]]+(public[.])?reservas[[:space:]]+SET[[:space:]]+noches[[:space:]]*='
+       )
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.reservas', t.tgname);
+  END LOOP;
+END;
+$cleanup$;
+
 DROP TRIGGER IF EXISTS reservas_sincronizar_noches ON public.reservas;
+DROP TRIGGER IF EXISTS trg_reservas_sincronizar_noches ON public.reservas;
 DROP TRIGGER IF EXISTS reservas_validar_estacionamiento ON public.reservas;
 
+-- La rutina heredada queda inocua. No asigna NEW.noches.
+CREATE OR REPLACE FUNCTION public.pms_sincronizar_noches_reserva()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  RETURN NEW;
+END;
+$function$;
+
+
+-- 2) Arrastre: contrato exacto del frontend; nunca actualiza reservas.noches.
 CREATE OR REPLACE FUNCTION public.mover_reserva_arrastrada(
   p_reserva_id uuid,
   p_unidad_id uuid,
@@ -6324,193 +6366,163 @@ BEGIN
   END IF;
 
   SELECT r.* INTO v_reserva
-  FROM public.reservas r
-  WHERE r.id = p_reserva_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Reserva no encontrada';
-  END IF;
+    FROM public.reservas r
+   WHERE r.id = p_reserva_id
+   FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Reserva no encontrada'; END IF;
 
   IF v_reserva.estado IN ('en_casa','bloqueado','cancelada','no_show','check_out') THEN
     RAISE EXCEPTION 'Esta reserva no puede moverse mediante arrastre en su estado actual';
   END IF;
-
   IF p_entrada IS NULL OR p_salida IS NULL OR p_salida <= p_entrada THEN
     RAISE EXCEPTION 'La salida debe ser posterior a la entrada';
   END IF;
-
-  IF p_unidad_id IS NULL THEN
-    RAISE EXCEPTION 'Debes indicar una unidad de destino';
-  END IF;
+  IF p_unidad_id IS NULL THEN RAISE EXCEPTION 'Debes indicar una unidad de destino'; END IF;
 
   IF (p_entrada IS DISTINCT FROM v_reserva.fecha_entrada
       OR p_salida IS DISTINCT FROM v_reserva.fecha_salida)
-     AND NOT COALESCE(public.tiene_permiso_edicion(v_user, 'dates'), false) THEN
+     AND NOT COALESCE(public.tiene_permiso_edicion(v_user, 'dates'), false)
+     AND v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') THEN
     RAISE EXCEPTION 'No tienes permiso para modificar las fechas de la reserva';
   END IF;
-
   IF p_unidad_id IS DISTINCT FROM v_reserva.unidad_id
-     AND NOT COALESCE(public.tiene_permiso_edicion(v_user, 'building_category_unit'), false) THEN
+     AND NOT COALESCE(public.tiene_permiso_edicion(v_user, 'building_category_unit'), false)
+     AND v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') THEN
     RAISE EXCEPTION 'No tienes permiso para cambiar la unidad de esta reserva';
   END IF;
 
   SELECT u.edificio_id, e.cupos_estacionamiento
     INTO v_edificio_id, v_cupos
-  FROM public.unidades u
-  JOIN public.edificios e ON e.id = u.edificio_id
-  WHERE u.id = p_unidad_id AND u.activo
-  FOR UPDATE OF u, e;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'La unidad de destino no existe o está inactiva';
-  END IF;
+    FROM public.unidades u
+    JOIN public.edificios e ON e.id = u.edificio_id
+   WHERE u.id = p_unidad_id AND u.activo
+   FOR UPDATE OF u, e;
+  IF NOT FOUND THEN RAISE EXCEPTION 'La unidad de destino no existe o está inactiva'; END IF;
 
   IF v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
      AND (
        NOT EXISTS (
          SELECT 1 FROM public.perfiles_edificios pe
-         WHERE pe.perfil_id = v_user
-           AND pe.edificio_id = (
-             SELECT u.edificio_id FROM public.unidades u
-             WHERE u.id = v_reserva.unidad_id
-           )
+          WHERE pe.perfil_id = v_user
+            AND pe.edificio_id = (SELECT u.edificio_id FROM public.unidades u WHERE u.id=v_reserva.unidad_id)
        )
        OR NOT EXISTS (
          SELECT 1 FROM public.perfiles_edificios pe
-         WHERE pe.perfil_id = v_user
-           AND pe.edificio_id = v_edificio_id
+          WHERE pe.perfil_id = v_user AND pe.edificio_id = v_edificio_id
        )
      ) THEN
     RAISE EXCEPTION 'No tienes permiso para mover reservas entre estos edificios';
   END IF;
 
-  -- Si hay solapamiento, no se modifica ni la reserva ni las fechas de parking.
   IF EXISTS (
     SELECT 1 FROM public.reservas q
-    WHERE q.unidad_id = p_unidad_id
-      AND q.id <> p_reserva_id
-      AND q.fecha_entrada < p_salida
-      AND q.fecha_salida > p_entrada
-      AND q.estado NOT IN ('cancelada','no_show')
+     WHERE q.unidad_id = p_unidad_id AND q.id <> p_reserva_id
+       AND q.fecha_entrada < p_salida AND q.fecha_salida > p_entrada
+       AND q.estado IN ('tentativa','confirmada','en_casa','bloqueado')
   ) THEN
     RAISE EXCEPTION 'La unidad de destino está ocupada durante una parte de esas fechas';
   END IF;
 
   v_shift := p_entrada - v_reserva.fecha_entrada;
-
   SELECT COALESCE(array_agg(f.fecha ORDER BY f.fecha), ARRAY[]::date[])
     INTO v_fechas_antiguas
-  FROM public.estacionamiento_reserva_fechas f
-  WHERE f.reserva_id = p_reserva_id;
+    FROM public.estacionamiento_reserva_fechas f
+   WHERE f.reserva_id = p_reserva_id;
 
   IF COALESCE(v_reserva.usa_estacionamiento, false) THEN
-    IF cardinality(v_fechas_antiguas) <> COALESCE(v_reserva.noches_estacionamiento, 0) THEN
-      RAISE EXCEPTION
-        'Las fechas manuales de estacionamiento no coinciden con el contador actual (% frente a %). Corrige la reserva antes de moverla.',
-        cardinality(v_fechas_antiguas), COALESCE(v_reserva.noches_estacionamiento, 0);
+    IF cardinality(v_fechas_antiguas) <> COALESCE(v_reserva.noches_estacionamiento,0) THEN
+      RAISE EXCEPTION 'Las fechas manuales de estacionamiento no coinciden con el contador (% frente a %)',
+        cardinality(v_fechas_antiguas), COALESCE(v_reserva.noches_estacionamiento,0);
     END IF;
-
     IF EXISTS (
-      SELECT 1 FROM unnest(v_fechas_antiguas) AS f(fecha)
-      WHERE f.fecha < v_reserva.fecha_entrada OR f.fecha >= v_reserva.fecha_salida
+      SELECT 1 FROM unnest(v_fechas_antiguas) f(fecha)
+       WHERE f.fecha < v_reserva.fecha_entrada OR f.fecha >= v_reserva.fecha_salida
     ) THEN
-      RAISE EXCEPTION 'Hay noches de estacionamiento fuera de la estadía actual';
+      RAISE EXCEPTION 'Hay fechas de estacionamiento fuera de la estadía actual';
     END IF;
-
     SELECT COALESCE(array_agg(x.fecha + v_shift ORDER BY x.fecha + v_shift), ARRAY[]::date[])
       INTO v_fechas_nuevas
-    FROM unnest(v_fechas_antiguas) AS x(fecha)
-    WHERE x.fecha + v_shift >= p_entrada
-      AND x.fecha + v_shift < p_salida;
+      FROM unnest(v_fechas_antiguas) x(fecha)
+     WHERE x.fecha + v_shift >= p_entrada AND x.fecha + v_shift < p_salida;
   ELSE
     v_fechas_nuevas := ARRAY[]::date[];
   END IF;
 
   IF cardinality(v_fechas_nuevas) > 0 THEN
-    IF COALESCE(v_cupos, 0) <= 0 THEN
+    IF COALESCE(v_cupos,0) <= 0 THEN
       RAISE EXCEPTION 'El edificio de destino no tiene cupos de estacionamiento definidos';
     END IF;
 
     SELECT r.id INTO v_inconsistente
-    FROM public.reservas r
-    JOIN public.unidades u ON u.id = r.unidad_id
-    WHERE r.id <> p_reserva_id
-      AND r.usa_estacionamiento
-      AND r.estado IN ('tentativa','confirmada','en_casa')
-      AND u.edificio_id = v_edificio_id
-      AND EXISTS (
-        SELECT 1 FROM unnest(v_fechas_nuevas) AS x(fecha)
-        WHERE x.fecha >= r.fecha_entrada AND x.fecha < r.fecha_salida
-      )
-      AND (
-        COALESCE(r.noches_estacionamiento,0) <>
-          (SELECT count(*)::integer
-           FROM public.estacionamiento_reserva_fechas f
-           WHERE f.reserva_id=r.id)
-        OR EXISTS (
-          SELECT 1 FROM public.estacionamiento_reserva_fechas f
-          WHERE f.reserva_id=r.id
-            AND (f.fecha<r.fecha_entrada OR f.fecha>=r.fecha_salida)
-        )
-      )
-    LIMIT 1;
-
+      FROM public.reservas r
+      JOIN public.unidades u ON u.id=r.unidad_id
+     WHERE r.id<>p_reserva_id AND r.usa_estacionamiento
+       AND r.estado IN ('tentativa','confirmada','en_casa')
+       AND u.edificio_id=v_edificio_id
+       AND EXISTS (SELECT 1 FROM unnest(v_fechas_nuevas) x(fecha)
+                    WHERE x.fecha>=r.fecha_entrada AND x.fecha<r.fecha_salida)
+       AND (
+         COALESCE(r.noches_estacionamiento,0) <>
+          (SELECT count(*)::integer FROM public.estacionamiento_reserva_fechas f WHERE f.reserva_id=r.id)
+         OR EXISTS (SELECT 1 FROM public.estacionamiento_reserva_fechas f
+          WHERE f.reserva_id=r.id AND (f.fecha<r.fecha_entrada OR f.fecha>=r.fecha_salida))
+       )
+     LIMIT 1;
     IF v_inconsistente IS NOT NULL THEN
-      RAISE EXCEPTION 'La reserva % tiene fechas de estacionamiento incompletas. Corrígela antes de continuar.', v_inconsistente;
+      RAISE EXCEPTION 'La reserva % tiene fechas de estacionamiento incompletas; no se puede verificar el cupo',v_inconsistente;
     END IF;
 
     SELECT x.fecha INTO v_fecha_llena
-    FROM unnest(v_fechas_nuevas) AS x(fecha)
-    WHERE (
-      SELECT count(DISTINCT r.id)::integer
-      FROM public.estacionamiento_reserva_fechas f
-      JOIN public.reservas r ON r.id=f.reserva_id
-      JOIN public.unidades u ON u.id=r.unidad_id
-      WHERE f.fecha=x.fecha AND r.id<>p_reserva_id
-        AND r.usa_estacionamiento
-        AND r.estado IN ('tentativa','confirmada','en_casa')
-        AND u.edificio_id=v_edificio_id
-        AND x.fecha>=r.fecha_entrada AND x.fecha<r.fecha_salida
-    ) >= v_cupos
-    ORDER BY x.fecha LIMIT 1;
-
+      FROM unnest(v_fechas_nuevas) x(fecha)
+     WHERE (SELECT count(DISTINCT r.id)::integer
+              FROM public.estacionamiento_reserva_fechas f
+              JOIN public.reservas r ON r.id=f.reserva_id
+              JOIN public.unidades u ON u.id=r.unidad_id
+             WHERE f.fecha=x.fecha AND r.id<>p_reserva_id
+               AND r.usa_estacionamiento AND r.estado IN ('tentativa','confirmada','en_casa')
+               AND u.edificio_id=v_edificio_id
+               AND x.fecha>=r.fecha_entrada AND x.fecha<r.fecha_salida) >= v_cupos
+     ORDER BY x.fecha LIMIT 1;
     IF v_fecha_llena IS NOT NULL THEN
-      RAISE EXCEPTION 'Estacionamiento sin cupo para la noche %', v_fecha_llena;
+      RAISE EXCEPTION 'Estacionamiento sin cupo para la noche %',v_fecha_llena;
     END IF;
   END IF;
 
-  -- 'noches' es GENERATED: PostgreSQL lo recalcula automáticamente.
-  -- Solo se actualiza unidad_id si corresponde, y las fechas.
+  -- noches es GENERATED: se omite completamente del SET.
   UPDATE public.reservas r
-  SET unidad_id = p_unidad_id,
-      fecha_entrada = p_entrada,
-      fecha_salida = p_salida
-  WHERE r.id = p_reserva_id;
+     SET unidad_id=p_unidad_id,
+         fecha_entrada=p_entrada,
+         fecha_salida=p_salida,
+         tarifa_noche=COALESCE(p_tarifa,r.tarifa_noche),
+         noches_estacionamiento=cardinality(v_fechas_nuevas),
+         cupo_estacionamiento=CASE WHEN p_unidad_id IS DISTINCT FROM v_reserva.unidad_id THEN NULL ELSE v_reserva.cupo_estacionamiento END,
+         referencia_externa=CASE
+           WHEN lower(trim(r.canal::text))='booking'
+             AND NULLIF(trim(COALESCE(r.referencia_externa,'')),'') IS NULL
+           THEN 'N/A' ELSE r.referencia_externa END
+   WHERE r.id=p_reserva_id;
 
-  -- Preservar la selección manual de noches de estacionamiento.
-  DELETE FROM public.estacionamiento_reserva_fechas
-  WHERE reserva_id = p_reserva_id;
-
-  IF cardinality(v_fechas_nuevas) > 0 THEN
-    INSERT INTO public.estacionamiento_reserva_fechas(reserva_id, fecha)
-    SELECT p_reserva_id, x.fecha
-    FROM unnest(v_fechas_nuevas) AS x(fecha)
-    ORDER BY x.fecha;
+  DELETE FROM public.estacionamiento_reserva_fechas WHERE reserva_id=p_reserva_id;
+  IF cardinality(v_fechas_nuevas)>0 THEN
+    INSERT INTO public.estacionamiento_reserva_fechas(reserva_id,fecha)
+    SELECT p_reserva_id,x.fecha FROM unnest(v_fechas_nuevas) x(fecha) ORDER BY x.fecha;
   END IF;
 
   SELECT count(*)::integer INTO v_count
-  FROM public.estacionamiento_reserva_fechas
-  WHERE reserva_id = p_reserva_id;
-
-  IF v_count <> cardinality(v_fechas_nuevas) THEN
+    FROM public.estacionamiento_reserva_fechas WHERE reserva_id=p_reserva_id;
+  IF v_count<>cardinality(v_fechas_nuevas) THEN
     RAISE EXCEPTION 'El movimiento no conservó las fechas de estacionamiento seleccionadas';
   END IF;
 END;
 $function$;
+
 REVOKE ALL ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,integer) TO authenticated;
 
+
+-- 3) Reacomodación inteligente. No se llama a mover_reserva antiguo:
+--    todas las reservas del plan se validan primero y se mueven en una
+--    transacción, excluyéndose entre sí al comprobar conflictos.
 CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
   p_reserva_id uuid,
   p_unidad_destino uuid,
@@ -6522,362 +6534,262 @@ CREATE OR REPLACE FUNCTION public.ejecutar_reacomodacion_cambio_unidad(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO public AS $$
+SET search_path = public, pg_temp
+AS $function$
 DECLARE
-  x jsonb;
-  v_reserva reservas%rowtype;
-  v_principal reservas%rowtype;
-  v_target uuid := p_unidad_destino;
-  v_ids uuid[];
-  v_count integer;
+  v_user uuid := auth.uid();
+  v_rol text := lower(trim(COALESCE(public.rol_actual()::text,'')));
+  v_principal public.reservas%rowtype;
+  v_reserva public.reservas%rowtype;
+  v_obj jsonb;
+  v_ids uuid[] := ARRAY[]::uuid[];
+  v_plan_count integer := 0;
+  v_encontradas integer := 0;
+  v_target_edificio uuid;
+  v_cupos integer;
   v_fechas_parking date[] := ARRAY[]::date[];
-  v_fecha_llena date;
   v_inconsistente uuid;
-  c record;
+  v_fecha_llena date;
+  v_constraint record;
 BEGIN
-  -- Bloquear primero la reserva principal para evitar que otra operación
-  -- cambie fechas/unidad mientras se está preparando el intercambio.
-  SELECT *
-  INTO v_principal
-  FROM reservas rr
-  WHERE rr.id = p_reserva_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Reserva principal no encontrada';
+  IF v_user IS NULL OR NOT COALESCE(public.es_personal(),false) THEN
+    RAISE EXCEPTION 'Sesión no válida o sin perfil de personal activo';
   END IF;
 
-  IF v_principal.fecha_entrada <> p_entrada
-     OR v_principal.fecha_salida <> p_salida
-  THEN
-    RAISE EXCEPTION
-      'La cadena ya no es válida: las fechas de la reserva principal cambiaron';
+  SELECT r.* INTO v_principal
+    FROM public.reservas r WHERE r.id=p_reserva_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Reserva principal no encontrada'; END IF;
+  IF v_principal.estado IN ('en_casa','bloqueado','cancelada','no_show','check_out') THEN
+    RAISE EXCEPTION 'Esta reserva no puede cambiar de unidad en su estado actual';
+  END IF;
+  IF v_principal.fecha_entrada IS DISTINCT FROM p_entrada
+     OR v_principal.fecha_salida IS DISTINCT FROM p_salida THEN
+    RAISE EXCEPTION 'La cadena ya no es válida: las fechas de la reserva principal cambiaron';
+  END IF;
+  IF p_unidad_destino IS NULL THEN RAISE EXCEPTION 'Debes indicar la unidad de destino'; END IF;
+
+  IF NOT COALESCE(public.tiene_permiso_edicion(v_user,'building_category_unit'),false)
+     AND v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') THEN
+    RAISE EXCEPTION 'No tienes permiso para cambiar la unidad de esta reserva';
   END IF;
 
-  SELECT COALESCE(array_agg(f.fecha ORDER BY f.fecha), ARRAY[]::date[])
-    INTO v_fechas_parking
-    FROM public.estacionamiento_reserva_fechas f
-   WHERE f.reserva_id=p_reserva_id;
-  IF COALESCE(v_principal.usa_estacionamiento,false) THEN
-    IF cardinality(v_fechas_parking) <> COALESCE(v_principal.noches_estacionamiento,0) THEN
-      RAISE EXCEPTION 'Las fechas manuales de estacionamiento de la reserva principal están incompletas';
+  SELECT u.edificio_id,e.cupos_estacionamiento INTO v_target_edificio,v_cupos
+    FROM public.unidades u
+    JOIN public.edificios e ON e.id=u.edificio_id
+   WHERE u.id=p_unidad_destino AND u.activo
+   FOR UPDATE OF u,e;
+  IF NOT FOUND THEN RAISE EXCEPTION 'La unidad de destino no existe o está inactiva'; END IF;
+
+  IF v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+     AND (
+       NOT EXISTS (SELECT 1 FROM public.perfiles_edificios pe
+                    WHERE pe.perfil_id=v_user
+                      AND pe.edificio_id=(SELECT u.edificio_id FROM public.unidades u WHERE u.id=v_principal.unidad_id))
+       OR NOT EXISTS (SELECT 1 FROM public.perfiles_edificios pe
+                       WHERE pe.perfil_id=v_user AND pe.edificio_id=v_target_edificio)
+     ) THEN
+    RAISE EXCEPTION 'No tienes permiso para mover reservas entre estos edificios';
+  END IF;
+
+  IF p_plan IS NULL THEN p_plan:='[]'::jsonb; END IF;
+  IF jsonb_typeof(p_plan)<>'array' THEN RAISE EXCEPTION 'El plan de reacomodación tiene un formato inválido'; END IF;
+
+  SELECT COALESCE(array_agg((value->>'reserva_id')::uuid),ARRAY[]::uuid[])
+    INTO v_ids FROM jsonb_array_elements(p_plan);
+  SELECT count(DISTINCT value->>'reserva_id')::integer
+    INTO v_plan_count FROM jsonb_array_elements(p_plan);
+  IF v_plan_count<>jsonb_array_length(p_plan) THEN
+    RAISE EXCEPTION 'La cadena de reacomodación contiene reservas duplicadas';
+  END IF;
+  IF p_reserva_id=ANY(v_ids) THEN
+    RAISE EXCEPTION 'La cadena de reacomodación no puede contener la reserva principal';
+  END IF;
+
+  PERFORM r.id FROM public.reservas r
+   WHERE r.id=ANY(v_ids) ORDER BY r.id FOR UPDATE;
+  SELECT count(*)::integer INTO v_encontradas
+    FROM public.reservas r WHERE r.id=ANY(v_ids);
+  IF v_encontradas<>v_plan_count THEN RAISE EXCEPTION 'No se encontraron todas las reservas del plan'; END IF;
+
+  FOR v_constraint IN
+    SELECT conname FROM pg_constraint
+     WHERE conrelid='public.reservas'::regclass AND contype='x' AND condeferrable
+  LOOP
+    EXECUTE format('SET CONSTRAINTS %I DEFERRED',v_constraint.conname);
+  END LOOP;
+
+  -- Validar todos los integrantes y todas las unidades antes de escribir.
+  FOR v_obj IN SELECT value FROM jsonb_array_elements(p_plan)
+  LOOP
+    SELECT r.* INTO v_reserva FROM public.reservas r
+     WHERE r.id=(v_obj->>'reserva_id')::uuid;
+
+    IF v_reserva.unidad_id IS DISTINCT FROM (v_obj->>'unidad_origen')::uuid THEN
+      RAISE EXCEPTION 'La cadena ya no es válida: la reserva % cambió de unidad',v_reserva.uid_reserva;
     END IF;
+    IF v_reserva.estado IN ('en_casa','bloqueado','cancelada','no_show','check_out')
+       OR COALESCE(v_reserva.no_mover_unidad,false) THEN
+      RAISE EXCEPTION 'La reserva % no puede reacomodarse automáticamente',v_reserva.uid_reserva;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.unidades u
+                    WHERE u.id=(v_obj->>'unidad_destino')::uuid AND u.activo) THEN
+      RAISE EXCEPTION 'La unidad destino de la reserva % no existe o está inactiva',v_reserva.uid_reserva;
+    END IF;
+    IF v_rol NOT IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+       AND (
+         NOT EXISTS (SELECT 1 FROM public.perfiles_edificios pe
+                      WHERE pe.perfil_id=v_user
+                        AND pe.edificio_id=(SELECT u.edificio_id FROM public.unidades u WHERE u.id=v_reserva.unidad_id))
+         OR NOT EXISTS (SELECT 1 FROM public.perfiles_edificios pe
+                         WHERE pe.perfil_id=v_user
+                           AND pe.edificio_id=(SELECT u.edificio_id FROM public.unidades u WHERE u.id=(v_obj->>'unidad_destino')::uuid))
+       ) THEN
+      RAISE EXCEPTION 'No tienes permiso para una de las reservas o edificios de la cadena';
+    END IF;
+
+    -- Una reserva fuera de la cadena sí bloquea su destino; las reservas
+    -- del plan y la principal se excluyen para permitir ciclos/intercambios.
     IF EXISTS (
-      SELECT 1 FROM unnest(v_fechas_parking) f(fecha)
-       WHERE f.fecha<v_principal.fecha_entrada OR f.fecha>=v_principal.fecha_salida
+      SELECT 1 FROM public.reservas q
+       WHERE q.unidad_id=(v_obj->>'unidad_destino')::uuid
+         AND q.id<>p_reserva_id
+         AND NOT (q.id=ANY(v_ids))
+         AND q.fecha_entrada<v_reserva.fecha_salida
+         AND q.fecha_salida>v_reserva.fecha_entrada
+         AND q.estado IN ('tentativa','confirmada','en_casa','bloqueado')
     ) THEN
-      RAISE EXCEPTION 'La reserva principal tiene fechas de estacionamiento fuera de su estadía';
+      RAISE EXCEPTION 'La reacomodación ya no es válida: una reserva fuera del plan ocupa el destino';
     END IF;
-  END IF;
+  END LOOP;
 
-  IF v_principal.estado = 'en_casa' THEN
-    RAISE EXCEPTION
-      'Una persona que ya está en casa nunca puede ser movida de unidad';
-  END IF;
-
-  IF v_principal.estado = 'bloqueado' THEN
-    RAISE EXCEPTION
-      'Los bloqueos no se pueden mover mediante movimiento automático';
-  END IF;
-
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1
-    FROM unidades u
-    WHERE u.id = v_target
-      AND u.activo
+      FROM jsonb_array_elements(p_plan) a(value)
+      JOIN jsonb_array_elements(p_plan) b(value)
+        ON (a.value->>'reserva_id')::uuid < (b.value->>'reserva_id')::uuid
+      JOIN public.reservas ra ON ra.id=(a.value->>'reserva_id')::uuid
+      JOIN public.reservas rb ON rb.id=(b.value->>'reserva_id')::uuid
+     WHERE (a.value->>'unidad_destino')::uuid=(b.value->>'unidad_destino')::uuid
+       AND ra.fecha_entrada<rb.fecha_salida AND ra.fecha_salida>rb.fecha_entrada
   ) THEN
-    RAISE EXCEPTION
-      'La unidad de destino no existe o está inactiva';
+    RAISE EXCEPTION 'La cadena contiene dos reservas superpuestas para la misma unidad';
   END IF;
 
-  /*
-   * Todas las restricciones EXCLUDE de reservas deben quedar diferidas
-   * durante este RPC. La migración anterior garantiza que sean
-   * DEFERRABLE. Al terminar la función, PostgreSQL las vuelve a validar
-   * al confirmar la transacción completa.
-   */
-  FOR c IN
-    SELECT conname
-    FROM pg_constraint
-    WHERE conrelid = 'public.reservas'::regclass
-      AND contype = 'x'
-      AND condeferrable
-  LOOP
-    EXECUTE format(
-      'SET CONSTRAINTS %I DEFERRED',
-      c.conname
-    );
-  END LOOP;
-
-  /*
-   * Sin plan, simplemente usamos el RPC existente mover_reserva dentro
-   * de esta misma transacción.
-   */
-  IF p_plan IS NULL
-     OR jsonb_typeof(p_plan) <> 'array'
-     OR jsonb_array_length(p_plan) = 0
-  THEN
-
-    IF EXISTS (
-      SELECT 1
-      FROM reservas q
-      WHERE q.unidad_id = v_target
-        AND q.id <> p_reserva_id
-        AND q.fecha_entrada < p_salida
-        AND q.fecha_salida > p_entrada
-        AND q.estado NOT IN ('cancelada','no_show')
-    ) THEN
-      RAISE EXCEPTION
-        'La unidad de destino sigue ocupada y no hay una reacomodación válida';
-    END IF;
-
+  -- No usar mover_reserva ni editar_reserva_completa; sus verificaciones
+  -- históricas no excluían el resto del plan y generaban el falso destino ocupado.
+  IF cardinality(v_ids)>0 THEN
     UPDATE public.reservas r
-       SET unidad_id=v_target,
-           tarifa_noche=COALESCE(p_tarifa,r.tarifa_noche)
-     WHERE r.id=p_reserva_id;
-    IF NOT EXISTS (
-      SELECT 1 FROM public.reservas r
-       WHERE r.id=p_reserva_id AND r.unidad_id=v_target
-         AND r.fecha_entrada=p_entrada AND r.fecha_salida=p_salida
-    ) THEN
-      RAISE EXCEPTION 'No se pudo completar el cambio de unidad';
-    END IF;
-    RETURN;
+       SET unidad_id=(p.value->>'unidad_destino')::uuid,
+           actualizado_en=now()
+      FROM jsonb_array_elements(p_plan) p(value)
+     WHERE r.id=(p.value->>'reserva_id')::uuid;
   END IF;
 
-
-  -- ----------------------------------------------------------
-  -- Obtener y bloquear todas las reservas del plan.
-  -- ----------------------------------------------------------
-
-  SELECT COALESCE(
-    array_agg((value->>'reserva_id')::uuid),
-    ARRAY[]::uuid[]
-  )
-  INTO v_ids
-  FROM jsonb_array_elements(p_plan);
-
-  SELECT count(*)
-  INTO v_count
-  FROM (
-    SELECT DISTINCT value->>'reserva_id' AS reserva_id
-    FROM jsonb_array_elements(p_plan)
-  ) q;
-
-  IF v_count <> jsonb_array_length(p_plan) THEN
-    RAISE EXCEPTION
-      'La cadena de reacomodación contiene reservas duplicadas';
-  END IF;
-
-  IF p_reserva_id = ANY(v_ids) THEN
-    RAISE EXCEPTION
-      'La cadena de reacomodación no puede contener la reserva principal';
-  END IF;
-
-  PERFORM 1
-  FROM reservas rr
-  WHERE rr.id = ANY(v_ids)
-  FOR UPDATE;
-
-  IF (
-    SELECT count(*)
-    FROM reservas rr
-    WHERE rr.id = ANY(v_ids)
-  ) <> v_count
-  THEN
-    RAISE EXCEPTION
-      'Reserva del plan no encontrada';
-  END IF;
-
-
-  -- ----------------------------------------------------------
-  -- Validación completa del plan.
-  -- ----------------------------------------------------------
-
-  FOR x IN
-    SELECT value
-    FROM jsonb_array_elements(p_plan)
-  LOOP
-
-    SELECT *
-    INTO v_reserva
-    FROM reservas rr
-    WHERE rr.id = (x->>'reserva_id')::uuid;
-
-    IF v_reserva.unidad_id <> (x->>'unidad_origen')::uuid THEN
-      RAISE EXCEPTION
-        'La cadena ya no es válida: la reserva % cambió de unidad',
-        v_reserva.uid_reserva;
-    END IF;
-
-    IF v_reserva.estado IN ('en_casa','bloqueado') THEN
-      RAISE EXCEPTION
-        'La cadena contiene una reserva que no puede ser movida';
-    END IF;
-
-    IF COALESCE(v_reserva.no_mover_unidad,false) THEN
-      RAISE EXCEPTION
-        'La cadena contiene una reserva marcada para no mover de unidad';
-    END IF;
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM unidades u
-      WHERE u.id = (x->>'unidad_destino')::uuid
-        AND u.activo
-    ) THEN
-      RAISE EXCEPTION
-        'La unidad de destino de la reserva % no existe o está inactiva',
-        v_reserva.uid_reserva;
-    END IF;
-
-    /*
-     * Una reserva externa al intercambio sí bloquea el movimiento.
-     * Las reservas del propio plan y p_reserva_id no lo bloquean.
-     */
-    IF EXISTS (
-      SELECT 1
-      FROM reservas q
-      WHERE q.unidad_id = (x->>'unidad_destino')::uuid
-        AND q.id <> v_reserva.id
-        AND q.id <> p_reserva_id
-        AND NOT (q.id = ANY(v_ids))
-        AND q.fecha_entrada < v_reserva.fecha_salida
-        AND q.fecha_salida > v_reserva.fecha_entrada
-        AND q.estado NOT IN ('cancelada','no_show')
-    ) THEN
-      RAISE EXCEPTION
-        'La cadena ya no es válida: destino ocupado';
-    END IF;
-
-  END LOOP;
-
-
-  -- ----------------------------------------------------------
-  -- Mover primero las reservas que liberan el destino.
-  -- La restricción EXCLUDE está diferida, por lo que temporalmente
-  -- pueden coexistir con la reserva principal.
-  -- ----------------------------------------------------------
-
-  UPDATE reservas rr
-  SET
-    unidad_id = p.unidad_destino_plan,
-    actualizado_en = now()
-  FROM (
-    SELECT
-      (value->>'reserva_id')::uuid AS reserva_id,
-      (value->>'unidad_destino')::uuid AS unidad_destino_plan
-    FROM jsonb_array_elements(p_plan)
-  ) p
-  WHERE rr.id = p.reserva_id;
-
-
-  -- ----------------------------------------------------------
-  -- Ahora mover la reserva principal dentro de la MISMA transacción.
-  -- ----------------------------------------------------------
-
-  -- The destination must now be free of reservations outside the planned chain.
   IF EXISTS (
     SELECT 1 FROM public.reservas q
-     WHERE q.unidad_id=v_target
-       AND q.id<>p_reserva_id
-       AND NOT (q.id=ANY(v_ids))
-       AND q.fecha_entrada<p_salida
-       AND q.fecha_salida>p_entrada
-       AND q.estado NOT IN ('cancelada','no_show')
+     WHERE q.unidad_id=p_unidad_destino
+       AND q.id<>p_reserva_id AND NOT (q.id=ANY(v_ids))
+       AND q.fecha_entrada<p_salida AND q.fecha_salida>p_entrada
+       AND q.estado IN ('tentativa','confirmada','en_casa','bloqueado')
   ) THEN
     RAISE EXCEPTION 'La unidad de destino sigue ocupada fuera del plan de reacomodación';
   END IF;
 
-  -- Capacity is checked by the manually selected parking dates, not the stay length.
-  IF COALESCE(v_principal.usa_estacionamiento,false) AND cardinality(v_fechas_parking)>0 THEN
-    IF COALESCE((SELECT e.cupos_estacionamiento FROM public.edificios e WHERE e.id=(SELECT u.edificio_id FROM public.unidades u WHERE u.id=v_target)),0)<=0 THEN
+  -- Validar parking según fechas elegidas manualmente en la reserva principal.
+  SELECT COALESCE(array_agg(f.fecha ORDER BY f.fecha),ARRAY[]::date[])
+    INTO v_fechas_parking
+    FROM public.estacionamiento_reserva_fechas f WHERE f.reserva_id=p_reserva_id;
+  IF COALESCE(v_principal.usa_estacionamiento,false) THEN
+    IF cardinality(v_fechas_parking)<>COALESCE(v_principal.noches_estacionamiento,0) THEN
+      RAISE EXCEPTION 'Las fechas manuales de estacionamiento de la reserva principal están incompletas';
+    END IF;
+    IF EXISTS (SELECT 1 FROM unnest(v_fechas_parking) f(fecha)
+                WHERE f.fecha<v_principal.fecha_entrada OR f.fecha>=v_principal.fecha_salida) THEN
+      RAISE EXCEPTION 'La reserva principal tiene fechas de estacionamiento fuera de su estadía';
+    END IF;
+    IF cardinality(v_fechas_parking)>0 AND COALESCE(v_cupos,0)<=0 THEN
       RAISE EXCEPTION 'El edificio destino no tiene cupos de estacionamiento definidos';
     END IF;
-
-    SELECT r.id INTO v_inconsistente
-      FROM public.reservas r
-      JOIN public.unidades u ON u.id=r.unidad_id
-     WHERE r.id<>p_reserva_id
-       AND r.usa_estacionamiento
-       AND r.estado IN ('tentativa','confirmada','en_casa')
-       AND u.edificio_id=(SELECT u2.edificio_id FROM public.unidades u2 WHERE u2.id=v_target)
-       AND EXISTS (SELECT 1 FROM unnest(v_fechas_parking) f(fecha)
-                    WHERE f.fecha>=r.fecha_entrada AND f.fecha<r.fecha_salida)
-       AND (
-         COALESCE(r.noches_estacionamiento,0) <>
-          (SELECT count(*)::integer FROM public.estacionamiento_reserva_fechas f WHERE f.reserva_id=r.id)
-         OR EXISTS (SELECT 1 FROM public.estacionamiento_reserva_fechas f
-          WHERE f.reserva_id=r.id AND (f.fecha<r.fecha_entrada OR f.fecha>=r.fecha_salida))
-       )
-     LIMIT 1;
-    IF v_inconsistente IS NOT NULL THEN
-      RAISE EXCEPTION 'La reserva % tiene fechas de estacionamiento incompletas; no se puede verificar el cupo destino',v_inconsistente;
-    END IF;
-
-    SELECT f.fecha INTO v_fecha_llena
-      FROM unnest(v_fechas_parking) f(fecha)
-     WHERE (
-       SELECT count(DISTINCT r.id)::integer
-         FROM public.estacionamiento_reserva_fechas pf
-         JOIN public.reservas r ON r.id=pf.reserva_id
-         JOIN public.unidades u ON u.id=r.unidad_id
-        WHERE pf.fecha=f.fecha AND r.id<>p_reserva_id
-          AND r.usa_estacionamiento AND r.estado IN ('tentativa','confirmada','en_casa')
-          AND u.edificio_id=(SELECT u2.edificio_id FROM public.unidades u2 WHERE u2.id=v_target)
-          AND f.fecha>=r.fecha_entrada AND f.fecha<r.fecha_salida
-     ) >= (SELECT e.cupos_estacionamiento FROM public.edificios e
-            WHERE e.id=(SELECT u2.edificio_id FROM public.unidades u2 WHERE u2.id=v_target))
-     ORDER BY f.fecha LIMIT 1;
-    IF v_fecha_llena IS NOT NULL THEN
-      RAISE EXCEPTION 'No hay cupo de estacionamiento para la noche % en el edificio destino',v_fecha_llena;
+    IF cardinality(v_fechas_parking)>0 THEN
+      SELECT r.id INTO v_inconsistente
+        FROM public.reservas r
+        JOIN public.unidades u ON u.id=r.unidad_id
+       WHERE r.id<>p_reserva_id AND r.usa_estacionamiento
+         AND r.estado IN ('tentativa','confirmada','en_casa')
+         AND u.edificio_id=v_target_edificio
+         AND EXISTS (SELECT 1 FROM unnest(v_fechas_parking) f(fecha)
+                      WHERE f.fecha>=r.fecha_entrada AND f.fecha<r.fecha_salida)
+         AND (
+           COALESCE(r.noches_estacionamiento,0) <>
+             (SELECT count(*)::integer FROM public.estacionamiento_reserva_fechas f WHERE f.reserva_id=r.id)
+           OR EXISTS (SELECT 1 FROM public.estacionamiento_reserva_fechas f
+                       WHERE f.reserva_id=r.id AND (f.fecha<r.fecha_entrada OR f.fecha>=r.fecha_salida))
+         )
+       LIMIT 1;
+      IF v_inconsistente IS NOT NULL THEN
+        RAISE EXCEPTION 'La reserva % tiene fechas de estacionamiento incompletas; no se puede validar el destino',v_inconsistente;
+      END IF;
+      SELECT f.fecha INTO v_fecha_llena
+        FROM unnest(v_fechas_parking) f(fecha)
+       WHERE (SELECT count(DISTINCT r.id)::integer
+                FROM public.estacionamiento_reserva_fechas pf
+                JOIN public.reservas r ON r.id=pf.reserva_id
+                JOIN public.unidades u ON u.id=r.unidad_id
+               WHERE pf.fecha=f.fecha AND r.id<>p_reserva_id
+                 AND r.usa_estacionamiento AND r.estado IN ('tentativa','confirmada','en_casa')
+                 AND u.edificio_id=v_target_edificio
+                 AND f.fecha>=r.fecha_entrada AND f.fecha<r.fecha_salida)>=v_cupos
+       ORDER BY f.fecha LIMIT 1;
+      IF v_fecha_llena IS NOT NULL THEN
+        RAISE EXCEPTION 'No hay cupo de estacionamiento para la noche % en el edificio destino',v_fecha_llena;
+      END IF;
     END IF;
   END IF;
 
-  -- Actualización directa: no llamar public.mover_reserva(), que intentaba escribir reservas.noches.
+  -- La columna GENERATED noches no se escribe ni se asigna a DEFAULT.
   UPDATE public.reservas r
-     SET unidad_id=v_target,
-         tarifa_noche=COALESCE(p_tarifa,r.tarifa_noche)
+     SET unidad_id=p_unidad_destino,
+         tarifa_noche=COALESCE(p_tarifa,r.tarifa_noche),
+         cupo_estacionamiento=NULL
    WHERE r.id=p_reserva_id;
-
-
-  -- ----------------------------------------------------------
-  -- Verificación final antes del COMMIT.
-  -- ----------------------------------------------------------
 
   IF EXISTS (
     SELECT 1
-    FROM (
-      SELECT
-        (value->>'reserva_id')::uuid AS reserva_id,
-        (value->>'unidad_destino')::uuid AS unidad_destino
-      FROM jsonb_array_elements(p_plan)
-    ) p
-    JOIN reservas rr
-      ON rr.id = p.reserva_id
-    WHERE rr.unidad_id <> p.unidad_destino
+      FROM public.reservas a
+      JOIN public.reservas b
+        ON a.unidad_id=b.unidad_id AND a.id<b.id
+       AND a.fecha_entrada<b.fecha_salida AND a.fecha_salida>b.fecha_entrada
+     WHERE a.estado IN ('tentativa','confirmada','en_casa','bloqueado')
+       AND b.estado IN ('tentativa','confirmada','en_casa','bloqueado')
+       AND (a.id=p_reserva_id OR b.id=p_reserva_id OR a.id=ANY(v_ids) OR b.id=ANY(v_ids))
   ) THEN
-    RAISE EXCEPTION
-      'No se pudo completar la reacomodación';
+    RAISE EXCEPTION 'La reacomodación produciría una superposición real de reservas';
   END IF;
 
-  SELECT *
-  INTO v_principal
-  FROM reservas rr
-  WHERE rr.id = p_reserva_id;
-
-  IF v_principal.unidad_id <> v_target THEN
-    RAISE EXCEPTION
-      'No se pudo mover la reserva principal a la unidad de destino';
+  IF NOT EXISTS (SELECT 1 FROM public.reservas r
+                  WHERE r.id=p_reserva_id AND r.unidad_id=p_unidad_destino
+                    AND r.fecha_entrada=p_entrada AND r.fecha_salida=p_salida) THEN
+    RAISE EXCEPTION 'No se pudo completar el cambio de unidad';
   END IF;
 
-END $$;
+  IF cardinality(v_ids)>0 AND EXISTS (
+    SELECT 1 FROM jsonb_array_elements(p_plan) p(value)
+    LEFT JOIN public.reservas r ON r.id=(p.value->>'reserva_id')::uuid
+    WHERE r.id IS NULL OR r.unidad_id IS DISTINCT FROM (p.value->>'unidad_destino')::uuid
+  ) THEN
+    RAISE EXCEPTION 'La reacomodación quedó incompleta: una reserva no llegó a su destino';
+  END IF;
+END;
+$function$;
+
 REVOKE ALL ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(uuid,uuid,date,date,jsonb,integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.ejecutar_reacomodacion_cambio_unidad(uuid,uuid,date,date,jsonb,integer) TO authenticated;
 
 
+-- 4) Cancelación: confirmar el estado final en la misma transacción.
 CREATE OR REPLACE FUNCTION public.cancelar_reserva_pms_v1101(
-  p_reserva_id uuid, p_motivo text
+  p_reserva_id uuid,
+  p_motivo text
 )
 RETURNS integer
 LANGUAGE plpgsql
@@ -6885,22 +6797,30 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $function$
 DECLARE
-  v_user uuid:=auth.uid();
+  v_user uuid := auth.uid();
   v_reserva public.reservas%rowtype;
 BEGIN
   IF v_user IS NULL OR NOT COALESCE(public.es_personal(),false) THEN
     RAISE EXCEPTION 'Sesión no válida o sin perfil de personal activo';
   END IF;
-  SELECT r.* INTO v_reserva FROM public.reservas r WHERE r.id=p_reserva_id FOR UPDATE;
+  SELECT r.* INTO v_reserva
+    FROM public.reservas r WHERE r.id=p_reserva_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva no encontrada'; END IF;
   IF v_reserva.estado='cancelada' THEN RETURN 0; END IF;
   IF v_reserva.estado NOT IN ('tentativa','confirmada') THEN
     RAISE EXCEPTION 'Solo se pueden cancelar reservas en estado tentativa o confirmada. Estado actual: %',v_reserva.estado;
   END IF;
-  IF NULLIF(trim(COALESCE(p_motivo,'')),'') IS NULL THEN RAISE EXCEPTION 'Debes indicar el motivo de cancelación'; END IF;
+  IF NULLIF(trim(COALESCE(p_motivo,'')),'') IS NULL THEN
+    RAISE EXCEPTION 'Debes indicar el motivo de cancelación';
+  END IF;
+
   UPDATE public.reservas
-     SET estado='cancelada',cancelada_en=now(),cancelada_por=v_user,motivo_cancelacion=trim(p_motivo)
-   WHERE id=p_reserva_id;
+     SET estado='cancelada',
+         cancelada_en=now(),
+         cancelada_por=v_user,
+         motivo_cancelacion=trim(p_motivo)
+   WHERE id=p_reserva_id AND estado IN ('tentativa','confirmada');
+
   IF NOT EXISTS (SELECT 1 FROM public.reservas r WHERE r.id=p_reserva_id AND r.estado='cancelada') THEN
     RAISE EXCEPTION 'La reserva no quedó cancelada';
   END IF;
