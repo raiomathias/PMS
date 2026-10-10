@@ -6523,6 +6523,186 @@ REVOKE ALL ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,integ
 GRANT EXECUTE ON FUNCTION public.mover_reserva_arrastrada(uuid,uuid,date,date,integer) TO authenticated;
 
 
+-- La búsqueda y la ejecución deben compartir exactamente los estados que ocupan.
+-- Check-out, canceladas y no-show no son bloqueadores activos.
+CREATE OR REPLACE FUNCTION public.buscar_reacomodacion_cambio_unidad(
+  p_unidad_destino uuid,
+  p_reserva_id uuid,
+  p_entrada date,
+  p_salida date
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_plan jsonb;
+  v_bloqueadores integer;
+  v_cadenas integer;
+  v_conflicto boolean;
+BEGIN
+  IF p_salida <= p_entrada THEN RETURN '[]'::jsonb; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.unidades WHERE id=p_unidad_destino AND activo) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  SELECT count(*)::integer INTO v_bloqueadores
+    FROM public.reservas r
+   WHERE r.unidad_id=p_unidad_destino
+     AND r.id<>p_reserva_id
+     AND r.fecha_entrada<p_salida
+     AND r.fecha_salida>p_entrada
+     AND r.estado IN ('tentativa','confirmada','en_casa','bloqueado');
+
+  IF v_bloqueadores=0 THEN
+    RETURN jsonb_build_object('unidad_id',p_unidad_destino,'plan','[]'::jsonb);
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.reservas r
+     WHERE r.unidad_id=p_unidad_destino
+       AND r.id<>p_reserva_id
+       AND r.fecha_entrada<p_salida
+       AND r.fecha_salida>p_entrada
+       AND r.estado IN ('en_casa','bloqueado')
+  ) OR EXISTS (
+    SELECT 1 FROM public.reservas r
+     WHERE r.unidad_id=p_unidad_destino
+       AND r.id<>p_reserva_id
+       AND r.fecha_entrada<p_salida
+       AND r.fecha_salida>p_entrada
+       AND r.estado IN ('tentativa','confirmada')
+       AND COALESCE(r.no_mover_unidad,false)
+  ) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  WITH RECURSIVE
+  roots AS (
+    SELECT r.id AS rid,r.unidad_id AS from_uid,r.fecha_entrada,r.fecha_salida
+      FROM public.reservas r
+     WHERE r.unidad_id=p_unidad_destino
+       AND r.id<>p_reserva_id
+       AND r.fecha_entrada<p_salida
+       AND r.fecha_salida>p_entrada
+       AND r.estado IN ('tentativa','confirmada','en_casa','bloqueado')
+  ),
+  chain AS (
+    SELECT rt.rid AS root_id,rt.rid,rt.from_uid,c.id AS to_uid,
+           1 AS depth,ARRAY[rt.rid]::uuid[] AS seen_r,
+           ARRAY[p_unidad_destino]::uuid[] AS seen_u,
+           CASE WHEN c.id=(SELECT unidad_id FROM public.reservas WHERE id=p_reserva_id)
+                THEN 0 ELSE 1 END AS prioridad
+      FROM roots rt
+      JOIN public.unidades src ON src.id=rt.from_uid
+      JOIN public.unidades c
+        ON c.activo AND c.edificio_id=src.edificio_id
+       AND c.id<>rt.from_uid AND c.id<>p_unidad_destino
+      LEFT JOIN public.categoria_ranking_edificio rs
+        ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id
+      LEFT JOIN public.categoria_ranking_edificio rc
+        ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+     WHERE (
+       c.id=(SELECT unidad_id FROM public.reservas WHERE id=p_reserva_id)
+       OR c.tipo_unidad_id=src.tipo_unidad_id
+       OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)
+     )
+    UNION ALL
+    SELECT ch.root_id,b.id,b.unidad_id,c.id,ch.depth+1,
+           ch.seen_r||b.id,ch.seen_u||c.id,1 AS prioridad
+      FROM chain ch
+      JOIN public.reservas cur ON cur.id=ch.rid
+      JOIN public.unidades src ON src.id=cur.unidad_id
+      JOIN public.unidades c
+        ON c.activo AND c.edificio_id=src.edificio_id
+       AND c.id<>cur.unidad_id
+      LEFT JOIN public.categoria_ranking_edificio rs
+        ON rs.edificio_id=src.edificio_id AND rs.tipo_unidad_id=src.tipo_unidad_id
+      LEFT JOIN public.categoria_ranking_edificio rc
+        ON rc.edificio_id=c.edificio_id AND rc.tipo_unidad_id=c.tipo_unidad_id
+      LEFT JOIN LATERAL (
+        SELECT r.id,r.estado,r.fecha_entrada,r.fecha_salida,r.unidad_id,r.no_mover_unidad
+          FROM public.reservas r
+         WHERE r.unidad_id=c.id
+           AND r.id<>p_reserva_id
+           AND r.fecha_entrada<cur.fecha_salida
+           AND r.fecha_salida>cur.fecha_entrada
+           AND r.estado IN ('tentativa','confirmada','en_casa','bloqueado')
+           AND r.id<>ALL(ch.seen_r)
+         ORDER BY r.fecha_entrada,r.id
+         LIMIT 1
+      ) b ON true
+     WHERE ch.depth<8
+       AND (
+         c.tipo_unidad_id=src.tipo_unidad_id
+         OR COALESCE(rc.ranking,0)>COALESCE(rs.ranking,0)
+       )
+       AND c.id<>ALL(ch.seen_u)
+       AND (
+         b.id IS NULL
+         OR (
+           b.estado IN ('tentativa','confirmada')
+           AND NOT COALESCE(b.no_mover_unidad,false)
+         )
+       )
+  ),
+  terminals AS (
+    SELECT ch.*
+      FROM chain ch
+      JOIN public.reservas cur ON cur.id=ch.rid
+     WHERE NOT EXISTS (
+       SELECT 1 FROM public.reservas b
+        WHERE b.unidad_id=ch.to_uid
+          AND b.id<>p_reserva_id
+          AND b.fecha_entrada<cur.fecha_salida
+          AND b.fecha_salida>cur.fecha_entrada
+          AND b.estado IN ('tentativa','confirmada','en_casa','bloqueado')
+          AND b.id<>ALL(ch.seen_r)
+     )
+  ),
+  best AS (
+    SELECT DISTINCT ON (root_id) root_id,rid,from_uid,to_uid,depth
+      FROM terminals
+     ORDER BY root_id,depth,
+       CASE WHEN to_uid=(SELECT unidad_id FROM public.reservas WHERE id=p_reserva_id)
+            THEN 0 ELSE 1 END,
+       to_uid
+  ),
+  conflicts AS (
+    SELECT 1
+      FROM best a
+      JOIN best b ON a.root_id<b.root_id
+      JOIN public.reservas ra ON ra.id=a.rid
+      JOIN public.reservas rb ON rb.id=b.rid
+     WHERE a.to_uid=b.to_uid
+       AND ra.fecha_entrada<rb.fecha_salida
+       AND ra.fecha_salida>rb.fecha_entrada
+     LIMIT 1
+  )
+  SELECT jsonb_agg(
+           jsonb_build_object(
+             'reserva_id',rid,
+             'unidad_origen',from_uid,
+             'unidad_destino',to_uid,
+             'profundidad',depth
+           ) ORDER BY depth DESC,root_id
+         ),
+         count(DISTINCT root_id),
+         EXISTS(SELECT 1 FROM conflicts)
+    INTO v_plan,v_cadenas,v_conflicto
+    FROM best;
+
+  IF COALESCE(v_cadenas,0)<>v_bloqueadores OR COALESCE(v_conflicto,false) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+  RETURN jsonb_build_object('unidad_id',p_unidad_destino,'plan',COALESCE(v_plan,'[]'::jsonb));
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.buscar_reacomodacion_cambio_unidad(uuid,uuid,date,date) TO authenticated;
+
 -- 3) Eliminar la firma histórica de cinco argumentos para evitar ambigüedad RPC.
 DROP FUNCTION IF EXISTS public.ejecutar_reacomodacion_cambio_unidad(uuid, uuid, date, date, jsonb);
 
