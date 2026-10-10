@@ -277,9 +277,19 @@ function iniciarRealtime(){
  if(RT.channel)sb.removeChannel(RT.channel);
  const refrescarRT=payload=>solicitarRealtime(payload?.table||'');
  RT.channel=sb.channel('pms-realtime')
-  .on('postgres_changes',{event:'*',schema:'public'},refrescarRT)
+  // Suscripciones por tabla: Postgres Changes requiere identificar la tabla.
+  // En particular, los cambios de estado de limpieza deben refrescarse sin recargar.
+  .on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'reservas'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'unidades'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'edificios'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'perfiles_edificios'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'perfiles_permisos_edicion'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'pagos'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'cargos'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'estacionamiento_reserva_fechas'},refrescarRT)
   .subscribe(status=>{
-   if(status==='CHANNEL_ERROR')msg('Realtime no pudo conectarse. Revisa la publicación supabase_realtime.',1);
+   if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')msg('Realtime no pudo conectarse. Revisa que las tablas estén en la publicación supabase_realtime.',1);
   });
 }
 
