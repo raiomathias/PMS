@@ -2300,9 +2300,13 @@ async function cambiarUnidad(uid){
  if(ee){
   const texto=errTxt(ee);
   const nochesGeneradas=/column ["']?noches["']? can only be updated to DEFAULT/i.test(texto);
+  const ocupacionAntigua=/La unidad ya está ocupada en esas fechas/i.test(texto);
+  await cargar();
   return msg(nochesGeneradas
-   ?'No se pudo ejecutar la reacomodación porque Supabase aún ejecuta una función antigua que escribe la columna generada noches. Ejecuta el hotfix SQL v1.10.1 del final de SQL.txt.'
-   :'No se pudo ejecutar la reacomodación: '+texto,1);
+   ?'Supabase sigue ejecutando una rutina antigua que intenta escribir reservas.noches. Ejecuta el bloque “PMS v1.10.1 — HOTFIX DEFINITIVO” del final de SQL.txt; no se guardó el cambio.'
+   :ocupacionAntigua
+    ?'Supabase respondió con la validación antigua de reacomodación, que no excluye todas las reservas del propio plan. Ejecuta el bloque “PMS v1.10.1 — HOTFIX DEFINITIVO” del final de SQL.txt y vuelve a calcular la reacomodación.'
+    :'No se pudo ejecutar la reacomodación: '+texto,1);
  }
  const {data:principal,error:verError}=await sb.from('reservas')
   .select('id,unidad_id,fecha_entrada,fecha_salida,tarifa_noche').eq('id',r.id).maybeSingle();
