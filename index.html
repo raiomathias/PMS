@@ -1308,9 +1308,19 @@ async function guardarNueva(){
  const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nk').checked?$('#nv').value.trim():null,patente_vehiculo:$('#nk').checked?$('#np').value.trim():null,no_mover_unidad:$('#nnm').checked},p_plan:N.plan||[],p_iva:0,p_otro:+$('#notro').value||0});
  if(error)return msg(errTxt(error),1);
  if($('#nk').checked){const pe=await guardarFechasParking(rnew,parkingDates,parkingCupo.permitirSobrecupo);if(pe){await sb.from('reservas').delete().eq('id',rnew);return msg('La reserva se creó pero no se pudieron guardar las fechas de estacionamiento: '+pe.message,1)}}
+ if(canal==='airbnb'){
+  let pagoAirbnb=await sb.rpc('registrar_pago_airbnb',{p_reserva_id:rnew});
+  // El RPC es idempotente: el reintento cubre respuestas perdidas sin duplicar el pago.
+  if(pagoAirbnb.error)pagoAirbnb=await sb.rpc('registrar_pago_airbnb',{p_reserva_id:rnew});
+  if(pagoAirbnb.error){
+   cerrar();
+   await cargar();
+   return msg('La reserva se creó, pero no se pudo registrar automáticamente el pago de Airbnb: '+errTxt(pagoAirbnb.error)+'. La reserva quedó guardada; verifica el pago antes de volver a intentar crearla.',1);
+  }
+ }
  cerrar();
  await cargar();
- msg('Reserva guardada en '+nomU(unidad));
+ msg(canal==='airbnb'?'Reserva Airbnb guardada con pago anticipado registrado en '+nomU(unidad):'Reserva guardada en '+nomU(unidad));
 
 }
 // ---------- Detalle de reserva ----------
