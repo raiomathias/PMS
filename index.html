@@ -211,7 +211,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.2</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.3</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -254,8 +254,14 @@ async function entrar(){const {error}=await sb.auth.signInWithPassword({email:em
 async function salir(){await sb.auth.signOut();location.reload()}
 let RT={channel:null,timer:null,working:false,pending:false,pendingTable:'',mutating:0,ignoreUntil:0};
 
+function acumularTablasRealtime(tabla){
+ const nuevas=String(tabla||'').split(',').map(x=>x.trim()).filter(Boolean);
+ const actuales=String(RT.pendingTable||'').split(',').map(x=>x.trim()).filter(Boolean);
+ RT.pendingTable=[...new Set([...actuales,...nuevas])].join(',');
+}
+
 function solicitarRealtime(tabla=''){
- RT.pendingTable=tabla||RT.pendingTable||'';
+ acumularTablasRealtime(tabla);
  clearTimeout(RT.timer);
  RT.timer=setTimeout(()=>{
   if(Date.now()<RT.ignoreUntil){RT.pending=false;RT.pendingTable='';return}
@@ -277,8 +283,7 @@ function iniciarRealtime(){
  if(RT.channel)sb.removeChannel(RT.channel);
  const refrescarRT=payload=>solicitarRealtime(payload?.table||'');
  RT.channel=sb.channel('pms-realtime')
-  // Suscripciones por tabla: Postgres Changes requiere identificar la tabla.
-  // En particular, los cambios de estado de limpieza deben refrescarse sin recargar.
+  // Suscripciones explícitas: Realtime se consolida por tabla durante 350 ms.
   .on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'reservas'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'unidades'},refrescarRT)
@@ -293,26 +298,93 @@ function iniciarRealtime(){
   });
 }
 
+async function refrescarLimpiezaGrid(){
+ const uids=S.unidades.map(u=>u.id);
+ if(!uids.length)return;
+ const [l,lh]=await Promise.all([
+  sb.from('estado_limpieza_actual').select('*').in('unidad_id',uids),
+  sb.rpc('limpieza_grilla',{p_desde:addD(hoyStr(),-2)})
+ ]);
+ if(l.error||lh.error)throw(l.error||lh.error);
+ S.lim=Object.fromEntries((l.data||[]).map(x=>[x.unidad_id,x]));
+ S.lh={};
+ (lh.data||[]).filter(x=>uids.includes(x.unidad_id)).forEach(x=>(S.lh[x.unidad_id]=S.lh[x.unidad_id]||[]).push(x));
+ Object.values(S.lh).forEach(a=>a.sort((p,q)=>Date.parse(p.creado_en)-Date.parse(q.creado_en)));
+ const grid=$('#gw'),scroll=grid?grid.scrollLeft:null;
+ dibujar();
+ if(grid&&Number.isFinite(scroll))grid.scrollLeft=scroll;
+}
+
+async function refrescarSaldosGrid(){
+ const rids=S.res.map(r=>r.id);
+ if(!rids.length){S.saldo={};S.gar={};dibujar();return}
+ const [sv,gp]=await Promise.all([
+  sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',rids),
+  sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',rids)
+ ]);
+ if(sv.error||gp.error)throw(sv.error||gp.error);
+ S.saldo=Object.fromEntries((sv.data||[]).map(x=>[x.reserva_id,{total:+x.total_a_pagar||0,pagado:+x.total_pagado||0}]));
+ S.gar=Object.fromEntries((gp.data||[]).filter(x=>x.pagado<x.monto).map(x=>[x.reserva_id,1]));
+ const grid=$('#gw'),scroll=grid?grid.scrollLeft:null;
+ dibujar();
+ if(grid&&Number.isFinite(scroll))grid.scrollLeft=scroll;
+}
+
+function detallePuedeActualizarseSinPerderEdicion(){
+ return $('#dr').style.display==='block'&&$('#mo').style.display!=='grid'&&!!S.cur?.id&&!formularioReservaModificado(S.cur.id);
+}
+
 async function actualizarRealtime(tabla){
  if(Date.now()<RT.ignoreUntil)return;
- if(RT.mutating||RT.working||DRG){RT.pending=true;RT.pendingTable=tabla||RT.pendingTable||'';return}
+ if(RT.mutating||RT.working||DRG){RT.pending=true;acumularTablasRealtime(tabla);return}
  RT.working=true;
  try{
-  if(['perfiles','perfiles_edificios','perfiles_permisos_edicion','edificios'].includes(tabla)){
+  const tablas=String(tabla||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const tiene=(...n)=>tablas.some(t=>n.includes(t));
+  const solo=(...n)=>tablas.length>0&&tablas.every(t=>n.includes(t));
+  const permisos=tiene('perfiles','perfiles_edificios','perfiles_permisos_edicion','edificios');
+  if(permisos){
    const pe=await cargarPermisosEdificios();
    if(!pe)return;
-   await cargarPermisosEdicion();
+   const ok=await cargarPermisosEdicion();
+   if(ok===false)return;
   }
   if(S.perfil?.rol==='limpieza'){
-   await tareasLimp();
+   if(!tablas.length||tiene('limpieza','reservas','unidades','edificios','perfiles_edificios','perfiles')){
+    await tareasLimp();
+   }
    return;
   }
+  // Un cambio de limpieza no necesita volver a consultar reservas, huéspedes,
+  // saldos ni unidades: actualiza únicamente los datos de limpieza y redibuja.
+  if(solo('limpieza')){
+   await refrescarLimpiezaGrid();
+   return;
+  }
+  // Pagos y cargos solo cambian saldos/garantías de la cuadrícula. No reconstruir
+  // la ficha si hay cambios sin guardar en el formulario abierto.
+  if(solo('pagos','cargos')){
+   await refrescarSaldosGrid();
+   if($('#hosp').style.display==='flex')await hosCargar();
+   if(detallePuedeActualizarseSinPerderEdicion())await abrirDr(S.cur.id);
+   return;
+  }
+  // Cambios de fechas de estacionamiento no exigen recargar todo el calendario.
+  if(solo('estacionamiento_reserva_fechas')){
+   if($('#est').style.display==='flex')await estCargar();
+   if(detallePuedeActualizarseSinPerderEdicion())await abrirDr(S.cur.id);
+   return;
+  }
+
+  // Las reservas, unidades y permisos afectan la ocupación o el alcance visible;
+  // en esos casos se conserva la recarga de datos necesaria, pero no se pisa
+  // un formulario editado localmente ni se refrescan paneles ajenos al evento.
   await cargar();
-  if($('#est').style.display==='flex')await estCargar();
-  if($('#hosp').style.display==='flex')await hosCargar();
-  if($('#cat').style.display==='flex')await catDibujar();
-  if($('#aud').style.display==='flex')await audCargar(true);
-  if($('#dr').style.display==='block'&&$('#mo').style.display!=='grid'&&S.cur?.id)await abrirDr(S.cur.id);
+  if($('#est').style.display==='flex'&&tiene('reservas','unidades','edificios','estacionamiento_reserva_fechas'))await estCargar();
+  if($('#hosp').style.display==='flex'&&tiene('reservas','unidades','edificios','perfiles','perfiles_edificios'))await hosCargar();
+  if($('#cat').style.display==='flex'&&tiene('unidades','edificios'))await catDibujar();
+  if($('#aud').style.display==='flex'&&tiene('reservas','pagos','cargos','limpieza','unidades'))await audCargar(true);
+  if(detallePuedeActualizarseSinPerderEdicion())await abrirDr(S.cur.id);
  }finally{
   RT.working=false;
   drenarRealtime();
@@ -2941,7 +3013,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='1.10.2';
+const VERSION_ACTUAL='1.10.3';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
