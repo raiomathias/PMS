@@ -243,7 +243,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><div id="mobileHeaderTools"><button type="button" onclick="mover(-7)" aria-label="Semana anterior">‹</button><button type="button" onclick="mover(0)">Hoy</button><input id="mobileDate" type="date" aria-label="Fecha inicial de la vista móvil" onchange="mobileIrFecha(this.value)"><button type="button" class="mobile-menu-trigger" onclick="toggleMobileMenu()" aria-label="Abrir todos los menús">☰</button></div><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v2.1</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v2.2</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div><nav id="mobileBottomNav" aria-label="Navegación móvil"><button type="button" onclick="mobileIrInicio()"><span>▦</span><span>Grid</span></button><button type="button" onclick="mobileNuevaReserva()"><span>＋</span><span>Reserva</span></button><button type="button" onclick="mobileBuscar()"><span>⌕</span><span>Buscar</span></button><button type="button" onclick="toggleMobileMenu()"><span>☰</span><span>Menú</span></button></nav><div id="mobileMenuSheet" onclick="if(event.target===this)toggleMobileMenu(false)" aria-hidden="true"><section class="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label="Menú principal"><div class="mobile-sheet-grabber"></div><div class="mobile-sheet-head"><div><h3>MMassisT PMS</h3><div id="mobileMenuUser" class="mu"></div></div><button type="button" onclick="toggleMobileMenu(false)" aria-label="Cerrar menú">✕</button></div><div id="mobileMenuContent"></div></section></div>
 <script>
@@ -2464,6 +2464,7 @@ async function pUni(){
  const L=(u.data||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
  $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Códigos (ej. 201, 202 o 201-205)')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo,tipo_unidad_id')">Crear</button></div><p class="mu" style="margin:4px 0 12px">Ingresa códigos separados por coma (201, 202) o un rango con guion (201-205). Puedes combinar ambos formatos; se crearán unidades independientes con el mismo edificio, categoría y piso. Máximo 200 por operación.</p>
  <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',TT(x.edificio_id),x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Cada categoría pertenece a un edificio: aquí solo aparecen las del edificio elegido.</p>`;
+ instalarFiltrosUnidades(E,T);
 }
 function fT(s){const r=s.closest('.rw').querySelector('[data-c=tipo_unidad_id]');r.innerHTML='<option value="">—</option>'+_T.filter(t=>t[2]===s.value).map(t=>`<option value="${t[0]}">${esc(t[1])}</option>`).join('')}
 async function pTip(){
@@ -2472,6 +2473,58 @@ async function pTip(){
  const f=(x,v)=>`${SO('edificio_id',E,x.edificio_id,v)}${NI('nombre',x.nombre,'Categoría (ej. Completo)')}${NI('max_adultos',x.max_adultos,'Máx. adultos','number')}${NI('max_menores',x.max_menores,'Máx. menores','number')}${NI('tarifa_base',x.tarifa_base,'Tarifa por noche (CLP)','number')}`;
  const L=(t.data||[]).sort((a,b)=>((eo[a.edificio_id]??99)-(eo[b.edificio_id]??99))||a.nombre.localeCompare(b.nombre,'es'));
  $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Edificio · categoría · máx. adultos · máx. menores · tarifa por noche. Cada categoría pertenece a un edificio. Los cambios de tarifa valen para reservas nuevas; las existentes conservan la suya.</p><h4>Nueva categoría</h4><div class="rw">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0},0)}<button class="p" onclick="nw('tipos_unidad',this,'nombre,edificio_id')">Crear</button></div><h4>Categorías</h4>${L.map(x=>`<div class="rw">${f(x,1)}<button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div>`).join('')}`;
+ instalarFiltrosTipos(t.data||[],E);
+}
+function crearSelectFiltro(label,id,opciones,valor,alCambiar){
+ const l=document.createElement('label');l.style.cssText='display:grid;gap:4px;flex:1 1 190px';l.textContent=label;
+ const sel=document.createElement('select');sel.id=id;
+ opciones.forEach(o=>{const op=document.createElement('option');op.value=o[0];op.textContent=o[1];sel.appendChild(op)});
+ sel.value=valor||'';sel.addEventListener('change',alCambiar);l.appendChild(sel);return l;
+}
+function instalarFiltrosUnidades(E,T){
+ const pc=$('#pc');if(!pc)return;
+ const h=document.createElement('div');h.className='rw';h.style.alignItems='end';
+ const cab=[...pc.querySelectorAll('h4')].find(x=>x.textContent.startsWith('Unidades ('));if(!cab)return;
+ const cats=[['','Todas las categorías'],...T.map(x=>[x[0],x[1]])],eds=[['','Todos los edificios'],...E];
+ const aplicar=()=>{
+  const ed=$('#uniFiltroEdificio')?.value||'';
+  const cs=$('#uniFiltroCategoria'),prev=cs.value;
+  const validCats=ed?T.filter(x=>x[2]===ed).map(x=>[x[0],x[1]]):T.map(x=>[x[0],x[1]]);
+  cs.replaceChildren();[['','Todas las categorías'],...validCats].forEach(o=>{const op=document.createElement('option');op.value=o[0];op.textContent=o[1];cs.appendChild(op)});
+  cs.value=validCats.some(x=>x[0]===prev)?prev:'';
+  const catNow=cs.value;
+  pc.querySelectorAll('button').forEach(b=>{if(!(b.getAttribute('onclick')||'').startsWith("gd('unidades'"))return;
+   const row=b.closest('.rw'),nombre=row?.querySelector('span')?.textContent?.trim()||'',sel=row?.querySelector('select[data-c="tipo_unidad_id"]');
+   const coincideEd=!ed||nombre===(E.find(x=>x[0]===ed)?.[1]||''),coincideCat=!catNow||sel?.value===catNow;
+   if(row)row.style.display=coincideEd&&coincideCat?'':'none';
+  });
+ };
+ h.appendChild(crearSelectFiltro('Filtrar por edificio','uniFiltroEdificio',eds,'',aplicar));
+ h.appendChild(crearSelectFiltro('Filtrar por categoría','uniFiltroCategoria',cats,'',aplicar));
+ const limpiar=document.createElement('button');limpiar.textContent='Limpiar filtros';limpiar.addEventListener('click',()=>{$('#uniFiltroEdificio').value='';$('#uniFiltroCategoria').value='';aplicar()});h.appendChild(limpiar);
+ cab.parentNode.insertBefore(h,cab);aplicar();
+}
+function instalarFiltrosTipos(T,E){
+ const pc=$('#pc');if(!pc)return;
+ const h=document.createElement('div');h.className='rw';h.style.alignItems='end';
+ const cab=[...pc.querySelectorAll('h4')].find(x=>x.textContent==='Categorías');if(!cab)return;
+ const eds=[['','Todos los edificios'],...E],cats=[['','Todas las categorías'],...T.map(x=>[x.id,x.nombre])];
+ const aplicar=()=>{
+  const ed=$('#tipoFiltroEdificio')?.value||'',cs=$('#tipoFiltroCategoria'),prev=cs.value;
+  const validCats=ed?T.filter(x=>x.edificio_id===ed).map(x=>[x.id,x.nombre]):T.map(x=>[x.id,x.nombre]);
+  cs.replaceChildren();[['','Todas las categorías'],...validCats].forEach(o=>{const op=document.createElement('option');op.value=o[0];op.textContent=o[1];cs.appendChild(op)});
+  cs.value=validCats.some(x=>x[0]===prev)?prev:'';
+  const catNow=cs.value;
+  pc.querySelectorAll('button').forEach(b=>{const onclick=b.getAttribute('onclick')||'';if(!onclick.startsWith("gd('tipos_unidad'"))return;
+   const row=b.closest('.rw'),sel=row?.querySelector('select[data-c="edificio_id"]');
+   const coincideEd=!ed||sel?.value===ed,coincideCat=!catNow||onclick.includes("'"+catNow+"'");
+   if(row)row.style.display=coincideEd&&coincideCat?'':'none';
+  });
+ };
+ h.appendChild(crearSelectFiltro('Filtrar por edificio','tipoFiltroEdificio',eds,'',aplicar));
+ h.appendChild(crearSelectFiltro('Filtrar por categoría','tipoFiltroCategoria',cats,'',aplicar));
+ const limpiar=document.createElement('button');limpiar.textContent='Limpiar filtros';limpiar.addEventListener('click',()=>{$('#tipoFiltroEdificio').value='';$('#tipoFiltroCategoria').value='';aplicar()});h.appendChild(limpiar);
+ cab.parentNode.insertBefore(h,cab);aplicar();
 }
 async function pFotosCatalogo(){
  const [tr,er]=await Promise.all([
@@ -3477,7 +3530,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='2.1';
+const VERSION_ACTUAL='2.2';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
