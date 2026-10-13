@@ -319,6 +319,8 @@ async function actualizarRealtime(tabla){
  }
 }
 
+const PMS_MUTACIONES_EN_CURSO = new Set();
+
 function protegerMutacionesRealtime(){
  const nombres=[
   'guardarNueva','guardarEditorReserva','marcarPagadaHistorica','guardarPermisosEdicion','guardarCambiosReservaDetalle','accion',
@@ -331,12 +333,57 @@ function protegerMutacionesRealtime(){
   const fn=window[nombre];
   if(typeof fn!=='function'||fn.__pmsRtWrapped)continue;
   const env=function(...args){
+   // El bloqueo es por operación y por pestaña. Impide que una segunda
+   // invocación de la misma mutación se solape con la primera.
+   if(PMS_MUTACIONES_EN_CURSO.has(nombre)){
+    msg('Esta operación ya se está procesando. Espera a que termine antes de volver a intentarlo.',1);
+    return false;
+   }
+   PMS_MUTACIONES_EN_CURSO.add(nombre);
+
+   // Deshabilitar el botón que inició la operación es una ayuda visual.
+   // El bloqueo de arriba sigue protegiendo aunque no exista un botón activo.
+   const boton=document.activeElement?.tagName==='BUTTON'?document.activeElement:null;
+   if(boton){
+    if(!boton.dataset.pmsBusyCount){
+     boton.dataset.pmsWasDisabled=boton.disabled?'1':'0';
+     boton.dataset.pmsWasAriaBusy=boton.getAttribute('aria-busy')||'';
+    }
+    boton.dataset.pmsBusyCount=String((Number(boton.dataset.pmsBusyCount)||0)+1);
+    boton.disabled=true;
+    boton.setAttribute('aria-busy','true');
+   }
+
    RT.mutating++;
+   let liberado=false;
+   const liberar=()=>{
+    if(liberado)return;
+    liberado=true;
+    PMS_MUTACIONES_EN_CURSO.delete(nombre);
+    RT.mutating=Math.max(0,RT.mutating-1);
+    if(boton&&boton.isConnected){
+     const cuenta=Math.max(0,(Number(boton.dataset.pmsBusyCount)||1)-1);
+     if(cuenta===0){
+      boton.disabled=boton.dataset.pmsWasDisabled==='1';
+      const ariaAnterior=boton.dataset.pmsWasAriaBusy||'';
+      if(ariaAnterior)boton.setAttribute('aria-busy',ariaAnterior);
+      else boton.removeAttribute('aria-busy');
+      delete boton.dataset.pmsBusyCount;
+      delete boton.dataset.pmsWasDisabled;
+      delete boton.dataset.pmsWasAriaBusy;
+     }else{
+      boton.dataset.pmsBusyCount=String(cuenta);
+     }
+    }
+    drenarRealtime();
+   };
+
    let out;
    try{out=fn.apply(this,args)}
-   catch(e){RT.mutating--;drenarRealtime();throw e}
-   if(out&&typeof out.then==='function')return out.finally(()=>{RT.mutating--;drenarRealtime()});
-   RT.mutating--;drenarRealtime();return out;
+   catch(e){liberar();throw e}
+   if(out&&typeof out.then==='function')return out.finally(liberar);
+   liberar();
+   return out;
   };
   env.__pmsRtWrapped=true;
   window[nombre]=env;
