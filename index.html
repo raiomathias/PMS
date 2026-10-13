@@ -211,7 +211,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.7</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.8</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -547,6 +547,9 @@ function mailBoxEl(){return document.getElementById(MAIL.mode==='limpieza'?'mail
 function mailBadgeEl(){return document.getElementById(MAIL.mode==='limpieza'?'mailBadgeLimp':'mailBadge')}
 
 function mailPuedeJefes(){return esAdminPlus(S.perfil?.rol)}
+function mailPuedeEliminarMensaje(x){
+ return !!x&&!x.eliminado_en&&(x.remitente_id===S.perfil?.id||['gerencia','sysadmin','system_admin','systemadmin'].includes(rolNormalizado(S.perfil?.rol)));
+}
 function mailPuedeRecepcion(){return mailPuedeJefes()}
 function mailPuedeEnviar(a){return ['recepcion_egana','recepcion_huasco','administracion','gerencia'].includes(a)}
 function mailAudienciaLabel(a){return ({recepcion_egana:'Recepción Egaña',recepcion_huasco:'Recepción Huasco',administracion:'Administración',gerencia:'Gerencia'})[a]||a}
@@ -614,6 +617,22 @@ async function enviarMensajeBuzon(){
  MAIL.draft={audiencia:'recepcion_egana',text:''};$('#mailText').value='';msg('Mensaje enviado a '+mailAudienciaLabel(a)+'.');
  await cargarBuzon(false);
 }
+async function eliminarMensajeBuzon(id){
+ const x=MAIL.rows.find(m=>m.id===id)||MAIL.previewRows.find(m=>m.id===id);
+ if(!x||x.eliminado_en)return;
+ if(!mailPuedeEliminarMensaje(x))return msg('No tienes permiso para eliminar este mensaje.',1);
+ const propio=x.remitente_id===S.perfil?.id;
+ const texto=propio
+  ?'¿Eliminar este mensaje? Seguirá en el Buzón como “Mensaje eliminado por el autor”, conservando su remitente y hora.'
+  :'¿Eliminar el mensaje de otra persona? Gerencia+ lo verá como “Mensaje eliminado por un administrador”, conservando el remitente y la hora.';
+ if(!confirm(texto))return;
+ const {error}=await sb.rpc('buzon_eliminar_mensaje',{p_id:id});
+ if(error)return msg(error.message,1);
+ await cargarBuzon(false);
+ MAIL.previewRows=MAIL.previewRows.map(p=>MAIL.rows.find(m=>m.id===p.id)||p);
+ if(MAIL.open)renderBuzon();
+ msg('Mensaje eliminado.');
+}
 async function limpiarBandejaBuzon(){
  if(!MAIL.rows.length)return msg('La bandeja ya está limpia.');
  if(!confirm('¿Limpiar la bandeja? Los mensajes no se eliminarán del sistema ni de Auditoría; solo dejarán de aparecer en tu Buzón.'))return;
@@ -642,7 +661,7 @@ function renderBuzon(){
  const rows=MAIL.preview&&MAIL.previewRows.length?MAIL.previewRows:MAIL.rows;
  const preview=MAIL.preview;
  b.classList.toggle('mail-preview',preview);
- b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3>${preview?'<span class="mu">Nuevo mensaje</span>':'<button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button class="mail-clear-btn" onclick="limpiarBandejaBuzon()" title="Limpiar bandeja" aria-label="Limpiar bandeja">🗑️ <span>Limpiar</span></button><button class="mail-clear-all-btn" onclick="limpiarTodosBuzones()" title="Limpiar todos los buzones">🗑️ <span>Todos</span></button>'}<button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div></div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${preview?'<div class="mail-preview-actions"><button class="p" onclick="mostrarBuzonCompleto()">Ver más</button></div>':`<div class="mail-compose"><select id="mailAudience">${opts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="Escribe un mensaje para Recepción Egaña, Recepción Huasco, Administración o Gerencia…"></textarea></div>`}`;
+ b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3>${preview?'<span class="mu">Nuevo mensaje</span>':'<button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button class="mail-clear-btn" onclick="limpiarBandejaBuzon()" title="Limpiar bandeja" aria-label="Limpiar bandeja">🗑️ <span>Limpiar</span></button><button class="mail-clear-all-btn" onclick="limpiarTodosBuzones()" title="Limpiar todos los buzones">🗑️ <span>Todos</span></button>'}<button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div>${mailPuedeEliminarMensaje(x)?`<div style="display:flex;justify-content:flex-end;margin-top:5px"><button type="button" class="r" style="padding:3px 7px;font-size:11px" title="Eliminar mensaje" onclick="event.stopPropagation();eliminarMensajeBuzon('${x.id}')">🗑️ Eliminar</button></div>`:''}</div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${preview?'<div class="mail-preview-actions"><button class="p" onclick="mostrarBuzonCompleto()">Ver más</button></div>':`<div class="mail-compose"><select id="mailAudience">${opts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="Escribe un mensaje para Recepción Egaña, Recepción Huasco, Administración o Gerencia…"></textarea></div>`}`;
  if(!preview){
   const sel=$('#mailAudience'),ta=$('#mailText');
   if(sel)sel.value=MAIL.draft.audiencia||'recepcion_egana';
@@ -666,6 +685,11 @@ function iniciarBuzon(mode='grid'){
   .on('postgres_changes',{event:'INSERT',schema:'public',table:'buzon_mensajes'},payload=>{
     if(payload?.new?.remitente_id===S.perfil.id)return;
     cargarBuzon(false);
+  })
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'buzon_mensajes'},async()=>{
+    await cargarBuzon(false);
+    MAIL.previewRows=MAIL.previewRows.map(p=>MAIL.rows.find(m=>m.id===p.id)||p);
+    if(MAIL.open)renderBuzon();
   })
   .subscribe();
 }
@@ -1066,7 +1090,7 @@ async function consultarDisponibilidad(){
  }
  out.innerHTML=html;
 }
-function syncBookingRef(){const b=$('#nc')?.value==='booking';const x=$('#nx');if(!x)return;x.required=b;x.placeholder=b?'Obligatorio para Booking':'Opcional';if(b)x.closest('label')?.querySelector('span')?.remove()}
+function syncBookingRef(){const c=$('#nc')?.value,b=c==='booking',a=c==='airbnb',x=$('#nx');if(!x)return;x.required=b||a;x.placeholder=b?'Obligatorio para Booking':a?'Obligatorio para Airbnb (ID de transacción)':'Opcional';if(b||a)x.closest('label')?.querySelector('span')?.remove()}
 function parkingDateList(fe=$('#ne')?.value,fs=$('#ns')?.value){if(!fe||!fs||fs<=fe)return[];const a=[];for(let d=fe;d<fs;d=addD(d,1))a.push(d);return a}
 function renderParkingDates(selectAll=true){const box=$('#npdates');if(!box)return;const old=new Set([...box.querySelectorAll('input:checked')].map(x=>x.value));const days=parkingDateList();box.innerHTML=days.map(d=>`<label class="nd" style="border:1px solid var(--bd);border-radius:8px;cursor:pointer"><input type="checkbox" class="npd" value="${d}" ${selectAll||old.has(d)?'checked':''}><b>${d.slice(8,10)}/${d.slice(5,7)}</b><span class="mu">${new Date(d+'T12:00:00').toLocaleDateString('es-CL',{weekday:'short'})}</span></label>`).join('');}
 function parkingSelectedDates(){return [...document.querySelectorAll('#npdates input.npd:checked')].map(x=>x.value).sort()}
@@ -1279,7 +1303,7 @@ async function guardarNueva(){
  else{const nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
- const canal=$('#nc').value,ref=$('#nx').value.trim();if(canal==='booking'&&!ref)return msg('El código externo es obligatorio para Booking',1);
+ const canal=$('#nc').value,ref=$('#nx').value.trim();if((canal==='booking'||canal==='airbnb')&&!ref)return msg(canal==='airbnb'?'El código externo es obligatorio para Airbnb para registrar su pago automáticamente':'El código externo es obligatorio para Booking',1);
  if($('#nk').checked&&nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
  const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nk').checked?$('#nv').value.trim():null,patente_vehiculo:$('#nk').checked?$('#np').value.trim():null,no_mover_unidad:$('#nnm').checked},p_plan:N.plan||[],p_iva:0,p_otro:+$('#notro').value||0});
  if(error)return msg(errTxt(error),1);
