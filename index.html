@@ -221,7 +221,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 #mobileMenuSheet{position:fixed;inset:0;z-index:1200;background:#0a0f1988;align-items:flex-end;justify-content:center;padding:0}#mobileMenuSheet.open{display:flex}.mobile-sheet-panel{width:100%;max-height:88dvh;overflow:auto;background:var(--pn);color:var(--tx);border-radius:20px 20px 0 0;padding:12px 14px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:0 -12px 40px #0003}.mobile-sheet-grabber{width:42px;height:4px;background:var(--bd);border-radius:99px;margin:0 auto 12px}.mobile-sheet-head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}.mobile-sheet-head h3{font-size:18px;margin:0}.mobile-menu-group{margin-top:14px}.mobile-menu-group h4{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mu);border:0;padding:0;margin:0 0 7px}.mobile-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.mobile-menu-item{min-width:0;min-height:54px;text-align:left;display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--bd);background:var(--bg);border-radius:12px;line-height:1.25}.mobile-menu-item span:first-child{font-size:20px;flex:none}.mobile-menu-item b{font-size:12px;overflow-wrap:anywhere}.mobile-menu-item.danger{color:#b91c1c}
 @media(max-width:900px){
  body.mobile-pms{padding-bottom:calc(72px + env(safe-area-inset-bottom));overflow-x:hidden}
- body.mobile-pms #app>header{position:sticky;top:0;z-index:50;min-height:54px;box-sizing:border-box;padding:8px 9px;gap:6px}
+ body.mobile-pms #app>header{position:sticky;top:0;z-index:5;min-height:54px;box-sizing:border-box;padding:8px 9px;gap:6px}
  body.mobile-pms #app>header>b{font-size:12px;max-width:24vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}
  body.mobile-pms #app>header>:not(#hu):not(#mobileHeaderTools){display:none!important}
  body.mobile-pms #mobileHeaderTools{display:flex;align-items:center;gap:4px;margin-left:auto;min-width:0}
@@ -232,7 +232,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
  body.mobile-pms #gw{display:block;height:auto;max-height:none;overflow:visible;overflow-x:clip;margin:0;border:0;border-radius:0;background:transparent;touch-action:pan-y;user-select:auto}
  body.mobile-pms .mail-bell{left:10px;bottom:calc(76px + env(safe-area-inset-bottom));width:42px;height:42px}
  body.mobile-pms .mail-box{left:8px;right:8px;bottom:calc(128px + env(safe-area-inset-bottom));width:auto;max-height:65dvh}
- body.mobile-pms #mobileBottomNav{position:fixed;z-index:1100;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:7px 8px calc(7px + env(safe-area-inset-bottom));background:var(--pn);border-top:1px solid var(--bd);box-shadow:0 -3px 14px #00000014}
+ body.mobile-pms #mobileBottomNav{position:fixed;z-index:8;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:7px 8px calc(7px + env(safe-area-inset-bottom));background:var(--pn);border-top:1px solid var(--bd);box-shadow:0 -3px 14px #00000014}
  body.mobile-pms #mobileBottomNav button{display:grid;justify-items:center;gap:2px;min-width:0;padding:5px 2px;border:0;background:transparent;font-size:10px;font-weight:650}
  body.mobile-pms #mobileBottomNav button span:first-child{font-size:19px;line-height:1.2}
  body.mobile-pms .mobile-unit-card{scroll-margin-top:70px}
@@ -874,7 +874,7 @@ function mobileIrFecha(v){
  if(!v)return;
  const hf=$('#hf');if(hf)hf.value=v;
  const fin=addD(S.ini,ND-7);
- if(v>=S.ini&&v<=fin){if(esRecepcion()&&v<hoyStr())return msg('Recepción solo puede desplazarse hacia fechas de hoy y futuras.',1);S.vista=v;S.sel=null;dibujar()}
+ if(v>=S.ini&&v<=fin){if(esRecepcion()&&v<hoyStr()){const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr();return msg('Recepción solo puede desplazarse hacia fechas de hoy y futuras.',1)}S.vista=v;S.sel=null;dibujar()}
  else cambiarFechaGrid(v);
  const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr()
 }
