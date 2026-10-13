@@ -212,7 +212,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.11</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.12</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -2194,6 +2194,7 @@ async function panel(t){
   {titulo:'Alojamiento e inventario',ayuda:'Administra unidades, categorías y organización física.',items:[
    ['unidades','Unidades','Crear, ordenar y activar o desactivar habitaciones/unidades.'],
    ['tipos','Categorías y tarifas','Configurar capacidad y tarifa base para nuevas reservas.'],
+   ['catalogofotos','Fotos del catálogo','Subir, ordenar y administrar las imágenes de cada categoría.'],
    ['edificios','Edificios y estacionamiento','Direcciones, orden, cupos y características por edificio.'],
    ['ranking','Ranking de upgrades','Definir prioridades de categorías para reacomodaciones automáticas.']
   ]},
@@ -2209,7 +2210,7 @@ async function panel(t){
  ];
  const T=grupos.flatMap(g=>g.items),actual=T.find(x=>x[0]===A.t)||T[0];A.t=actual[0];
  $('#mo').innerHTML=`<div class="admin-shell"><div class="admin-top"><div><h3>⚙ Administración del sistema</h3><p>Encuentra cada herramienta por objetivo. Selecciona una sección para ver sus opciones y explicación.</p></div><button onclick="cerrar()" aria-label="Cerrar administración">✕ Cerrar</button></div><div class="admin-layout"><nav class="admin-nav" aria-label="Categorías de administración">${grupos.map(g=>`<section class="admin-nav-group"><h4>${g.titulo}</h4><p>${g.ayuda}</p>${g.items.map(x=>`<button type="button" class="admin-nav-btn ${x[0]===A.t?'active':''}" ${x[0]===A.t?'aria-current="page"':''} onclick="panel('${x[0]}')"><span><b>${x[1]}</b><small>${x[2]}</small></span><span class="arrow" aria-hidden="true">›</span></button>`).join('')}</section>`).join('')}</nav><section class="admin-work"><div class="admin-work-head"><span class="eyebrow">Sección seleccionada</span><h3>${actual[1]}</h3><p>${actual[2]}</p></div><div id="pc">Cargando opciones…</div></section></div></div>`;
- $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,ranking:pRanking,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,borrar:pBor,usuarios:pUsu}[A.t])();
+ $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,catalogofotos:pFotosCatalogo,ranking:pRanking,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,borrar:pBor,usuarios:pUsu}[A.t])();
 }
 async function pUni(){
  const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
@@ -2225,6 +2226,27 @@ async function pTip(){
  const f=(x,v)=>`${SO('edificio_id',E,x.edificio_id,v)}${NI('nombre',x.nombre,'Categoría (ej. Completo)')}${NI('max_adultos',x.max_adultos,'Máx. adultos','number')}${NI('max_menores',x.max_menores,'Máx. menores','number')}${NI('tarifa_base',x.tarifa_base,'Tarifa por noche (CLP)','number')}`;
  const L=(t.data||[]).sort((a,b)=>((eo[a.edificio_id]??99)-(eo[b.edificio_id]??99))||a.nombre.localeCompare(b.nombre,'es'));
  $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Edificio · categoría · máx. adultos · máx. menores · tarifa por noche. Cada categoría pertenece a un edificio. Los cambios de tarifa valen para reservas nuevas; las existentes conservan la suya.</p><h4>Nueva categoría</h4><div class="rw">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0},0)}<button class="p" onclick="nw('tipos_unidad',this,'nombre,edificio_id')">Crear</button></div><h4>Categorías</h4>${L.map(x=>`<div class="rw">${f(x,1)}<button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div>`).join('')}`;
+}
+async function pFotosCatalogo(){
+ const [tr,er]=await Promise.all([
+  sb.from('tipos_unidad').select('id,nombre,edificio_id,fotos').order('nombre'),
+  sb.from('edificios').select('id,nombre,orden').eq('activo',true).order('orden')
+ ]);
+ if(tr.error||er.error)return msg((tr.error||er.error).message,1);
+ const edificios=Object.fromEntries((er.data||[]).map(x=>[x.id,x.nombre]));
+ const categorias=(tr.data||[]).slice().sort((a,b)=>
+  (edificios[a.edificio_id]||'').localeCompare(edificios[b.edificio_id]||'','es')||
+  a.nombre.localeCompare(b.nombre,'es')
+ );
+ const cards=categorias.map(x=>{
+  const fotos=normalizarFotos(x.fotos);
+  const portada=fotos.find(f=>f.rank===0)||fotos[0];
+  const imagen=portada
+   ?`<img src="${esc(FU(portada.path))}" alt="Foto de ${esc(x.nombre)}" loading="lazy">`
+   :'<div class="photo-placeholder" style="width:150px;height:112px;display:grid;place-items:center;background:var(--bg);border-radius:9px;color:var(--mu)">Sin fotos</div>';
+  return `<article class="photo-card">${imagen}<div class="pc-body"><div><b>${esc(x.nombre)}</b><div class="mu">${esc(edificios[x.edificio_id]||'Edificio no disponible')}</div><div class="dis ${fotos.length?'ok':'nd'}">${fotos.length} foto${fotos.length===1?'':'s'}</div></div><button class="p" onclick="pDet('${x.id}','catalogofotos')">📷 Administrar fotos</button></div></article>`;
+ }).join('');
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Administra las imágenes que aparecen en el catálogo. Selecciona una categoría para subir fotos, elegir portada y ordenar las miniaturas. Los cambios se guardan en la categoría correspondiente.</p><div class="photo-admin">${cards||'<p class="mu">No hay categorías creadas todavía.</p>'}</div>`;
 }
 async function pRanking(){
  const [e,t,r]=await Promise.all([sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre'),sb.from('categoria_ranking_edificio').select('edificio_id,tipo_unidad_id,ranking')]);
@@ -2956,13 +2978,13 @@ document.addEventListener('keydown',e=>{
  if(G){if(e.key==='Escape'){galCerrar();e.stopPropagation()}else if(e.key==='ArrowLeft')galMover(-1);else if(e.key==='ArrowRight')galMover(1);return}
  if(e.key==='Escape'&&$('#cat').style.display==='flex')cerrarCatalogo();
 });
-async function pDet(id){
+async function pDet(id,volver='tipos'){
  const {data:t,error}=await sb.from('tipos_unidad').select('*').eq('id',id).single();
  if(error)return msg(error.message,1);
  const f=normalizarFotos(t.fotos);
  const posLabel=r=>r===0?'⭐ Portada':r===1?'Miniatura 1':r===2?'Miniatura 2':r===3?'Miniatura 3':'Solo galería';
  const opts=(r)=>`<option value="" ${r===null?'selected':''}>Solo galería (sin posición fija)</option>${['Portada','Miniatura 1','Miniatura 2','Miniatura 3'].map((x,i)=>`<option value="${i}" ${r===i?'selected':''}>${x}</option>`).join('')}`;
- $('#pc').innerHTML=`<button onclick="panel('tipos')">← Categorías</button><h4>${esc(t.nombre)}</h4><div class="rw" id="dt">${NI('camas',t.camas,'N° de camas','number')}${NI('detalle_camas',t.detalle_camas,'Detalle (ej. 1 matrimonial + 1 sofá cama)')}</div><label style="margin-top:8px">Descripción<textarea id="dd" rows="3">${esc(t.descripcion)}</textarea></label><button class="p" style="margin-top:6px" onclick="gDet('${id}')">Guardar detalle</button>
+ $('#pc').innerHTML=`<button onclick="panel('${volver==='catalogofotos'?'catalogofotos':'tipos'}')">← ${volver==='catalogofotos'?'Fotos del catálogo':'Categorías'}</button><h4>${esc(t.nombre)}</h4><div class="rw" id="dt">${NI('camas',t.camas,'N° de camas','number')}${NI('detalle_camas',t.detalle_camas,'Detalle (ej. 1 matrimonial + 1 sofá cama)')}</div><label style="margin-top:8px">Descripción<textarea id="dd" rows="3">${esc(t.descripcion)}</textarea></label><button class="p" style="margin-top:6px" onclick="gDet('${id}')">Guardar detalle</button>
  <h4>Fotos (${f.length})</h4>
  <div class="photo-help"><b>Posición de catálogo</b><br><span class="mu">Puedes saltarte posiciones. Por ejemplo, puedes asignar una imagen a Miniatura 1 y otra directamente a Miniatura 3. Las que queden en “Solo galería” no ocupan ninguna miniatura fija.</span></div>
  <div class="photo-toolbar"><input type="file" id="ff" accept="image/*" multiple><button class="p" onclick="subirFotos('${id}')">＋ Subir fotos</button><button onclick="guardarRankingFotos('${id}')">💾 Guardar posiciones</button></div>
@@ -3209,7 +3231,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='1.10.11';
+const VERSION_ACTUAL='1.10.12';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
