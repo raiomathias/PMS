@@ -935,15 +935,20 @@ function dibujarMovil(){
  if(S.mobileEdificioFiltro&&!edificios.some(e=>e.id===S.mobileEdificioFiltro))S.mobileEdificioFiltro='';
  const unidadesTodas=S.unidades.slice().sort((a,b)=>((a.edificios?.orden||0)-(b.edificios?.orden||0))||((a.orden||0)-(b.orden||0))||String(a.codigo||'').localeCompare(String(b.codigo||''),'es',{numeric:true}));
  const unidades=S.mobileEdificioFiltro?unidadesTodas.filter(u=>u.edificio_id===S.mobileEdificioFiltro):unidadesTodas;
- const diaDatos=[];
+ const diasNavegacion=[];
  for(let i=0;i<ND;i++){
   const fecha=addD(S.ini,i),dt=new Date(fecha+'T00:00:00Z');
   let libres=0,noLibres=0;
   for(const u of unidades){if(mobileEstadoDisponibilidad(u,fecha)==='libre')libres++;else noLibres++}
-  diaDatos.push({fecha,dt,libres,noLibres});
+  diasNavegacion.push({fecha,dt,libres,noLibres});
+ }
+ const diaDatos=[];
+ for(let i=0;i<7;i++){
+  const fecha=addD(inicio,i),dt=new Date(fecha+'T00:00:00Z');
+  diaDatos.push({fecha,dt});
  }
  let h='<section class="mobile-range"><div class="mobile-range-head"><strong>Disponibilidad por día y unidad</strong><span>'+rango+'</span></div><div class="mobile-filter-row"><label for="mobileBuildingFilter">Edificio</label><select id="mobileBuildingFilter" onchange="mobileCambiarEdificio(this.value)"><option value="">Todos los edificios</option>'+edificios.map(e=>'<option value="'+esc(e.id)+'"'+(e.id===S.mobileEdificioFiltro?' selected':'')+'>'+esc(e.nombre)+'</option>').join('')+'</select></div><div class="mobile-days" aria-label="Selector horizontal de días">';
- for(const x of diaDatos){
+ for(const x of diasNavegacion){
   const dow=x.dt.toLocaleDateString('es-CL',{weekday:'short',timeZone:'UTC'}).replace('.',''),mes=x.dt.toLocaleDateString('es-CL',{month:'short',timeZone:'UTC'}).replace('.','');
   h+='<button type="button" class="mobile-day '+(x.fecha===inicio?'active':'')+'" onclick="mobileIrFecha(\''+x.fecha+'\')" aria-label="Ver desde '+x.fecha+'"><small>'+dow+'</small><b>'+x.dt.getUTCDate()+' '+mes+'</b><span class="mobile-day-count">'+x.libres+' libres · '+x.noLibres+' no libres</span></button>';
  }
