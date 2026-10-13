@@ -1928,7 +1928,7 @@ async function guardarReclamo(reservaId=S.cur?.id){
   if(error)return msg('No se pudo eliminar el reclamo: '+error.message,1);
   cerrar();msg('Reclamo eliminado');if(S.cur?.id===reservaId)abrirDr(reservaId);return;
  }
- const {error}=await sb.from('reclamos_sugerencias').upsert({reserva_id:reservaId,huesped_id:S.cur?.huesped_id||null,contenido,creado_por:S.perfil?.id},{onConflict:'reserva_id'});
+ const {error}=await sb.from('reclamos_sugerencias').upsert({reserva_id:reservaId,huesped_id:S.cur?.huesped_id||null,contenido},{onConflict:'reserva_id'});
  if(error)return msg('No se pudo guardar el reclamo: '+error.message,1);
  cerrar();msg('Reclamo guardado');if(S.cur?.id===reservaId)abrirDr(reservaId);
 }
@@ -1963,7 +1963,7 @@ async function hacerCheckOut(){
  }
  S.cur={...S.cur,...actual};
  const o=$('#co1').value.trim(),n=$('#co2').value.trim(),rec=$('#co3').value.trim();
- if(rec){const {error:re}=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id,contenido:rec,creado_por:S.perfil.id},{onConflict:'reserva_id'});if(re)return msg('No se pudo guardar el reclamo: '+re.message,1)}
+ if(rec){const {error:re}=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id,contenido:rec},{onConflict:'reserva_id'});if(re)return msg('No se pudo guardar el reclamo: '+re.message,1)}
  const {error}=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:n||null,p_obs_limpieza:o||null});
  if(error)return msg(errTxt(error),1);
  cerrar();
