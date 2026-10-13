@@ -22,9 +22,9 @@ AS $function$
     JOIN public.unidades u ON u.id = r.unidad_id
     WHERE p.id = auth.uid()
       AND p.activo = true
-      AND p.rol::text IN ('recepcion', 'administracion', 'gerencia', 'sysadmin')
+      AND p.rol::text IN ('recepcion', 'administracion', 'gerencia', 'sysadmin', 'system_admin', 'systemadmin')
       AND (
-        p.rol::text IN ('administracion', 'gerencia', 'sysadmin')
+        p.rol::text IN ('administracion', 'gerencia', 'sysadmin', 'system_admin', 'systemadmin')
         OR EXISTS (
           SELECT 1
           FROM public.perfiles_edificios pe
