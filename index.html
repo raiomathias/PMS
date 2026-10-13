@@ -211,7 +211,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.4</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.5</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -1259,6 +1259,9 @@ async function guardarNueva(){
 }
 // ---------- Detalle de reserva ----------
 async function obtenerUidReservaReal(r){
+  // La grilla ya trae uid_reserva desde Supabase. Reutilizarlo evita un viaje de red
+  // en cada apertura; consultar Supabase solo si falta el dato en memoria.
+  if(r?.uid_reserva)return r.uid_reserva;
   // Fuente principal: la fila exacta de reservas.
   const {data:rr,error}=await sb.from('reservas').select('uid_reserva').eq('id',r.id).maybeSingle();
   if(!error&&rr?.uid_reserva) return rr.uid_reserva;
@@ -1286,7 +1289,7 @@ async function abrirDr(id){
  const pagoIds=(p.data||[]).map(x=>x.id);
  const {data:pmRows,error:pmError}=pagoIds.length?await sb.from('pagos_motivos').select('*').in('pago_id',pagoIds):{data:[],error:null};
  if(pmError)msg('No se pudieron cargar los motivos de los pagos: '+errTxt(pmError),1);
- const G=g.data||{},sa=s.data||{},pmL=pmRows||[],parkDates=fechasParkingReserva(r,pd.data||[]),dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
+ const G=g.data||{},sa=s.data||{},pmL=pmRows||[],parkDates=fechasParkingReserva(r,pd.data||[]);r._parkingDates=parkDates.slice();const dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
  const nsOK=r.fecha_entrada<=hoyStr(),B=({confirmada:[['in','Check-in','p'],['ns','No-show',''],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['ns','No-show',''],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[]).filter(b=>b[0]!=='ns'||nsOK),
  gv=gq.data,aviso=antec(hq.data||[]),
  cobro=dead?`<div class="al ${pend?'r':''}">${r.estado==='cancelada'?'Reserva cancelada':'No-show'}${r.motivo_cancelacion?': '+esc(r.motivo_cancelacion):''}${r.no_show_nota?': '+esc(r.no_show_nota):''}${pend?` · cargo pendiente de cobro <b>${clp(pend)}</b> (conviene cobrarlo, pero no es obligatorio)`:''}</div>`:'';
@@ -1858,7 +1861,19 @@ async function guardarCambiosReservaDetalle(op={}){
  ]);
  if(directResult.error){msg('La reserva se guardó parcialmente, pero no se pudieron guardar la llegada/salida aproximadas, la boleta, el código externo o la regla de movimiento: '+errTxt(directResult.error),1);return false}
  if(guestResult.error){msg('No se pudieron guardar los datos del huésped: '+errTxt(guestResult.error),1);return false}
- const pe=await guardarFechasParking(r.id,dates,permitirSobrecupo);if(pe){msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);return false}
+ const originalesParking=Array.isArray(r._parkingDates)?[...new Set(r._parkingDates.map(d=>String(d).slice(0,10)))].sort():null;
+ const fechasActualesParking=[...new Set((usa?dates:[]).map(d=>String(d).slice(0,10)))].sort();
+ const parkingSinCambios=originalesParking!==null
+  &&Boolean(usa)===Boolean(r.usa_estacionamiento)
+  &&Number(r.noches_estacionamiento||0)===(usa?dates.length:0)
+  &&JSON.stringify(originalesParking)===JSON.stringify(fechasActualesParking);
+ // No reescribir ni releer tres veces estacionamiento cuando el usuario no lo modificó.
+ // Si no tenemos el snapshot original, mantenemos el camino de verificación completo.
+ if(!parkingSinCambios){
+  const pe=await guardarFechasParking(r.id,dates,permitirSobrecupo);
+  if(pe){msg('La reserva se guardó, pero no se pudieron actualizar las fechas de estacionamiento: '+pe.message,1);return false}
+  r._parkingDates=fechasActualesParking.slice();
+ }
  const pagoErr=await guardarPagoFormulario();if(pagoErr){msg('La reserva se guardó, pero no se pudo registrar el pago: '+errTxt(pagoErr),1);return false}
  const cargoErr=await guardarCargoFormulario();if(cargoErr){msg('La reserva se guardó, pero no se pudo registrar el cargo: '+errTxt(cargoErr),1);return false}
 
@@ -3100,7 +3115,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='1.10.4';
+const VERSION_ACTUAL='1.10.5';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
