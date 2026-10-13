@@ -315,7 +315,12 @@ function iniciarRealtime(recuperacion=false){
   .on('postgres_changes',{event:'*',schema:'public',table:'perfiles_permisos_edicion'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'pagos'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'cargos'},refrescarRT)
-  .on('postgres_changes',{event:'*',schema:'public',table:'estacionamiento_reserva_fechas'},refrescarRT);
+  .on('postgres_changes',{event:'*',schema:'public',table:'estacionamiento_reserva_fechas'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'huespedes'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'acompanantes'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'notas_huesped'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'pagos_motivos'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'garantia_fechas'},refrescarRT);
  RT.channel=canal;
  canal.subscribe(status=>{
   if(RT.channel!==canal)return;
@@ -422,9 +427,15 @@ async function actualizarRealtime(tabla){
   }
   // Pagos y cargos solo cambian saldos/garantías de la cuadrícula. No reconstruir
   // la ficha si hay cambios sin guardar en el formulario abierto.
-  if(solo('pagos','cargos')){
+  if(solo('pagos','pagos_motivos','cargos')){
    await refrescarSaldosGrid();
    if($('#hosp').style.display==='flex')await hosCargar();
+   if(detallePuedeActualizarseSinPerderEdicion())await abrirDr(S.cur.id);
+   return;
+  }
+  // Cambios de huéspedes, acompañantes y notas solo afectan la ficha abierta.
+  // No deben forzar una recarga del calendario completo.
+  if(solo('huespedes','acompanantes','notas_huesped')){
    if(detallePuedeActualizarseSinPerderEdicion())await abrirDr(S.cur.id);
    return;
   }
@@ -1827,8 +1838,21 @@ async function guardarCambiosReservaDetalle(op={}){
   ciudad_origen:payload.p_ciudad_origen
  };
  const noMoverValue=$('#rnm')?.checked??r.no_mover_unidad;
+ const igual=(a,b)=>String(a??'').trim()===String(b??'').trim();
+ const horaIgual=(a,b)=>String(a||'').slice(0,5)===String(b||'').slice(0,5);
+ const directChanged=
+  !horaIgual(camposDirectos.hora_llegada_aprox,r.hora_llegada_aprox)||
+  !horaIgual(camposDirectos.hora_salida_aprox,r.hora_salida_aprox)||
+  !igual(camposDirectos.numero_boleta,r.numero_boleta)||
+  !igual(camposDirectos.referencia_externa,r.referencia_externa);
+ const moverChanged=Boolean(noMoverValue)!==Boolean(r.no_mover_unidad);
+ const patchReserva={};
+ if(directChanged)Object.assign(patchReserva,camposDirectos);
+ if(moverChanged)patchReserva.no_mover_unidad=noMoverValue;
  const [directResult,guestResult]=await Promise.all([
-  sb.from('reservas').update({...camposDirectos,no_mover_unidad:noMoverValue}).eq('id',r.id),
+  Object.keys(patchReserva).length
+   ?sb.from('reservas').update(patchReserva).eq('id',r.id)
+   :Promise.resolve({error:null}),
   sb.from('huespedes').update(guestUpdate).eq('id',r.huesped_id)
  ]);
  if(directResult.error){msg('La reserva se guardó parcialmente, pero no se pudieron guardar la llegada/salida aproximadas, la boleta, el código externo o la regla de movimiento: '+errTxt(directResult.error),1);return false}
