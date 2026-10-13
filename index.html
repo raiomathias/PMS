@@ -328,6 +328,7 @@ function iniciarRealtime(recuperacion=false){
    const sincronizar=recuperacion||RT.hadDisconnect;
    RT.connected=true;
    RT.hadDisconnect=false;
+   RT.hiddenAt=0;
    RT.reconnectDelay=1000;
    RT.reconnectFailures=0;
    RT.warned=false;
