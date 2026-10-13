@@ -252,6 +252,7 @@ try{document.documentElement.dataset.theme=localStorage.t||(matchMedia('(prefers
 const emailDe=n=>n.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.')+'@pms.local';
 async function entrar(){const {error}=await sb.auth.signInWithPassword({email:emailDe($('#lu').value),password:$('#lp').value});if(error)return msg('Usuario o clave incorrectos',1);iniciar()}
 async function salir(){await sb.auth.signOut();location.reload()}
+const MUTATION_PROMISES = new Map();
 let RT={channel:null,timer:null,working:false,pending:false,pendingTable:'',mutating:0,ignoreUntil:0};
 
 function solicitarRealtime(tabla=''){
@@ -321,9 +322,9 @@ async function actualizarRealtime(tabla){
 
 function protegerMutacionesRealtime(){
  const nombres=[
-  'guardarNueva','guardarEditorReserva','marcarPagadaHistorica','guardarPermisosEdicion','guardarCambiosReservaDetalle','accion',
+  'guardarNueva','guardarEditorReserva','marcarPagadaHistorica','guardarPermisosBuzon','guardarPermisosEdicion','guardarCambiosReservaDetalle','accion',
   'guardarReclamo','hacerCheckOut','guardarR','guardarG','notaNueva','addAc','delAc','addCargo','addPago',
-  'cambiarLimp','marcarSucia','gd','nw','guardarRanking','gCfg','guardarPermisos','borrarU',
+  'cambiarLimp','marcarSucia','marcarLimpia','pedirLimp','gd','nw','guardarRanking','gCfg','guardarPermisos','crearU','borrarU',
   'addGarantia','omitirGarantia','reactivarGarantia','moverReserva','extenderReservaDesdeArrastre','gAplicar','gQuitarFecha','gDet',
   'guardarRankingFotos','subirFotos','delFoto','borrarReserva','bDelR','bDelH','bDelTodos'
  ];
@@ -331,12 +332,49 @@ function protegerMutacionesRealtime(){
   const fn=window[nombre];
   if(typeof fn!=='function'||fn.__pmsRtWrapped)continue;
   const env=function(...args){
+   // Una segunda llamada a la misma mutación reutiliza la operación en curso:
+   // evita que el doble clic dispare una segunda escritura en Supabase.
+   const existente=MUTATION_PROMISES.get(nombre);
+   if(existente){
+    msg('Esta operación ya está en curso. Espera a que termine.',1);
+    return existente;
+   }
+
+   // Desactivar inmediatamente el botón que inició la acción, si lo hay.
+   // El bloqueo en memoria sigue protegiendo aunque el navegador no enfoque el botón.
+   const boton=document.activeElement?.tagName==='BUTTON'?document.activeElement:null;
+   const botonDisabledAntes=boton?.disabled??false;
+   const botonBusyAntes=boton?.getAttribute('aria-busy')??null;
+   if(boton&&!botonDisabledAntes){
+    boton.disabled=true;
+    boton.setAttribute('aria-busy','true');
+   }
+
    RT.mutating++;
-   let out;
+   let out,finalizado=false;
+   const finalizar=()=>{
+    if(finalizado)return;
+    finalizado=true;
+    MUTATION_PROMISES.delete(nombre);
+    if(boton?.isConnected){
+     boton.disabled=botonDisabledAntes;
+     if(botonBusyAntes===null)boton.removeAttribute('aria-busy');
+     else boton.setAttribute('aria-busy',botonBusyAntes);
+    }
+    RT.mutating=Math.max(0,RT.mutating-1);
+    drenarRealtime();
+   };
+
    try{out=fn.apply(this,args)}
-   catch(e){RT.mutating--;drenarRealtime();throw e}
-   if(out&&typeof out.then==='function')return out.finally(()=>{RT.mutating--;drenarRealtime()});
-   RT.mutating--;drenarRealtime();return out;
+   catch(e){finalizar();throw e}
+
+   if(out&&typeof out.then==='function'){
+    const pendiente=Promise.resolve(out).finally(finalizar);
+    MUTATION_PROMISES.set(nombre,pendiente);
+    return pendiente;
+   }
+   finalizar();
+   return out;
   };
   env.__pmsRtWrapped=true;
   window[nombre]=env;
