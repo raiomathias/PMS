@@ -878,9 +878,9 @@ function esVistaMovil(){return !!(window.matchMedia&&window.matchMedia('(max-wid
 function actualizarModoMovil(){const m=esVistaMovil()&&!!S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza';document.body.classList.toggle('mobile-pms',m);const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr()}
 function mobileIrFecha(v){
  if(!v)return;
- if(esRecepcion()&&v<hoyStr()){
+ if(esRecepcion()&&v<S.ini){
   const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr();
-  return msg('Recepción solo puede desplazarse hacia fechas de hoy y futuras.',1);
+  return msg('Recepción no puede desplazarse antes del rango inicial cargado.',1);
  }
  const hf=$('#hf');if(hf)hf.value=v;
  S.vista=v;S.sel=null;
