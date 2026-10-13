@@ -211,7 +211,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAud()">🕵 Auditoría</button><button onclick="cerrarMenus();abrirCanc()">🚫 Cancelaciones</button><button onclick="cerrarMenus();abrirAdmin()">⚙ Administración</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.5</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v1.10.6</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div>
 <script>
@@ -221,6 +221,29 @@ const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI
 const sb=supabase.createClient(SB_URL,SB_KEY),$=s=>document.querySelector(s),W=56;
 let ND=90;
 const CAL_BATCH=30;
+// Caché SOLO en memoria para catálogos no sensibles; nunca persiste entre sesiones.
+const CACHE_MEM=new Map();
+async function cacheMemoria(clave,ttl,cargarFn){
+ const actual=CACHE_MEM.get(clave);
+ if(actual&&Object.prototype.hasOwnProperty.call(actual,'valor')&&actual.expira>Date.now())return actual.valor;
+ if(actual?.promesa)return actual.promesa;
+ let promesa;
+ promesa=Promise.resolve().then(cargarFn).then(valor=>{
+  if(CACHE_MEM.get(clave)?.promesa===promesa){
+   if(valor?.error)CACHE_MEM.delete(clave);
+   else CACHE_MEM.set(clave,{valor,expira:Date.now()+ttl});
+  }
+  return valor;
+ }).catch(error=>{
+  if(CACHE_MEM.get(clave)?.promesa===promesa)CACHE_MEM.delete(clave);
+  throw error;
+ });
+ CACHE_MEM.set(clave,{promesa});
+ return promesa;
+}
+function invalidarCacheCatalogos(){
+ for(const clave of CACHE_MEM.keys())if(clave.startsWith('pms:catalogos:'))CACHE_MEM.delete(clave);
+}
 const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,vista:null,cur:null,g:null,gar:{},edificios:[],edificiosPermitidos:[],permisosEdificios:new Set(),permisosEdicion:new Set()};
 const ED_ROLES_TODOS=['administracion','gerencia','sysadmin','system_admin','systemadmin'];
 const MOV=['tentativa','confirmada','en_casa'];let DRG=null,DRGsup=false,PT=null;
@@ -251,7 +274,7 @@ try{document.documentElement.dataset.theme=localStorage.t||(matchMedia('(prefers
 // ---------- Sesión ----------
 const emailDe=n=>n.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.')+'@pms.local';
 async function entrar(){const {error}=await sb.auth.signInWithPassword({email:emailDe($('#lu').value),password:$('#lp').value});if(error)return msg('Usuario o clave incorrectos',1);iniciar()}
-async function salir(){await sb.auth.signOut();location.reload()}
+async function salir(){await sb.auth.signOut();CACHE_MEM.clear();location.reload()}
 let RT={channel:null,timer:null,working:false,pending:false,pendingTable:'',mutating:0,ignoreUntil:0,connected:false,reconnectTimer:null,reconnectDelay:1000,reconnectFailures:0,hadDisconnect:false,warned:false,hiddenAt:0};
 
 function acumularTablasRealtime(tabla){
@@ -304,13 +327,14 @@ function iniciarRealtime(recuperacion=false){
  RT.channel=null;
  RT.connected=false;
  if(anterior)sb.removeChannel(anterior);
- const refrescarRT=payload=>solicitarRealtime(payload?.table||'');
+ const refrescarRT=payload=>{const tabla=payload?.table||'';if(['unidades','edificios','tipos_unidad'].includes(tabla))invalidarCacheCatalogos();solicitarRealtime(tabla)};
  const canal=sb.channel('pms-realtime')
   // Suscripciones explícitas: Realtime se consolida por tabla durante 350 ms.
   .on('postgres_changes',{event:'*',schema:'public',table:'limpieza'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'reservas'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'unidades'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'edificios'},refrescarRT)
+  .on('postgres_changes',{event:'*',schema:'public',table:'tipos_unidad'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'perfiles_edificios'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'perfiles_permisos_edicion'},refrescarRT)
   .on('postgres_changes',{event:'*',schema:'public',table:'pagos'},refrescarRT)
@@ -650,18 +674,21 @@ async function iniciar(){
  const {data:{session}}=await sb.auth.getSession();
  if(!session){$('#login').style.display='grid';$('#app').style.display='none';return}
  const {data:p}=await sb.from('perfiles').select('id,nombre_completo,rol,activo').eq('id',session.user.id).maybeSingle();
- if(!p||!p.activo){await sb.auth.signOut();$('#login').style.display='grid';return msg('Usuario sin perfil activo',1)}
+ if(!p||!p.activo){await sb.auth.signOut();CACHE_MEM.clear();$('#login').style.display='grid';return msg('Usuario sin perfil activo',1)}
+ CACHE_MEM.clear();
  S.perfil=p;S.vista=hoyStr();S.recepMin=addD(S.vista,-30);S.ini=addD(S.vista,-30);ND=90;
  $('#hf').min=esRecepcion()?S.recepMin:'';
  $('#btnMoverAtras').style.display=esRecepcion()?'none':'';
- const pe=await cargarPermisosEdificios();if(!pe)return;
- await cargarPermisosEdicion();
+ // Permisos y configuración no dependen entre sí; ejecutarlos en paralelo reduce cascadas de red.
+ const configPromise=p.rol==='limpieza'?Promise.resolve(null):cacheMemoria('pms:configuracion:'+p.id,30000,()=>sb.from('configuracion').select('clave,valor'));
+ const [pe,pei,configResult]=await Promise.all([cargarPermisosEdificios(),cargarPermisosEdicion(),configPromise]);
+ if(!pe||!pei)return;
  $('#login').style.display='none';$('#app').style.display='block';
  $('#hu').textContent='PMS · '+p.nombre_completo+' ('+p.rol+')';
  $('#madm').style.display=esGerenciaPlus(p.rol)?'inline-flex':'none';
  iniciarRealtime();
  if(p.rol==='limpieza')return vistaLimpieza();
- const {data:c}=await sb.from('configuracion').select('clave,valor');S.cfg=Object.fromEntries((c||[]).map(x=>[x.clave,x.valor]));
+ S.cfg=Object.fromEntries((configResult?.data||[]).map(x=>[x.clave,x.valor]));
  await cargar({scrollAnchor:esRecepcion()?0:30*W});
  iniciarBuzon();
 
@@ -700,15 +727,17 @@ async function restablecerClave(){
 }
 // ---------- Permisos de vista por edificio ----------
 async function cargarPermisosEdificios(){
- const {data:ed,error:ee}=await sb.from('edificios').select('id,nombre,orden,activo').eq('activo',true).order('orden');
- if(ee){msg('No se pudieron cargar los edificios: '+ee.message,1);return false}
- S.edificios=ed||[];
- if(rolVeTodosEdificios()){
-  S.permisosEdificios=new Set(S.edificios.map(x=>x.id));
- }else{
-  const {data:pe,error:ep}=await sb.from('perfiles_edificios').select('edificio_id').eq('perfil_id',S.perfil.id);
-  if(ep){msg('Falta crear la tabla de permisos de edificios: '+ep.message,1);return false}
-  S.permisosEdificios=new Set((pe||[]).map(x=>x.edificio_id));
+ // Edificios y asignaciones del perfil son independientes: consultarlos en paralelo.
+ const [edRes,peRes]=await Promise.all([
+  sb.from('edificios').select('id,nombre,orden,activo').eq('activo',true).order('orden'),
+  rolVeTodosEdificios()?Promise.resolve({data:[],error:null}):sb.from('perfiles_edificios').select('edificio_id').eq('perfil_id',S.perfil.id)
+ ]);
+ if(edRes.error){msg('No se pudieron cargar los edificios: '+edRes.error.message,1);return false}
+ S.edificios=edRes.data||[];
+ if(rolVeTodosEdificios())S.permisosEdificios=new Set(S.edificios.map(x=>x.id));
+ else{
+  if(peRes.error){msg('Falta crear la tabla de permisos de edificios: '+peRes.error.message,1);return false}
+  S.permisosEdificios=new Set((peRes.data||[]).map(x=>x.edificio_id));
  }
  S.edificiosPermitidos=S.edificios.filter(x=>puedeVerEdificio(x.id));
  return true;
@@ -746,14 +775,17 @@ async function cargar(op={}){
   if(Number.isFinite(live0))$('#gw').scrollLeft=live0;
   return;
  }
- const {data:ud,error:ue}=await sb.from('unidades').select('id,codigo,orden,edificio_id,tipo_unidad_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true).in('edificio_id',edIds);
+ // El historial de limpieza no necesita esperar a conocer las unidades; se solapa con la carga del catálogo.
+ const limpiezaHistorialPromise=sb.rpc('limpieza_grilla',{p_desde:addD(hoyStr(),-2)});
+ const cacheUnidadesKey='pms:catalogos:unidades:'+S.perfil.id+':'+edIds.slice().sort().join(',');
+ const {data:ud,error:ue}=await cacheMemoria(cacheUnidadesKey,30000,()=>sb.from('unidades').select('id,codigo,orden,edificio_id,tipo_unidad_id,edificios(nombre,orden,requiere_documento),tipos_unidad(nombre,tarifa_base)').eq('activo',true).in('edificio_id',edIds));
  if(ue)return msg(ue.message,1);
  S.unidades=(ud||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||(a.orden-b.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
  const uids=S.unidades.map(x=>x.id);
  const [r,l,lh]=await Promise.all([
   uids.length?sb.from('reservas').select('*,huespedes(uid_huesped)').in('unidad_id',uids).lt('fecha_entrada',fin).gt('fecha_salida',S.ini).not('estado','in','(cancelada,no_show)'):Promise.resolve({data:[],error:null}),
   uids.length?sb.from('estado_limpieza_actual').select('*').in('unidad_id',uids):Promise.resolve({data:[],error:null}),
-  sb.rpc('limpieza_grilla',{p_desde:addD(hoyStr(),-2)})
+  limpiezaHistorialPromise
  ]);
  if(r.error||l.error)return msg((r.error||l.error).message,1);
  const rids=(r.data||[]).map(x=>x.id);
@@ -1340,9 +1372,12 @@ const refrescar=async()=>{
  }
 };
 async function cargarCatalogoEdicion(){
- const [e,t,u]=await Promise.all([sb.from('edificios').select('id,nombre,orden').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre'),sb.from('unidades').select('id,codigo,edificio_id,tipo_unidad_id').eq('activo',true).order('codigo')]);
- if(e.error||t.error||u.error)throw(e.error||t.error||u.error);
- return {e:e.data||[],t:t.data||[],u:u.data||[]};
+ const clave='pms:catalogos:edicion:'+S.perfil.id;
+ return cacheMemoria(clave,30000,async()=>{
+  const [e,t,u]=await Promise.all([sb.from('edificios').select('id,nombre,orden').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre'),sb.from('unidades').select('id,codigo,edificio_id,tipo_unidad_id').eq('activo',true).order('codigo')]);
+  if(e.error||t.error||u.error)throw(e.error||t.error||u.error);
+  return {e:e.data||[],t:t.data||[],u:u.data||[]};
+ });
 }
 async function abrirEditorReserva(){
  const r=S.cur;if(!r)return;
@@ -3115,7 +3150,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='1.10.5';
+const VERSION_ACTUAL='1.10.6';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
