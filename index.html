@@ -886,7 +886,7 @@ function mobileIrFecha(v){
  S.vista=v;S.sel=null;
  const rangoFin=addD(S.ini,ND);
  if(v<S.ini||v>=rangoFin){
-  S.ini=addD(v,-15);ND=31;MOBILE_DAY_SCROLL=0;MOBILE_PRESERVE_NEXT=true;
+  S.ini=addD(v,-15);ND=31;MOBILE_DAY_SCROLL=12*79;MOBILE_PRESERVE_NEXT=true;
   cargar();
  }else if(addD(v,7)>rangoFin){
   while(addD(v,7)>addD(S.ini,ND))ND+=MOBILE_CAL_BATCH;
