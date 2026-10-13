@@ -131,6 +131,37 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.buzon_listar() TO authenticated;
 
+-- Añadir el método contable "airbnb" al enum real de pagos sin
+-- asumir su nombre. Se ejecuta antes de crear el RPC y la etiqueta se
+-- utiliza únicamente después del COMMIT de esta migración.
+DO $
+DECLARE
+  v_metodo_type regtype;
+  v_es_enum boolean;
+BEGIN
+  SELECT a.atttypid::regtype INTO v_metodo_type
+  FROM pg_attribute a
+  WHERE a.attrelid = 'public.pagos'::regclass
+    AND a.attname = 'metodo'
+    AND NOT a.attisdropped;
+
+  SELECT t.typtype = 'e' INTO v_es_enum
+  FROM pg_type t
+  WHERE t.oid = v_metodo_type::oid;
+
+  IF v_metodo_type IS NULL OR NOT COALESCE(v_es_enum,false) THEN
+    RAISE EXCEPTION 'La columna public.pagos.metodo no utiliza un tipo enum; revisar el esquema antes de migrar';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum
+    WHERE enumtypid = v_metodo_type::oid AND enumlabel = 'airbnb'
+  ) THEN
+    EXECUTE format('ALTER TYPE %s ADD VALUE %L',v_metodo_type,'airbnb');
+  END IF;
+END;
+$;
+
 -- Pago Airbnb idempotente posterior a la creación y al guardado del
 -- estacionamiento. Así, si fallan las fechas de estacionamiento, la
 -- reserva puede revertirse sin que un pago recién creado bloquee el DELETE.
@@ -225,7 +256,7 @@ BEGIN
     v_metodo_type
   )
   USING
-    r.id, 'webpay', 'CLP', v_total_estadia, 'estadia',
+    r.id, 'airbnb', 'CLP', v_total_estadia, 'estadia',
     v_transaccion, 'Pago procesado por Airbnb', auth.uid()
   INTO v_pago_id;
 
