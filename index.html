@@ -212,7 +212,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 /* PMS v2.0: interfaz móvil dedicada */
 #mobileHeaderTools,#mobileBottomNav,#mobileMenuSheet{display:none}
 .mobile-range{padding:12px 10px 7px}.mobile-range-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:9px}.mobile-range-head strong{font-size:15px}.mobile-range-head span{font-size:11px;color:var(--mu);text-align:right}
-.mobile-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.mobile-day{min-width:0;padding:7px 2px;border:1px solid var(--bd);border-radius:10px;background:var(--pn);text-align:center;line-height:1.2}.mobile-day small{display:block;font-size:10px;color:var(--mu);text-transform:capitalize}.mobile-day b{display:block;font-size:15px;margin:3px 0}.mobile-day.active{background:var(--ac);border-color:var(--ac);color:#fff}.mobile-day.active small{color:#fff}
+.mobile-filter-row{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:8px;margin:10px 0 12px}.mobile-filter-row label{font-size:12px;font-weight:750;color:var(--mu)}.mobile-filter-row select{width:100%;min-width:0;padding:9px 10px}.mobile-days{display:flex;gap:7px;overflow-x:auto;overflow-y:hidden;padding:2px 1px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin}.mobile-day{flex:0 0 72px;min-width:0;padding:7px 4px;border:1px solid var(--bd);border-radius:10px;background:var(--pn);text-align:center;line-height:1.2;scroll-snap-align:start}.mobile-day small{display:block;font-size:10px;color:var(--mu);text-transform:capitalize}.mobile-day b{display:block;font-size:15px;margin:3px 0}.mobile-day-count{display:block;font-size:9px;line-height:1.3;color:var(--mu);white-space:normal}.mobile-day.active{background:var(--ac);border-color:var(--ac);color:#fff}.mobile-day.active small,.mobile-day.active .mobile-day-count{color:#fff}.mobile-availability-title{padding:0 10px 5px;font-size:11px;font-weight:750;color:var(--mu)}.mobile-availability{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:8px 10px 10px;border-bottom:1px solid var(--bd);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}.mobile-av-day{flex:0 0 58px;min-width:0;padding:7px 4px;border:1px solid var(--bd);border-radius:9px;text-align:center;background:var(--bg);scroll-snap-align:start}.mobile-av-day small{display:block;font-size:9px;color:var(--mu);text-transform:capitalize}.mobile-av-day b{display:block;font-size:13px;margin:3px 0}.mobile-av-state{display:block;font-size:9px;font-weight:750;line-height:1.2;overflow-wrap:anywhere}.mobile-av-day.libre{border-color:#86efac;background:#f0fdf4;color:#166534}.mobile-av-day.ocupada{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}.mobile-av-day.bloqueada{border-color:#d1d5db;background:#f3f4f6;color:#374151}
 .mobile-unit-list{display:grid;grid-template-columns:1fr;gap:10px;padding:7px 10px 20px}.mobile-unit-card{min-width:0;border:1px solid var(--bd);border-radius:14px;background:var(--pn);overflow:hidden;box-shadow:0 2px 6px #0000000a}.mobile-unit-head{display:flex;align-items:center;gap:9px;padding:12px;border-bottom:1px solid var(--bd)}.mobile-unit-main{min-width:0;flex:1}.mobile-unit-name{font-size:16px;font-weight:800;line-height:1.2;overflow-wrap:anywhere}.mobile-unit-sub{font-size:12px;color:var(--mu);margin-top:3px}
 .mobile-clean-state{display:inline-flex;align-items:center;gap:4px;max-width:48%;font-size:10px;font-weight:750;padding:6px 7px;border:0;border-radius:99px;white-space:normal}.mobile-clean-state.sucia{background:#fee2e2;color:#991b1b}.mobile-clean-state.en_proceso{background:#dbeafe;color:#1d4ed8}.mobile-clean-state.limpia{background:#dcfce7;color:#166534}.mobile-clean-state.defectuosa{background:#fef3c7;color:#92400e}
 .mobile-unit-actions{display:flex;gap:6px;padding:9px 10px;background:var(--bg);border-bottom:1px solid var(--bd)}.mobile-unit-actions button{flex:1;min-width:0;font-size:12px;padding:8px 4px}.mobile-res-list{display:grid;gap:7px;padding:10px}
@@ -276,7 +276,7 @@ async function cacheMemoria(clave,ttl,cargarFn){
 function invalidarCacheCatalogos(){
  for(const clave of CACHE_MEM.keys())if(clave.startsWith('pms:catalogos:'))CACHE_MEM.delete(clave);
 }
-const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,vista:null,cur:null,g:null,gar:{},edificios:[],edificiosPermitidos:[],permisosEdificios:new Set(),permisosEdicion:new Set()};
+const S={perfil:null,unidades:[],res:[],lim:{},cfg:{},ini:null,vista:null,cur:null,g:null,gar:{},edificios:[],edificiosPermitidos:[],permisosEdificios:new Set(),permisosEdicion:new Set(),mobileEdificioFiltro:''};
 const ED_ROLES_TODOS=['administracion','gerencia','sysadmin','system_admin','systemadmin'];
 const MOV=['tentativa','confirmada','en_casa'];let DRG=null,DRGsup=false,PT=null;
 const LIM={sucia:['🧹','S','#dc2626','Sucia'],en_proceso:['🔄','P','#2563eb','En proceso'],limpia:['✅','L','#16a34a','Limpia'],defectuosa:['⚠️','D','#eab308','Defectuosa']};
@@ -899,19 +899,47 @@ function mobileMenuAction(action){
  const actions={nueva:()=>abrirNueva(),disponibilidad:()=>abrirRevisarDisponibilidad(),buscar:()=>abrirBuscar(),catalogo:()=>abrirCatalogo(),estacionamiento:()=>abrirEst(),hospedados:()=>abrirHospedados(),auditoria:()=>abrirAud(),cancelaciones:()=>abrirCanc(),administracion:()=>abrirAdmin(),reclamos:()=>abrirReclamos(),estadisticas:()=>abrirEstadisticas(),perfil:()=>abrirMiPerfil(),clave:()=>abrirCambiarClave(),tema:()=>tema(),salir:()=>salir()};
  if(actions[action])actions[action]()
 }
+function mobileCambiarEdificio(id){
+ S.mobileEdificioFiltro=id||'';
+ dibujarMovil();
+}
+function mobileEstadoDisponibilidad(unidad,fecha){
+ const coincidencias=S.res.filter(r=>r.unidad_id===unidad.id&&r.fecha_entrada<=fecha&&r.fecha_salida>fecha);
+ if(coincidencias.some(r=>r.estado==='bloqueado'))return 'bloqueada';
+ if(coincidencias.length)return 'ocupada';
+ return 'libre';
+}
 function dibujarMovil(){
  const inicio=S.vista||hoyStr(),fin=addD(inicio,7),dt0=new Date(inicio+'T00:00:00Z');
  const rango=dt0.toLocaleDateString('es-CL',{day:'2-digit',month:'short',timeZone:'UTC'})+' – '+new Date(addD(inicio,6)+'T00:00:00Z').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
- let h='<section class="mobile-range"><div class="mobile-range-head"><strong>Grid de unidades</strong><span>'+rango+'</span></div><div class="mobile-days">';
- for(let i=0;i<7;i++){const d=addD(inicio,i),dt=new Date(d+'T00:00:00Z'),dow=dt.toLocaleDateString('es-CL',{weekday:'short',timeZone:'UTC'}).replace('.',''),mes=dt.toLocaleDateString('es-CL',{month:'short',timeZone:'UTC'}).replace('.','');h+='<button type="button" class="mobile-day '+(i===0?'active':'')+'" onclick="mobileIrFecha(\''+d+'\')" aria-label="Ver desde '+d+'"><small>'+dow+'</small><b>'+dt.getUTCDate()+'</b><small>'+mes+'</small></button>'}
+ const edificios=(S.edificiosPermitidos||[]).filter(e=>S.unidades.some(u=>u.edificio_id===e.id)).slice().sort((a,b)=>(a.orden||0)-(b.orden||0)||a.nombre.localeCompare(b.nombre,'es'));
+ if(S.mobileEdificioFiltro&&!edificios.some(e=>e.id===S.mobileEdificioFiltro))S.mobileEdificioFiltro='';
+ const unidadesTodas=S.unidades.slice().sort((a,b)=>((a.edificios?.orden||0)-(b.edificios?.orden||0))||((a.orden||0)-(b.orden||0))||String(a.codigo||'').localeCompare(String(b.codigo||''),'es',{numeric:true}));
+ const unidades=S.mobileEdificioFiltro?unidadesTodas.filter(u=>u.edificio_id===S.mobileEdificioFiltro):unidadesTodas;
+ const diaDatos=[];
+ for(let i=0;i<7;i++){
+  const fecha=addD(inicio,i),dt=new Date(fecha+'T00:00:00Z');
+  let libres=0,noLibres=0;
+  for(const u of unidades){if(mobileEstadoDisponibilidad(u,fecha)==='libre')libres++;else noLibres++}
+  diaDatos.push({fecha,dt,libres,noLibres});
+ }
+ let h='<section class="mobile-range"><div class="mobile-range-head"><strong>Disponibilidad por día y unidad</strong><span>'+rango+'</span></div><div class="mobile-filter-row"><label for="mobileBuildingFilter">Edificio</label><select id="mobileBuildingFilter" onchange="mobileCambiarEdificio(this.value)"><option value="">Todos los edificios</option>'+edificios.map(e=>'<option value="'+esc(e.id)+'"'+(e.id===S.mobileEdificioFiltro?' selected':'')+'>'+esc(e.nombre)+'</option>').join('')+'</select></div><div class="mobile-days" aria-label="Selector horizontal de días">';
+ for(const x of diaDatos){
+  const dow=x.dt.toLocaleDateString('es-CL',{weekday:'short',timeZone:'UTC'}).replace('.',''),mes=x.dt.toLocaleDateString('es-CL',{month:'short',timeZone:'UTC'}).replace('.','');
+  h+='<button type="button" class="mobile-day '+(x.fecha===inicio?'active':'')+'" onclick="mobileIrFecha(\''+x.fecha+'\')" aria-label="Ver desde '+x.fecha+'"><small>'+dow+'</small><b>'+x.dt.getUTCDate()+' '+mes+'</b><span class="mobile-day-count">'+x.libres+' libres · '+x.noLibres+' no libres</span></button>';
+ }
  h+='</div></section><section class="mobile-unit-list">';
- if(!S.unidades.length)h+='<div class="mobile-no-units">No hay unidades disponibles para tu perfil.</div>';
- const unidades=S.unidades.slice().sort((a,b)=>(a.edificios.orden-b.edificios.orden)||(a.orden-b.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
+ if(!unidades.length)h+='<div class="mobile-no-units">'+(S.mobileEdificioFiltro?'No hay unidades activas en este edificio para tu perfil.':'No hay unidades disponibles para tu perfil.')+'</div>';
  for(const u of unidades){
   const l=S.lim[u.id],lm=l&&LIM[l.estado],cleanClass=l?.estado||'sucia',cleanLabel=lm?lm[0]+' '+lm[3]:'Sin estado';
   const rr=S.res.filter(r=>r.unidad_id===u.id&&r.fecha_entrada<fin&&r.fecha_salida>inicio).sort((a,b)=>a.fecha_entrada.localeCompare(b.fecha_entrada));
   h+='<article class="mobile-unit-card"><div class="mobile-unit-head"><div class="mobile-unit-main"><div class="mobile-unit-name">'+esc(u.codigo)+' · '+esc(u.edificios?.nombre||'')+'</div><div class="mobile-unit-sub">'+esc(u.tipos_unidad?.nombre||'Sin categoría')+'</div></div><button type="button" class="mobile-clean-state '+cleanClass+'" onclick="abrirLimp(\''+u.id+'\')" title="Ver estado de limpieza">'+cleanLabel+'</button></div>';
-  h+='<div class="mobile-unit-actions"><button type="button" class="p" onclick="abrirNueva({unidad:\''+u.id+'\',entrada:\''+inicio+'\',salida:\''+addD(inicio,1)+'\'})">＋ Reserva</button><button type="button" onclick="abrirNueva({unidad:\''+u.id+'\',entrada:\''+inicio+'\',salida:\''+addD(inicio,1)+'\',bloqueo:1})">🔒 Bloqueo</button></div><div class="mobile-res-list">';
+  h+='<div class="mobile-unit-actions"><button type="button" class="p" onclick="abrirNueva({unidad:\''+u.id+'\',entrada:\''+inicio+'\',salida:\''+addD(inicio,1)+'\'})">＋ Reserva</button><button type="button" onclick="abrirNueva({unidad:\''+u.id+'\',entrada:\''+inicio+'\',salida:\''+addD(inicio,1)+'\',bloqueo:1})">🔒 Bloqueo</button></div><div class="mobile-availability-title">Disponibilidad de esta unidad</div><div class="mobile-availability">';
+  for(const x of diaDatos){
+   const estado=mobileEstadoDisponibilidad(u,x.fecha),texto=estado==='libre'?'Libre':estado==='bloqueada'?'Bloqueada':'Ocupada',dow=x.dt.toLocaleDateString('es-CL',{weekday:'short',timeZone:'UTC'}).replace('.','');
+   h+='<div class="mobile-av-day '+estado+'" title="'+x.fecha+': '+texto+'"><small>'+dow+'</small><b>'+x.dt.getUTCDate()+'</b><span class="mobile-av-state">'+texto+'</span></div>';
+  }
+  h+='</div><div class="mobile-res-list">';
   if(!rr.length)h+='<div class="mobile-empty">Sin reservas en este período</div>';
   for(const r of rr){
    const bloqueo=r.estado==='bloqueado',saldo=S.saldo?.[r.id]||{total:0,pagado:0},debe=Math.max(0,(+saldo.total||0)-(+saldo.pagado||0)),nombre=bloqueo?(r.observaciones||'Bloqueo'):(r.huesped_nombre_copia||'Huésped'),estado=String(r.estado||'').replace(/_/g,' '),f1=new Date(r.fecha_entrada+'T00:00:00Z').toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',timeZone:'UTC'}),f2=new Date(r.fecha_salida+'T00:00:00Z').toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',timeZone:'UTC'});
