@@ -253,6 +253,8 @@ const SB_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co', SB_KEY='eyJhbGciOiJIUzI
 const sb=supabase.createClient(SB_URL,SB_KEY),$=s=>document.querySelector(s),W=56;
 let ND=90;
 const CAL_BATCH=30;
+const MOBILE_CAL_BATCH=15;
+let MOBILE_DAY_SCROLL=null,MOBILE_EDGE_LOADING=false,MOBILE_EDGE_TIMER=0,MOBILE_PRESERVE_NEXT=false;
 // Caché SOLO en memoria para catálogos no sensibles; nunca persiste entre sesiones.
 const CACHE_MEM=new Map();
 async function cacheMemoria(clave,ttl,cargarFn){
@@ -732,7 +734,7 @@ async function iniciar(){
  const {data:p}=await sb.from('perfiles').select('id,nombre_completo,rol,activo').eq('id',session.user.id).maybeSingle();
  if(!p||!p.activo){await sb.auth.signOut();CACHE_MEM.clear();$('#login').style.display='grid';return msg('Usuario sin perfil activo',1)}
  CACHE_MEM.clear();
- S.perfil=p;S.vista=hoyStr();S.recepMin=addD(S.vista,-30);S.ini=addD(S.vista,-30);ND=90;actualizarModoMovil();
+ S.perfil=p;S.vista=hoyStr();S.recepMin=addD(S.vista,-30);S.ini=addD(S.vista,esVistaMovil()?-15:-30);ND=esVistaMovil()?31:90;MOBILE_DAY_SCROLL=null;MOBILE_EDGE_LOADING=false;MOBILE_PRESERVE_NEXT=true;actualizarModoMovil();
  $('#hf').min=esRecepcion()?S.recepMin:'';
  $('#btnMoverAtras').style.display=esRecepcion()?'none':'';
  // Permisos y configuración no dependen entre sí; ejecutarlos en paralelo reduce cascadas de red.
@@ -809,6 +811,10 @@ async function cargarPermisosEdicion(){
 
 // ---------- Planificador ----------
 function mover(n){
+ if(esVistaMovil()&&S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza'){
+  const destino=n===0?hoyStr():addD(S.vista||hoyStr(),n);
+  return mobileIrFecha(destino);
+ }
  const hoy=hoyStr();
  if(esRecepcion()){
   const base=S.recepMin||addD(hoy,-30);
@@ -872,11 +878,21 @@ function esVistaMovil(){return !!(window.matchMedia&&window.matchMedia('(max-wid
 function actualizarModoMovil(){const m=esVistaMovil()&&!!S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza';document.body.classList.toggle('mobile-pms',m);const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr()}
 function mobileIrFecha(v){
  if(!v)return;
+ if(esRecepcion()&&v<hoyStr()){
+  const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr();
+  return msg('Recepción solo puede desplazarse hacia fechas de hoy y futuras.',1);
+ }
  const hf=$('#hf');if(hf)hf.value=v;
- const fin=addD(S.ini,ND-7);
- if(v>=S.ini&&v<=fin){if(esRecepcion()&&v<hoyStr()){const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr();return msg('Recepción solo puede desplazarse hacia fechas de hoy y futuras.',1)}S.vista=v;S.sel=null;dibujar()}
- else cambiarFechaGrid(v);
- const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr()
+ S.vista=v;S.sel=null;
+ const rangoFin=addD(S.ini,ND);
+ if(v<S.ini||v>=rangoFin){
+  S.ini=addD(v,-15);ND=31;MOBILE_DAY_SCROLL=0;MOBILE_PRESERVE_NEXT=true;
+  cargar();
+ }else if(addD(v,7)>rangoFin){
+  while(addD(v,7)>addD(S.ini,ND))ND+=MOBILE_CAL_BATCH;
+  cargar();
+ }else dibujar();
+ const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr();
 }
 function mobileIrInicio(){window.scrollTo({top:0,behavior:'smooth'});const g=$('#gw');if(g)g.scrollTop=0}
 function mobileNuevaReserva(){cerrarMenus();toggleMobileMenu(false);abrirNueva()}
@@ -911,14 +927,17 @@ function mobileEstadoDisponibilidad(unidad,fecha){
 }
 function dibujarMovil(){
  const inicio=S.vista||hoyStr(),fin=addD(inicio,7),dt0=new Date(inicio+'T00:00:00Z');
+ const scrollAnterior=$('#gw')?.querySelector('.mobile-days')?.scrollLeft;
+ if(Number.isFinite(scrollAnterior)&&!MOBILE_PRESERVE_NEXT)MOBILE_DAY_SCROLL=scrollAnterior;
+ if(MOBILE_PRESERVE_NEXT)MOBILE_PRESERVE_NEXT=false;
  const rango=dt0.toLocaleDateString('es-CL',{day:'2-digit',month:'short',timeZone:'UTC'})+' – '+new Date(addD(inicio,6)+'T00:00:00Z').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
  const edificios=(S.edificiosPermitidos||[]).filter(e=>S.unidades.some(u=>u.edificio_id===e.id)).slice().sort((a,b)=>(a.orden||0)-(b.orden||0)||a.nombre.localeCompare(b.nombre,'es'));
  if(S.mobileEdificioFiltro&&!edificios.some(e=>e.id===S.mobileEdificioFiltro))S.mobileEdificioFiltro='';
  const unidadesTodas=S.unidades.slice().sort((a,b)=>((a.edificios?.orden||0)-(b.edificios?.orden||0))||((a.orden||0)-(b.orden||0))||String(a.codigo||'').localeCompare(String(b.codigo||''),'es',{numeric:true}));
  const unidades=S.mobileEdificioFiltro?unidadesTodas.filter(u=>u.edificio_id===S.mobileEdificioFiltro):unidadesTodas;
  const diaDatos=[];
- for(let i=0;i<7;i++){
-  const fecha=addD(inicio,i),dt=new Date(fecha+'T00:00:00Z');
+ for(let i=0;i<ND;i++){
+  const fecha=addD(S.ini,i),dt=new Date(fecha+'T00:00:00Z');
   let libres=0,noLibres=0;
   for(const u of unidades){if(mobileEstadoDisponibilidad(u,fecha)==='libre')libres++;else noLibres++}
   diaDatos.push({fecha,dt,libres,noLibres});
@@ -947,9 +966,35 @@ function dibujarMovil(){
   }
   h+='</div></article>'
  }
- h+='</section>';const g=$('#gw');if(g)g.innerHTML=h;const d=$('#mobileDate');if(d)d.value=inicio
+ h+='</section>';const g=$('#gw');if(g)g.innerHTML=h;const d=$('#mobileDate');if(d)d.value=inicio;
+ const strip=g?.querySelector('.mobile-days');
+ if(strip){
+  if(MOBILE_DAY_SCROLL===null||!Number.isFinite(MOBILE_DAY_SCROLL))MOBILE_DAY_SCROLL=Math.max(0,(diff(S.ini,inicio)-3)*79);
+  strip.scrollLeft=MOBILE_DAY_SCROLL;
+  strip.addEventListener('scroll',()=>{
+   MOBILE_DAY_SCROLL=strip.scrollLeft;
+   clearTimeout(MOBILE_EDGE_TIMER);
+   MOBILE_EDGE_TIMER=setTimeout(()=>{
+    if(MOBILE_EDGE_LOADING||!strip.isConnected)return;
+    const max=Math.max(0,strip.scrollWidth-strip.clientWidth);
+    if(strip.scrollLeft<80)mobileAmpliarVentana(-1);
+    else if(max-strip.scrollLeft<160)mobileAmpliarVentana(1);
+   },100);
+  },{passive:true});
+ }
 }
-window.addEventListener('resize',()=>{clearTimeout(window.__pmsMobileResizeTimer);window.__pmsMobileResizeTimer=setTimeout(()=>{actualizarModoMovil();if(S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza')dibujar()},120)},{passive:true});
+async function mobileAmpliarVentana(dir){
+ if(MOBILE_EDGE_LOADING||!esVistaMovil()||!S.perfil||rolNormalizado(S.perfil.rol)==='limpieza')return;
+ if(dir<0&&esRecepcion())return;
+ const strip=$('#gw')?.querySelector('.mobile-days');if(!strip)return;
+ MOBILE_EDGE_LOADING=true;
+ const oldScroll=strip.scrollLeft;
+ if(dir<0){S.ini=addD(S.ini,-MOBILE_CAL_BATCH);ND+=MOBILE_CAL_BATCH;MOBILE_DAY_SCROLL=oldScroll+MOBILE_CAL_BATCH*79}
+ else {ND+=MOBILE_CAL_BATCH;MOBILE_DAY_SCROLL=oldScroll}
+ MOBILE_PRESERVE_NEXT=true;
+ try{await cargar()}finally{MOBILE_EDGE_LOADING=false}
+}
+window.addEventListener('resize',()=>{clearTimeout(window.__pmsMobileResizeTimer);window.__pmsMobileResizeTimer=setTimeout(()=>{const estabaMovil=document.body.classList.contains('mobile-pms');actualizarModoMovil();const ahoraMovil=document.body.classList.contains('mobile-pms');if(S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza'){if(estabaMovil!==ahoraMovil){S.ini=addD(S.vista||hoyStr(),ahoraMovil?-15:-30);ND=ahoraMovil?31:90;MOBILE_DAY_SCROLL=null;MOBILE_EDGE_LOADING=false;MOBILE_PRESERVE_NEXT=true;cargar({scrollAnchor:ahoraMovil?0:30*W})}else dibujar()}},120)},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleMobileMenu(false)});
 
 function dibujar(){
