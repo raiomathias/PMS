@@ -2380,7 +2380,7 @@ function expandirCodigosUnidad(valor){
  if(partes.some(p=>!p.trim()))throw new Error('Hay un elemento vacío. Separa los códigos con comas, sin dejar comas al final.');
  const codigos=[];
  for(const bruto of partes){
-  const parte=bruto.trim(),rango=/^(\\d+)\\s*-\\s*(\\d+)$/.exec(parte);
+  const parte=bruto.trim(),rango=/^(\d+)\s*-\s*(\d+)$/.exec(parte);
   if(rango){
    const desde=Number(rango[1]),hasta=Number(rango[2]);
    if(!Number.isSafeInteger(desde)||!Number.isSafeInteger(hasta))throw new Error('El rango contiene números no válidos');
