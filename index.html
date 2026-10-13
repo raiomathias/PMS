@@ -2373,7 +2373,66 @@ const NI=(c,v,ph='',t='text')=>`<input data-c="${c}" type="${t}" value="${esc(v)
 const CK=(c,v,l)=>`<label style="flex-direction:row;display:flex;gap:4px;align-items:center;flex:none"><input data-c="${c}" type="checkbox" ${v?'checked':''}>${l}</label>`;
 const SO=(c,o,v,vacio)=>`<select data-c="${c}">${vacio?'<option value="">—</option>':''}${o.map(x=>`<option value="${x[0]}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('')}</select>`;
 async function gd(t,id,b){const {error}=await sb.from(t).update(datos(b.closest('.rw'))).eq('id',id);er(dup(error),'Guardado')}
-async function nw(t,b,req){const o=datos(b.closest('.rw'));if(req.split(',').some(k=>o[k]===null||o[k]===''))return msg('Faltan datos',1);const {error}=await sb.from(t).insert(o);if(error)return msg(dup(error).message,1);msg('Creado');panel()}
+function expandirCodigosUnidad(valor){
+ const entrada=String(valor??'').trim();
+ if(!entrada)throw new Error('Ingresa al menos un código de unidad');
+ const partes=entrada.split(',');
+ if(partes.some(p=>!p.trim()))throw new Error('Hay un elemento vacío. Separa los códigos con comas, sin dejar comas al final.');
+ const codigos=[];
+ for(const bruto of partes){
+  const parte=bruto.trim(),rango=/^(\\d+)\\s*-\\s*(\\d+)$/.exec(parte);
+  if(rango){
+   const desde=Number(rango[1]),hasta=Number(rango[2]);
+   if(!Number.isSafeInteger(desde)||!Number.isSafeInteger(hasta))throw new Error('El rango contiene números no válidos');
+   if(hasta<desde)throw new Error('El rango '+parte+' está invertido. Usa el número menor primero.');
+   if(hasta-desde+1>200||codigos.length+(hasta-desde+1)>200)throw new Error('Puedes crear como máximo 200 unidades por operación');
+   const ancho=Math.max(rango[1].length,rango[2].length);
+   for(let n=desde;n<=hasta;n++)codigos.push(String(n).padStart(ancho,'0'));
+  }else{
+   codigos.push(parte);
+   if(codigos.length>200)throw new Error('Puedes crear como máximo 200 unidades por operación');
+  }
+ }
+ const vistos=new Set(),duplicados=new Set();
+ for(const codigo of codigos){
+  const clave=codigo.toLocaleLowerCase('es-CL');
+  if(vistos.has(clave))duplicados.add(codigo);
+  vistos.add(clave);
+ }
+ if(duplicados.size)throw new Error('Hay códigos repetidos en la lista: '+[...duplicados].join(', '));
+ return codigos;
+}
+async function nw(t,b,req){
+ const o=datos(b.closest('.rw'));
+ if(t==='unidades'){
+  if(!o.edificio_id||!o.tipo_unidad_id||!o.codigo)return msg('Selecciona edificio y categoría, e ingresa uno o más códigos',1);
+  const categoria=(window._T||[]).find(x=>x[0]===o.tipo_unidad_id);
+  if(!categoria||categoria[2]!==o.edificio_id)return msg('La categoría seleccionada no pertenece al edificio elegido. Selecciona el edificio y la categoría nuevamente.',1);
+  let codigos;
+  try{codigos=expandirCodigosUnidad(o.codigo)}catch(e){return msg(e.message,1)}
+  const {data:existentes,error:consultaError}=await sb.from('unidades').select('codigo').eq('edificio_id',o.edificio_id).in('codigo',codigos);
+  if(consultaError)return msg('No se pudieron verificar los códigos existentes: '+consultaError.message,1);
+  const yaExisten=new Set((existentes||[]).map(x=>String(x.codigo).toLocaleLowerCase('es-CL')));
+  const ocupados=codigos.filter(c=>yaExisten.has(c.toLocaleLowerCase('es-CL')));
+  if(ocupados.length)return msg('Ya existen en este edificio estos códigos: '+ocupados.join(', ')+'. No se creó ninguna unidad.',1);
+  const filas=codigos.map(codigo=>({
+   edificio_id:o.edificio_id,
+   tipo_unidad_id:o.tipo_unidad_id,
+   codigo,
+   piso:o.piso===''?null:o.piso
+  }));
+  const {error}=await sb.from('unidades').insert(filas);
+  if(error)return msg(dup(error).message||error.message,1);
+  invalidarCacheCatalogos();
+  msg('Se crearon '+codigos.length+' unidades: '+codigos.join(', '));
+  await panel('unidades');
+  return;
+ }
+ if(req.split(',').some(k=>o[k]===null||o[k]===''))return msg('Faltan datos',1);
+ const {error}=await sb.from(t).insert(o);
+ if(error)return msg(dup(error).message,1);
+ msg('Creado');panel()
+}
 function abrirAdmin(){A.open=true;$('#mo').classList.add('admin-full');panel('unidades')}
 async function panel(t){
  if(t)A.t=t;
@@ -2403,7 +2462,7 @@ async function pUni(){
  const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
  const E=(e.data||[]).map(x=>[x.id,x.nombre]),T=(t.data||[]).map(x=>[x.id,x.nombre,x.edificio_id]);window._T=T;const TT=ed=>T.filter(x=>x[2]===ed);
  const L=(u.data||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
- $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Código (ej. 101)')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo')">Crear</button></div>
+ $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Códigos (ej. 201, 202 o 201-205)')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo,tipo_unidad_id')">Crear</button></div><p class="mu" style="margin:4px 0 12px">Ingresa códigos separados por coma (201, 202) o un rango con guion (201-205). Puedes combinar ambos formatos; se crearán unidades independientes con el mismo edificio, categoría y piso. Máximo 200 por operación.</p>
  <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',TT(x.edificio_id),x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Cada categoría pertenece a un edificio: aquí solo aparecen las del edificio elegido.</p>`;
 }
 function fT(s){const r=s.closest('.rw').querySelector('[data-c=tipo_unidad_id]');r.innerHTML='<option value="">—</option>'+_T.filter(t=>t[2]===s.value).map(t=>`<option value="${t[0]}">${esc(t[1])}</option>`).join('')}
