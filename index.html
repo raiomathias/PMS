@@ -295,7 +295,18 @@ const EDIT_FIELDS=[['guest_name','Nombre del huésped'],['guest_document','Docum
 const rolNormalizado=r=>String(r||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const esRecepcion=()=>rolNormalizado(S.perfil?.rol)==='recepcion';const esAdminPlus=rol=>['administracion','gerencia','sysadmin','system_admin','systemadmin'].includes(rolNormalizado(rol).replace(/[\s-]+/g,'_'));const puedeEditarCampo=k=>esAdminPlus(S.perfil?.rol)||esRecepcion()||S.permisosEdicion.has(k);
 const errTxt=e=>e.code==='23P01'?'La unidad ya está ocupada en esas fechas':e.message;
 const er=(e,ok)=>e?msg(errTxt(e),1):msg(ok);
+function normalizarHoraValor(valor){
+ const s=String(valor??'').trim();if(!s)return '';
+ let h='',m='';
+ if(s.includes(':')){const p=s.split(':');if(p.length!==2)return null;h=p[0].trim();m=p[1].trim()}
+ else{const d=Array.from(s).filter(c=>c>='0'&&c<='9').join('');if(d.length===3){h=d.slice(0,1);m=d.slice(1)}else if(d.length===4){h=d.slice(0,2);m=d.slice(2)}else return null}
+ if(!h||h.length>2||m.length!==2||![...h,...m].every(c=>c>='0'&&c<='9'))return null;
+ const hh=Number(h),mm=Number(m);if(!Number.isInteger(hh)||!Number.isInteger(mm)||hh<0||hh>23||mm<0||mm>59)return null;
+ return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+function normalizarHoraInput(el){const hora=normalizarHoraValor(el.value);if(hora!==null){el.value=hora;el.removeAttribute('aria-invalid')}else if(el.value.trim())el.setAttribute('aria-invalid','true')}
 const F=(id,l,v='',t='text')=>`<label>${l}<input id="${id}" type="${t}" value="${esc(v)}"></label>`;
+const FH=(id,l,v='')=>`<label>${l}<input id="${id}" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" autocomplete="off" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" title="Formato de 24 horas: HH:MM" value="${esc(v?String(v).slice(0,5):'')}" onblur="normalizarHoraInput(this)"></label>`;
 const SEL=(id,l,o,v)=>`<label>${l}<select id="${id}">${o.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select></label>`;
 function msg(t,err){const m=$('#ms');m.textContent=t;m.style.background=err?'#b91c1c':'#111';m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',4500)}
 function cerrarMenus(){document.querySelectorAll('.menu-drop.open').forEach(m=>m.classList.remove('open'))}
@@ -1562,7 +1573,7 @@ async function abrirDr(id){
  <div class="sec c1"><h4 class="st">👤 Huésped</h4>${u.edificios.requiere_documento?'':'<p class="mu" style="margin-top:0">Acceso remoto: documento no requerido</p>'}<div class="g2">${F('gname','Nombre completo',G.nombre_completo||r.huesped_nombre_copia)}${SEL('gd','Tipo doc.',['','rut','pasaporte','dni','otro'],G.tipo_documento||'')}${F('gn','N° documento',G.numero_documento)}${F('gt','Teléfono',G.telefono)}${F('gna','Nacionalidad',G.nacionalidad)}${F('gc','Ciudad',G.ciudad_origen)}</div></div>
  <div class="sec c2"><h4 class="st">👥 Acompañantes</h4><div id="acEditList" style="display:grid;gap:6px">${(a.data||[]).map(x=>`<div class="pg ac-edit-row" data-id="${x.id}"><div class="g2"><input class="ac-name" value="${esc(x.nombre_completo)}"><input class="ac-doc" value="${esc(x.numero_documento||'')}"></div><label style="display:flex;flex-direction:row;gap:6px;margin-top:5px"><input class="ac-minor" type="checkbox" ${x.es_menor?'checked':''}> Menor</label><button type="button" onclick="marcarAcEliminado(this)" style="margin-top:5px">Quitar</button></div>`).join('')}</div>
  <div class="g2" style="margin-top:8px">${F('an','Nombre')}${F('ad','N° documento')}</div><label style="flex-direction:row;display:flex;gap:6px;margin:6px 0"><input type="checkbox" id="am"> Menor</label><button type="button" onclick="agregarAcompananteDetalle()">＋ Añadir acompañante</button></div>
- <div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('rhent','Entrada',r.fecha_entrada,'date')}${F('rhsal','Salida',r.fecha_salida,'date')}${F('rh1','Llegada aprox.',r.hora_llegada_aprox,'time')}${F('rh2','Salida aprox.',r.hora_salida_aprox,'time')}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('rto','Total de la reserva',Math.max(0,(diff(r.fecha_entrada,r.fecha_salida)||r.noches||0)*(r.tarifa_noche||0)),'number').replace('<label>','<label class="dinero">')}${F('ro2','Otro total',cgs.filter(x=>x.descripcion==='__PMS_OTRO_PRECIO__').reduce((a,x)=>a+(+x.total||0),0),'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}${F('rcu','Cupo de estacionamiento',r.cupo_estacionamiento,'number')}</div>
+ <div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('rhent','Entrada',r.fecha_entrada,'date')}${F('rhsal','Salida',r.fecha_salida,'date')}${FH('rh1','Llegada aprox.',r.hora_llegada_aprox)}${FH('rh2','Salida aprox.',r.hora_salida_aprox)}${SEL('rc','Canal',['directo','booking','expedia','airbnb','otro'],r.canal)}${F('rx','Código externo',r.referencia_externa)}${F('ra','Adultos',r.adultos,'number')}${F('rm','Menores',r.menores,'number')}${F('rt','Tarifa por noche',r.tarifa_noche,'number').replace('<label>','<label class="dinero">')}${F('rto','Total de la reserva',Math.max(0,(diff(r.fecha_entrada,r.fecha_salida)||r.noches||0)*(r.tarifa_noche||0)),'number').replace('<label>','<label class="dinero">')}${F('ro2','Otro total',cgs.filter(x=>x.descripcion==='__PMS_OTRO_PRECIO__').reduce((a,x)=>a+(+x.total||0),0),'number').replace('<label>','<label class="dinero">')}${F('rb','N° boleta (TUU)',r.numero_boleta)}${F('rv','Vehículo',r.modelo_vehiculo)}${F('rp','Patente',r.patente_vehiculo)}${F('rcu','Cupo de estacionamiento',r.cupo_estacionamiento,'number')}</div>
  <label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="re" ${r.usa_estacionamiento?'checked':''}> Usa estacionamiento</label><label style="flex-direction:row;display:flex;gap:6px;margin:8px 0"><input type="checkbox" id="rnm" ${r.no_mover_unidad?'checked':''}> No mover de esta unidad automáticamente</label><label>Observaciones / solicitudes<textarea id="ro" rows="2">${esc(r.observaciones)}</textarea></label></div>
  </div><div class="dinero">
  ${garHtml(r,gv)}<div class="tot"${dead?' style="grid-template-columns:repeat(4,1fr)"':''}><div>${dead?'Total original':'Total'}<b>${clp(total)}</b></div>${dead?`<div>${r.estado==='cancelada'?'Cargo cancelación':'Cargo no-show'}<b>${clp(cargoCan)}</b></div>`:''}<div>Pagado<b>${clp(pagado)}</b></div><div>Pendiente<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>${dead?`<p class="mu" style="margin:-4px 0 12px">El total original se conserva como referencia. Como la reserva está ${r.estado==='cancelada'?'cancelada':'como no-show'}, solo se cobra el cargo aplicado${pagado>cargoCan?` · el huésped pagó ${clp(pagado-cargoCan)} más que el cargo (a su favor o por devolver)`:''}.</p>`:''}
@@ -2046,6 +2057,9 @@ async function hacerCheckOut(){
 async function guardarDesglosePrecio(id,iva,otro){await sb.from('cargos').delete().eq('reserva_id',id).in('descripcion',['__PMS_IVA__','__PMS_OTRO_PRECIO__']);const rows=[];if(iva)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_IVA__',cantidad:1,monto_unitario:iva});if(otro)rows.push({reserva_id:id,tipo:'otro',descripcion:'__PMS_OTRO_PRECIO__',cantidad:1,monto_unitario:otro});if(rows.length){const {error}=await sb.from('cargos').insert(rows);if(error)return msg(errTxt(error),1)}return true}
 async function guardarR(){
  const v=i=>$('#'+i).value||null;
+ const horaLlegada=normalizarHoraValor($('#rh1')?.value||''),horaSalida=normalizarHoraValor($('#rh2')?.value||'');
+ if(horaLlegada===null)return msg('La hora de llegada debe estar en formato 24 horas HH:MM (por ejemplo, 14:30).',1);
+ if(horaSalida===null)return msg('La hora de salida debe estar en formato 24 horas HH:MM (por ejemplo, 14:30).',1);
  const usa=$('#re').checked,modelo=usa?v('rv'):null,patente=usa?v('rp'):null,dates=usa?fechasParkingSeleccionadas('rpdates'):[];
  if(usa&&(!modelo?.trim()||!patente?.trim()))return msg('Para usar estacionamiento debes indicar el modelo del vehículo y la patente',1);
  if(usa&&!dates.length)return msg('Selecciona al menos una fecha con estacionamiento',1);
@@ -2058,7 +2072,7 @@ async function guardarR(){
  }
  const canal=v('rc'),ref=v('rx');if(canal==='booking'&&!ref)return msg('El código externo es obligatorio para Booking',1);
  const {error}=await sb.from('reservas').update({
-  hora_llegada_aprox:v('rh1'),hora_salida_aprox:v('rh2'),canal,referencia_externa:ref,
+  hora_llegada_aprox:horaLlegada||null,hora_salida_aprox:horaSalida||null,canal,referencia_externa:ref,
   adultos:+$('#ra').value||1,menores:+$('#rm').value||0,tarifa_noche:+$('#rt').value||0,
   numero_boleta:v('rb'),usa_estacionamiento:usa,noches_estacionamiento:usa?dates.length:0,
   modelo_vehiculo:modelo,patente_vehiculo:patente,observaciones:v('ro'),
@@ -2073,6 +2087,9 @@ function agregarAcompananteDetalle(){const box=$('#acEditList');if(!box)return;b
 async function guardarCambiosReservaDetalle(op={}){
  const r=S.cur;if(!r)return false;
  const v=id=>$('#'+id)?.value||null,raw=id=>$('#'+id)?.value??'',n=id=>$('#'+id)?.value===''?null:+$('#'+id).value;
+ const horaLlegada=normalizarHoraValor(raw('rh1')),horaSalida=normalizarHoraValor(raw('rh2'));
+ if(horaLlegada===null){msg('La hora de llegada debe estar en formato 24 horas HH:MM (por ejemplo, 14:30).',1);return false}
+ if(horaSalida===null){msg('La hora de salida debe estar en formato 24 horas HH:MM (por ejemplo, 14:30).',1);return false}
  const usa=$('#re')?.checked??false,dates=usa?fechasParkingSeleccionadas('rpdates'):[];
  if(usa&&(!v('rv')?.trim()||!v('rp')?.trim())){msg('Para usar estacionamiento debes indicar modelo y patente',1);return false}
  if(usa&&!dates.length){msg('Selecciona al menos una fecha de estacionamiento',1);return false}
@@ -2089,8 +2106,8 @@ async function guardarCambiosReservaDetalle(op={}){
  // Estos campos están en reservas, pero no forman parte de la firma histórica del RPC.
  // Guardarlos explícitamente evita que la UI parezca guardar y luego revierta los valores.
  const camposDirectos={
-  hora_llegada_aprox:$('#rh1')?.value||null,
-  hora_salida_aprox:$('#rh2')?.value||null,
+  hora_llegada_aprox:horaLlegada||null,
+  hora_salida_aprox:horaSalida||null,
   numero_boleta:v('rb'),
   // Una cadena vacía es una instrucción explícita de borrar el código externo.
   // No usar v('rx') aquí: convierte "" en null y el RPC interpreta null como "no cambiar".
@@ -2166,7 +2183,7 @@ async function guardarCambiosReservaDetalle(op={}){
   ['observaciones',payload.p_observaciones,vv.observaciones],
   ['no mover unidad',$('#rnm')?.checked??r.no_mover_unidad,vv.no_mover_unidad]
  ];
- const bad=checks.find(x=>!same(x[1],x[2]));
+ const bad=checks.find(x=>!(x[0].startsWith('hora de')?horaIgual(x[1],x[2]):same(x[1],x[2])));
  if(bad)return msg('El cambio de '+bad[0]+' no quedó guardado en Supabase. El sistema no cerró la ficha para evitar que pierdas el cambio.',1),false;
  if(puedeEditarCampo('guest_name')||puedeEditarCampo('guest_document')||puedeEditarCampo('guest_contact')){
   const hg=await sb.from('huespedes').select('nombre_completo,tipo_documento,numero_documento,telefono,correo,nacionalidad,ciudad_origen').eq('id',r.huesped_id).maybeSingle();
@@ -2971,14 +2988,28 @@ async function pGar(){
   h+=`<label style="${cb};padding:4px 8px;border:1px solid var(--bd);border-radius:8px"><input type="checkbox" class="gu" data-ed="${u.edificio_id}" value="${u.id}"> ${esc(u.codigo)}</label>`}
  const chips=ids=>{const por={};ids.forEach(id=>{const u=S.unidades.find(x=>x.id===id);if(u)(por[u.edificio_id]=por[u.edificio_id]||[]).push(u)});
   return Object.values(por).map(l=>{const tot=S.unidades.filter(x=>x.edificio_id===l[0].edificio_id).length;return l.length===tot?`<span class="tg">Todo ${esc(l[0].edificios.nombre)}</span>`:l.map(u=>`<span class="tg">${esc(u.edificios.nombre)} ${esc(u.codigo)}</span>`).join('')}).join('')};
- const fl=Object.keys(porF).sort();
+ const fl=Object.keys(porF).sort(),rangos=[];
+ for(const f of fl){
+  const ids=[...new Set(porF[f])].sort(),ultimo=rangos[rangos.length-1];
+  if(ultimo&&addD(ultimo.hasta,1)===f&&JSON.stringify(ultimo.ids)===JSON.stringify(ids))ultimo.hasta=f;
+  else rangos.push({desde:f,hasta:f,ids});
+ }
+ const fechaTxt=f=>new Date(f+'T00:00:00Z').toLocaleDateString('es-CL',{day:'numeric',month:'long',timeZone:'UTC'});
+ const fechaRango=(a,b)=>a===b?fechaTxt(a):fechaTxt(a)+' – '+fechaTxt(b)+(a.slice(0,4)!==b.slice(0,4)?' de '+b.slice(0,4):'');
  $('#pc').innerHTML=`<h4 style="margin-top:0">Exigir garantía en fechas y unidades</h4>
  <p class="mu">Si alguna noche de una reserva cae en una fecha marcada para su unidad, la reserva pide garantía: el valor de su primera noche, que se descuenta del total y no se devuelve. Es solo un aviso (la reserva se puede hacer igual) y la reserva se ve en rojo en la grilla.</p>
  <div class="g2"><label>Desde<input type="date" id="gf1" value="${hoy}"></label><label>Hasta (inclusive)<input type="date" id="gf2" value="${hoy}"></label></div>
  <label style="${cb};margin:10px 0 4px"><input type="checkbox" onchange="gSelAll(this)"> <b>Seleccionar todas las unidades</b></label>
  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px">${h}</div>
  <div style="display:flex;gap:8px;margin-top:12px"><button class="p" onclick="gAplicar(1)">Exigir garantía</button><button onclick="gAplicar(0)">Quitar garantía</button></div>
- <h4>Fechas con garantía (próximas)</h4>${fl.map(f=>`<div class="rw"><b style="flex:0 0 140px">${new Date(f+'T00:00:00Z').toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'})}</b><span style="flex:1;line-height:2">${chips(porF[f])}</span><button onclick="gQuitarFecha('${f}')">Quitar fecha</button></div>`).join('')||'<p class="mu">No hay fechas marcadas.</p>'}`}
+ <h4>Fechas con garantía (próximas)</h4>${rangos.map(g=>`<div class="rw"><b style="flex:0 0 220px">${esc(fechaRango(g.desde,g.hasta))}</b><span style="flex:1;line-height:2">${chips(g.ids)}</span><button onclick="gQuitarRango('${g.desde}','${g.hasta}',${JSON.stringify(g.ids)})">${g.desde===g.hasta?'Quitar fecha':'Quitar rango'}</button></div>`).join('')||'<p class="mu">No hay fechas marcadas.</p>'}`}
+async function gQuitarRango(desde,hasta,unidades){
+ if(!Array.isArray(unidades)||!unidades.length)return msg('No se identificaron las unidades del rango.',1);
+ const etiqueta=desde===hasta?desde:desde+' a '+hasta;
+ if(!confirm('¿Quitar la garantía del '+etiqueta+' en '+unidades.length+' unidad(es)?'))return;
+ const {error}=await sb.from('garantia_fechas').delete().in('unidad_id',unidades).gte('fecha',desde).lte('fecha',hasta);
+ er(error,'Garantía quitada');if(!error)pGar();
+}
 function gSelAll(el){document.querySelectorAll('#pc input[type=checkbox]').forEach(x=>{if(x!==el)x.checked=el.checked})}
 function gSelEd(el){document.querySelectorAll(`.gu[data-ed="${el.dataset.ed}"]`).forEach(x=>x.checked=el.checked)}
 async function gAplicar(on){
@@ -2994,7 +3025,7 @@ async function gQuitarFecha(f){if(!confirm('¿Quitar la garantía de esta fecha 
  const {error}=await sb.from('garantia_fechas').delete().eq('fecha',f);er(error,'Fecha quitada');if(!error)pGar()}
 
 // ---------- Admin: cancelaciones y no-shows ----------
-let CN={m:null,t:'',por:'evento'};
+let CN={m:null,t:'',por:'evento',ed:''};
 function cMes(n){const [y,m]=CN.m.split('-').map(Number);CN.m=new Date(Date.UTC(y,m-1+n,1)).toISOString().slice(0,7);pCan()}
 async function pCan(){
  if(!CN.m)CN.m=hoyStr().slice(0,7);
@@ -3005,8 +3036,15 @@ async function pCan(){
  const {data,error}=await q.order('fecha_entrada',{ascending:false}).limit(500);
  if(error){$('#pc').innerHTML=`<p class="mu">${esc(error.message)}</p>`;return}
  let L=(data||[]).filter(r=>{if(CN.por==='entrada')return true;const f=loc(evento(r));return f&&f>=d1&&f<d2});
+ const unidadPorId=new Map(S.unidades.map(u=>[u.id,u]));
+ if(CN.ed)L=L.filter(r=>unidadPorId.get(r.unidad_id)?.edificio_id===CN.ed);
  L.sort((a,b)=>String(evento(b)||b.fecha_entrada).localeCompare(String(evento(a)||a.fecha_entrada)));
  const ids=L.map(x=>x.id),car={},sal={},ext={};
+ const actorIds=[...new Set(L.map(r=>r.estado==='cancelada'?r.cancelada_por:r.no_show_por).filter(Boolean))];
+ const {data:actoresData}=actorIds.length
+  ?await sb.from('perfiles').select('id,nombre_completo,usuario').in('id',actorIds)
+  :{data:[]};
+ const actores=Object.fromEntries((actoresData||[]).map(p=>[p.id,p]));
  for(let i=0;i<ids.length;i+=80){const ch=ids.slice(i,i+80);
   const [c,sv]=await Promise.all([sb.from('cargos').select('reserva_id,tipo,total').in('reserva_id',ch),sb.from('pagos').select('reserva_id,monto_clp').in('reserva_id',ch)]);
   (c.data||[]).forEach(x=>{if(['cancelacion','no_show'].includes(x.tipo))car[x.reserva_id]=(car[x.reserva_id]||0)+(+x.total||0);else ext[x.reserva_id]=(ext[x.reserva_id]||0)+(+x.total||0)});(sv.data||[]).forEach(x=>sal[x.reserva_id]=(sal[x.reserva_id]||0)+(+x.monto_clp||0))}
@@ -3014,15 +3052,16 @@ async function pCan(){
  const nC=L.filter(r=>r.estado==='cancelada').length,nN=L.length-nC,tot=L.reduce((a,r)=>a+(car[r.id]||0),0),pend=L.reduce((a,r)=>a+pen(r),0),totO=L.reduce((a,r)=>a+orig(r),0);
  const V=CN.t?L.filter(r=>r.estado===CN.t):L,mes=new Date(Date.UTC(y,mo-1,1)).toLocaleDateString('es',{month:'long',year:'numeric',timeZone:'UTC'});
  const chip=(v,t)=>`<button class="${CN.t===v?'p':''}" onclick="CN.t='${v}';pCan()">${t}</button>`;
- $('#pc').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button onclick="cMes(-1)">◀</button><b style="font-size:18px;min-width:150px;text-align:center;text-transform:capitalize">${mes}</b><button onclick="cMes(1)">▶</button><span style="margin-left:auto" class="mu">Mes según</span><select onchange="CN.por=this.value;pCan()"><option value="evento" ${CN.por==='evento'?'selected':''}>fecha de cancelación / no-show</option><option value="entrada" ${CN.por==='entrada'?'selected':''}>fecha de entrada de la reserva</option></select></div>
+ const edificiosCN=[...new Map(S.unidades.filter(u=>puedeVerEdificio(u.edificio_id)).map(u=>[u.edificio_id,{id:u.edificio_id,nombre:u.edificios?.nombre||'Edificio'}])).values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+ $('#pc').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button onclick="cMes(-1)">◀</button><b style="font-size:18px;min-width:150px;text-align:center;text-transform:capitalize">${mes}</b><button onclick="cMes(1)">▶</button><span class="mu">Edificio</span><select onchange="CN.ed=this.value;pCan()"><option value="" ${!CN.ed?'selected':''}>Todos los edificios</option>${edificiosCN.map(e=>`<option value="${e.id}" ${CN.ed===e.id?'selected':''}>${esc(e.nombre)}</option>`).join('')}</select><span class="mu">Mes según</span><select onchange="CN.por=this.value;pCan()"><option value="evento" ${CN.por==='evento'?'selected':''}>fecha de cancelación / no-show</option><option value="entrada" ${CN.por==='entrada'?'selected':''}>fecha de entrada de la reserva</option></select></div>
  <div class="kp" style="grid-template-columns:repeat(5,1fr)"><div>Cancelaciones<b>${nC}</b></div><div>No-shows<b>${nN}</b></div><div>Total original reservas<b>${clp(totO)}</b></div><div>Cargos aplicados<b>${clp(tot)}</b></div><div>Pendiente de cobro<b style="color:${pend?'#dc2626':'#16a34a'}">${clp(pend)}</b></div></div>
  <div style="display:flex;gap:6px;margin-bottom:12px">${chip('','Todas ('+L.length+')')}${chip('cancelada','Cancelaciones ('+nC+')')}${chip('no_show','No-shows ('+nN+')')}</div>
- <div class="cgr2">${V.map(r=>{const u=S.unidades.find(x=>x.id===r.unidad_id),nm=r.huesped_nombre_copia||r.huespedes?.nombre_completo||'(sin nombre)',ca=r.estado==='cancelada',c=car[r.id]||0,f=loc(evento(r)),mot=ca?r.motivo_cancelacion:r.no_show_nota;
+ <div class="cgr2">${V.map(r=>{const u=unidadPorId.get(r.unidad_id),nm=r.huesped_nombre_copia||r.huespedes?.nombre_completo||'(sin nombre)',ca=r.estado==='cancelada',c=car[r.id]||0,f=loc(evento(r)),mot=ca?r.motivo_cancelacion:r.no_show_nota,actorId=ca?r.cancelada_por:r.no_show_por,actor=actorId?(actores[actorId]?.nombre_completo||actores[actorId]?.usuario||'Usuario no disponible'):'No registrado';
   return`<div class="cc ${ca?'ca':'cn'}" onclick="irReserva('${r.id}')"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(nm)}</b><span class="bd ${ca?'ca':'cn'}">${ca?'Cancelada':'No-show'}</span></div>
   <div class="mu">${u?esc(u.edificios.nombre)+' · '+esc(u.codigo):'—'} · ${fm(r.fecha_entrada)} → ${fm(r.fecha_salida)} · ${r.noches} noche${r.noches>1?'s':''} · ${esc(r.canal)}</div>
   <p style="margin:8px 0">${mot?'<span class="mu">Motivo:</span> '+esc(mot):'<span class="mu">Sin motivo registrado</span>'}</p>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span><span class="mu">Total reserva</span> <b>${clp(orig(r))}</b> · ${c?'Cargo <b>'+clp(c)+'</b>':'<span class="mu">Sin cargo</span>'}</span>${c?(pen(r)?'<span class="bd pe">Pendiente '+clp(pen(r))+'</span>':'<span class="bd ok">Pagado</span>'):'<span class="bd sc">—</span>'}</div>
-  <div class="mu" style="margin-top:6px">${ca?'Cancelada':'No-show'} el ${f?fm(f)+'/'+f.slice(0,4):'—'}</div></div>`}).join('')||'<p class="mu">No hay registros en este mes.</p>'}</div>`}
+  <div class="mu" style="margin-top:6px">${ca?'Cancelada':'No-show'} el ${f?fm(f)+'/'+f.slice(0,4):'—'} · Por: ${esc(actor)}</div></div>`}).join('')||'<p class="mu">No hay registros en este mes.</p>'}</div>`}
 
 // ---------- Auditoría ----------
 const AUDR=['administracion','gerencia','sysadmin'];
