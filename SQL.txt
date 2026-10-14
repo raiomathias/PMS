@@ -7377,3 +7377,42 @@ GRANT EXECUTE ON FUNCTION public.registrar_pago_airbnb(uuid) TO authenticated;
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;
+ 
+-- ============================================================
+-- PMS v2.3 · 2026-10-14
+-- Registrar de forma consistente al usuario que realiza una
+-- transición de reserva a cancelada o no_show.
+-- Migración idempotente: no modifica datos históricos ni
+-- reemplaza valores de actor que ya existan.
+-- ============================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.reservas_registrar_actor_estado()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  IF NEW.estado::text = 'cancelada'
+     AND OLD.estado::text IS DISTINCT FROM 'cancelada'
+     AND NEW.cancelada_por IS NULL THEN
+    NEW.cancelada_por := auth.uid();
+  END IF;
+
+  IF NEW.estado::text = 'no_show'
+     AND OLD.estado::text IS DISTINCT FROM 'no_show'
+     AND NEW.no_show_por IS NULL THEN
+    NEW.no_show_por := auth.uid();
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_reservas_registrar_actor_estado ON public.reservas;
+CREATE TRIGGER trg_reservas_registrar_actor_estado
+BEFORE UPDATE OF estado ON public.reservas
+FOR EACH ROW
+EXECUTE FUNCTION public.reservas_registrar_actor_estado();
+
+COMMIT;
