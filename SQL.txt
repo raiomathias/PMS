@@ -7416,3 +7416,38 @@ FOR EACH ROW
 EXECUTE FUNCTION public.reservas_registrar_actor_estado();
 
 COMMIT;
+
+-- Verificación final PMS v2.3 (solo lectura).
+-- Debe devolver true en todos los campos después de ejecutar la migración anterior.
+SELECT jsonb_build_object(
+  'tabla_reservas_existe',
+    to_regclass('public.reservas') IS NOT NULL,
+  'columna_cancelada_por',
+    EXISTS (
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = to_regclass('public.reservas')
+        AND attname = 'cancelada_por'
+        AND attnum > 0
+        AND NOT attisdropped
+    ),
+  'columna_no_show_por',
+    EXISTS (
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = to_regclass('public.reservas')
+        AND attname = 'no_show_por'
+        AND attnum > 0
+        AND NOT attisdropped
+    ),
+  'funcion_actor_estado',
+    to_regprocedure('public.reservas_registrar_actor_estado()') IS NOT NULL,
+  'trigger_actor_estado_habilitado',
+    EXISTS (
+      SELECT 1
+      FROM pg_trigger t
+      WHERE t.tgrelid = to_regclass('public.reservas')
+        AND t.tgname = 'trg_reservas_registrar_actor_estado'
+        AND NOT t.tgisinternal
+        AND t.tgenabled <> 'D'
+    )
+) AS resultado_json;
+
