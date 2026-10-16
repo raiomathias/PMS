@@ -780,7 +780,7 @@ async function iniciar(){
  const {data:p}=await sb.from('perfiles').select('id,nombre_completo,rol,activo').eq('id',session.user.id).maybeSingle();
  if(!p||!p.activo){await sb.auth.signOut();CACHE_MEM.clear();$('#login').style.display='grid';return msg('Usuario sin perfil activo',1)}
  CACHE_MEM.clear();
- S.perfil=p;S.vista=hoyStr();S.recepMin=addD(S.vista,-30);S.ini=addD(S.vista,esVistaMovil()?-15:-30);ND=esVistaMovil()?31:90;MOBILE_DAY_SCROLL=null;MOBILE_EDGE_LOADING=false;MOBILE_PRESERVE_NEXT=true;actualizarModoMovil();
+ S.perfil=p;S.vista=hoyStr();S.ini=addD(S.vista,esVistaMovil()?-15:-30);S.recepMin=S.ini;ND=esVistaMovil()?31:90;MOBILE_DAY_SCROLL=null;MOBILE_EDGE_LOADING=false;MOBILE_PRESERVE_NEXT=true;actualizarModoMovil();
  $('#hf').min=esRecepcion()?S.recepMin:'';
  $('#btnMoverAtras').style.display=esRecepcion()?'none':'';
  // Permisos y configuración no dependen entre sí; ejecutarlos en paralelo reduce cascadas de red.
@@ -949,14 +949,24 @@ function esVistaMovil(){return !!(window.matchMedia&&window.matchMedia('(max-wid
 function actualizarModoMovil(){const m=esVistaMovil()&&!!S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza';document.body.classList.toggle('mobile-pms',m);const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr()}
 function mobileIrFecha(v){
  if(!v)return;
- if(esRecepcion()&&v<S.ini){
+ if(esRecepcion()&&v<(S.recepMin||S.ini)){
   const d=$('#mobileDate');if(d)d.value=S.vista||hoyStr();
   return msg('Recepción no puede desplazarse antes del rango inicial cargado.',1);
  }
  const hf=$('#hf');if(hf)hf.value=v;
  S.vista=v;S.sel=null;
  const rangoFin=addD(S.ini,ND);
- if(v<S.ini||v>=rangoFin){
+ if(esRecepcion()){
+  // Recepción conserva el inicio cargado y solo amplía el calendario hacia el futuro.
+  const diasHastaFecha=diff(S.ini,v);
+  const nuevoND=Math.max(ND,diasHastaFecha+MOBILE_CAL_BATCH+7);
+  if(nuevoND!==ND||v<S.ini||v>=rangoFin){
+   ND=nuevoND;
+   MOBILE_DAY_SCROLL=Math.max(0,(diasHastaFecha-3)*79);
+   MOBILE_PRESERVE_NEXT=true;
+   cargar();
+  }else dibujar();
+ }else if(v<S.ini||v>=rangoFin){
   S.ini=addD(v,-15);ND=31;MOBILE_DAY_SCROLL=12*79;MOBILE_PRESERVE_NEXT=true;
   cargar();
  }else if(addD(v,7)>rangoFin){
@@ -1070,7 +1080,7 @@ async function mobileAmpliarVentana(dir){
  MOBILE_PRESERVE_NEXT=true;
  try{await cargar()}finally{MOBILE_EDGE_LOADING=false}
 }
-window.addEventListener('resize',()=>{clearTimeout(window.__pmsMobileResizeTimer);window.__pmsMobileResizeTimer=setTimeout(()=>{const estabaMovil=document.body.classList.contains('mobile-pms');actualizarModoMovil();const ahoraMovil=document.body.classList.contains('mobile-pms');if(S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza'){if(estabaMovil!==ahoraMovil){S.ini=addD(S.vista||hoyStr(),ahoraMovil?-15:-30);ND=ahoraMovil?31:90;MOBILE_DAY_SCROLL=null;MOBILE_EDGE_LOADING=false;MOBILE_PRESERVE_NEXT=true;cargar({scrollAnchor:ahoraMovil?0:30*W})}else dibujar()}},120)},{passive:true});
+window.addEventListener('resize',()=>{clearTimeout(window.__pmsMobileResizeTimer);window.__pmsMobileResizeTimer=setTimeout(()=>{const estabaMovil=document.body.classList.contains('mobile-pms');actualizarModoMovil();const ahoraMovil=document.body.classList.contains('mobile-pms');if(S.perfil&&rolNormalizado(S.perfil.rol)!=='limpieza'){if(estabaMovil!==ahoraMovil){S.ini=esRecepcion()?(S.recepMin||S.ini):addD(S.vista||hoyStr(),ahoraMovil?-15:-30);ND=esRecepcion()?Math.max(ahoraMovil?31:90,diff(S.ini,S.vista||hoyStr())+(ahoraMovil?MOBILE_CAL_BATCH:30)):ahoraMovil?31:90;MOBILE_DAY_SCROLL=esRecepcion()&&ahoraMovil?Math.max(0,(diff(S.ini,S.vista||hoyStr())-3)*79):null;MOBILE_EDGE_LOADING=false;MOBILE_PRESERVE_NEXT=true;cargar({scrollAnchor:ahoraMovil?0:Math.max(0,diff(S.ini,S.vista||hoyStr()))*W})}else dibujar()}},120)},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleMobileMenu(false)});
 
 function dibujar(){
@@ -1134,8 +1144,10 @@ function cambiarFechaGrid(v){
  if(esRecepcion()&&v<(S.recepMin||addD(hoy,-30))){ $('#hf').value=S.vista||hoy; return msg('Recepción no puede seleccionar fechas anteriores a la carga inicial.',1); }
  if(esRecepcion()&&v<hoy){ $('#hf').value=S.vista||hoy; return msg('Recepción solo puede desplazarse hacia fechas de hoy y futuras.',1); }
  S.vista=v;
- S.ini=esRecepcion()?(S.recepMin||addD(hoy,-30)):addD(v,-30);
- ND=90;S.sel=null;
+ S.ini=esRecepcion()?(S.recepMin||S.ini):addD(v,-30);
+ // Recepción mantiene el inicio original y amplía únicamente hacia la fecha futura elegida.
+ ND=esRecepcion()?Math.max(90,diff(S.ini,v)+30):90;
+ S.sel=null;
  cargar({scrollAnchor:esRecepcion()?Math.max(0,diff(S.ini,S.vista))*W:30*W});
 }
 function revisarBordeCalendario(){
