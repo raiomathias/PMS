@@ -1094,7 +1094,7 @@ function dibujar(){
  for(let i=0;i<ND;i++){const d=addD(S.ini,i),t=new Date(d+'T00:00:00Z'),n=t.getUTCDate();
   const selDay=S.sel&&S.sel.u&&S.sel.a&&S.sel.b&&d>=S.sel.a&&d<=S.sel.b;
   const style=selDay?'background:rgba(37,99,235,.28);color:var(--ac);box-shadow:inset 0 -3px 0 var(--ac)':d===hoy?'background:rgba(37,99,235,.18)':'';
-  h+=`<div class="d" style="position:absolute;left:${i*W}px;top:0;height:48px;width:${W}px;min-width:${W}px;box-sizing:border-box;${style}">${'DLMMJVS'[t.getUTCDay()]}<br><b>${n}</b><br>${t.toLocaleDateString('es',{month:'short',timeZone:'UTC'}).replace('.','')}</div>`}
+  h+=`<div class="d" style="position:absolute;left:${i*W}px;top:0;height:48px;width:${W}px;min-width:${W}px;box-sizing:border-box;${style}">${'DLMMJVS'[t.getUTCDay()]}<br><b>${n}</b><br>${t.toLocaleDateString('es',{month:'short',timeZone:'UTC'}).replace('.','')}</div>`;}
  h+='</div></div>';let ed=null;
  for(const u of S.unidades){
   if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div><div class="dias ed-spacer" style="width:${ND*W}px"></div></div>`}
