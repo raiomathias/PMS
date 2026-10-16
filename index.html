@@ -310,9 +310,14 @@ function normalizarHoraValor(valor){
  const hh=Number(h),mm=Number(m);if(!Number.isInteger(hh)||!Number.isInteger(mm)||hh<0||hh>23||mm<0||mm>59)return null;
  return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
 }
+function formatearHoraInput(el){
+ const digitos=String(el.value??'').replace(/[^0-9]/g,'').slice(0,4);
+ el.value=digitos.length>2?digitos.slice(0,2)+':'+digitos.slice(2):digitos.length===2?digitos+':':digitos;
+ el.removeAttribute('aria-invalid');
+}
 function normalizarHoraInput(el){const hora=normalizarHoraValor(el.value);if(hora!==null){el.value=hora;el.removeAttribute('aria-invalid')}else if(el.value.trim())el.setAttribute('aria-invalid','true')}
 const F=(id,l,v='',t='text')=>`<label>${l}<input id="${id}" type="${t}" value="${esc(v)}"></label>`;
-const FH=(id,l,v='')=>`<label>${l}<input id="${id}" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" autocomplete="off" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" title="Formato de 24 horas: HH:MM" value="${esc(v?String(v).slice(0,5):'')}" onblur="normalizarHoraInput(this)"></label>`;
+const FH=(id,l,v='')=>`<label>${l}<input id="${id}" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" autocomplete="off" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" title="Formato de 24 horas: HH:MM" value="${esc(v?String(v).slice(0,5):'')}" oninput="formatearHoraInput(this)" onblur="normalizarHoraInput(this)"></label>`;
 const SEL=(id,l,o,v)=>`<label>${l}<select id="${id}">${o.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select></label>`;
 function msg(t,err){const m=$('#ms');m.textContent=t;m.style.background=err?'#b91c1c':'#111';m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',4500)}
 function cerrarMenus(){document.querySelectorAll('.menu-drop.open').forEach(m=>m.classList.remove('open'))}
@@ -1089,7 +1094,7 @@ function dibujar(){
  for(let i=0;i<ND;i++){const d=addD(S.ini,i),t=new Date(d+'T00:00:00Z'),n=t.getUTCDate();
   const selDay=S.sel&&S.sel.u&&S.sel.a&&S.sel.b&&d>=S.sel.a&&d<=S.sel.b;
   const style=selDay?'background:rgba(37,99,235,.28);color:var(--ac);box-shadow:inset 0 -3px 0 var(--ac)':d===hoy?'background:rgba(37,99,235,.18)':'';
-  h+=`<div class="d" style="position:absolute;left:${i*W}px;top:0;height:48px;width:${W}px;min-width:${W}px;box-sizing:border-box;${style}">${'DLMMJVS'[t.getUTCDay()]}<br><b>${n}</b>${n===1?'<br>'+t.toLocaleDateString('es',{month:'short',timeZone:'UTC'}):''}</div>`}
+  h+=`<div class="d" style="position:absolute;left:${i*W}px;top:0;height:48px;width:${W}px;min-width:${W}px;box-sizing:border-box;${style}">${'DLMMJVS'[t.getUTCDay()]}<br><b>${n}</b><br>${t.toLocaleDateString('es',{month:'short',timeZone:'UTC'}).replace('.','')}</div>`
  h+='</div></div>';let ed=null;
  for(const u of S.unidades){
   if(u.edificio_id!==ed){ed=u.edificio_id;h+=`<div class="fila ed"><div class="et">${esc(u.edificios.nombre)}</div><div class="dias ed-spacer" style="width:${ND*W}px"></div></div>`}
@@ -2186,7 +2191,8 @@ async function guardarCambiosReservaDetalle(op={}){
   !igual(camposDirectos.numero_boleta,r.numero_boleta)||
   !igual(camposDirectos.referencia_externa,r.referencia_externa);
  const moverChanged=Boolean(noMoverValue)!==Boolean(r.no_mover_unidad);
- const patchReserva={};
+ // Persistir siempre las horas normalizadas: S.cur puede contener una fila antigua de la grilla.
+ const patchReserva={hora_llegada_aprox:camposDirectos.hora_llegada_aprox,hora_salida_aprox:camposDirectos.hora_salida_aprox};
  if(directChanged)Object.assign(patchReserva,camposDirectos);
  if(moverChanged)patchReserva.no_mover_unidad=noMoverValue;
  const [directResult,guestResult]=await Promise.all([
@@ -2278,7 +2284,7 @@ async function guardarCambiosReservaDetalle(op={}){
   else{const {data:inserted,error:e}=await sb.from('acompanantes').insert({reserva_id:r.id,nombre_completo:name,numero_documento:doc,es_menor:minor}).select('id').single();if(e){msg('No se pudo guardar el acompañante: '+errTxt(e),1);return false}if(!inserted?.id)return msg('Supabase no confirmó el nuevo acompañante. La ficha permanece abierta.',1),false;row.dataset.id=inserted.id;delete row.dataset.new}
  }
  RT.ignoreUntil=Date.now()+2500;
- const nuevo={...r,fecha_entrada:payload.p_fecha_entrada,fecha_salida:payload.p_fecha_salida,canal:payload.p_canal,referencia_externa:payload.p_referencia_externa,adultos:payload.p_adultos,menores:payload.p_menores,tarifa_noche:payload.p_tarifa_noche,modelo_vehiculo:payload.p_modelo_vehiculo,patente_vehiculo:payload.p_patente_vehiculo,cupo_estacionamiento:payload.p_cupo_estacionamiento,usa_estacionamiento:payload.p_usa_estacionamiento,noches_estacionamiento:payload.p_noches_estacionamiento,observaciones:payload.p_observaciones,no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad,noches:diff(payload.p_fecha_entrada,payload.p_fecha_salida)};
+ const nuevo={...r,fecha_entrada:payload.p_fecha_entrada,fecha_salida:payload.p_fecha_salida,hora_llegada_aprox:camposDirectos.hora_llegada_aprox,hora_salida_aprox:camposDirectos.hora_salida_aprox,numero_boleta:camposDirectos.numero_boleta,canal:payload.p_canal,referencia_externa:camposDirectos.referencia_externa,adultos:payload.p_adultos,menores:payload.p_menores,tarifa_noche:payload.p_tarifa_noche,modelo_vehiculo:payload.p_modelo_vehiculo,patente_vehiculo:payload.p_patente_vehiculo,cupo_estacionamiento:payload.p_cupo_estacionamiento,usa_estacionamiento:payload.p_usa_estacionamiento,noches_estacionamiento:payload.p_noches_estacionamiento,observaciones:payload.p_observaciones,no_mover_unidad:$('#rnm')?.checked??r.no_mover_unidad,noches:diff(payload.p_fecha_entrada,payload.p_fecha_salida)};
  S.cur=nuevo;
  const ri=S.res.findIndex(x=>x.id===r.id);
  if(ri>=0)S.res[ri]={...S.res[ri],...nuevo};
