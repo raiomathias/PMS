@@ -7451,3 +7451,69 @@ SELECT jsonb_build_object(
     )
 ) AS resultado_json;
 
+
+
+-- ============================================================
+-- PMS: BORRADO SEGURO INDIVIDUAL DE CARGOS Y PAGOS
+-- Solo Gerencia y SysAdmin pueden borrar registros financieros.
+-- El borrado está ligado a la reserva abierta y se valida en BD,
+-- no solo mediante botones ocultos en el frontend.
+-- Los pagos eliminados también eliminan sus pagos_motivos (CASCADE).
+-- Los cargos internos de cálculo se administran desde sus campos
+-- correspondientes y no se eliminan con esta acción.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.eliminar_dato_financiero(
+  p_tipo text,
+  p_id uuid,
+  p_reserva_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public, auth
+AS $function$
+DECLARE
+  v_actor uuid := auth.uid();
+  v_actor_rol text;
+  v_rows integer;
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT rol::text
+    INTO v_actor_rol
+    FROM public.perfiles
+   WHERE id = v_actor
+     AND activo = true;
+
+  IF COALESCE(v_actor_rol, '') NOT IN
+     ('gerencia', 'sysadmin', 'system_admin', 'systemadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia y SysAdmin pueden eliminar cargos o pagos';
+  END IF;
+
+  IF p_tipo NOT IN ('cargo', 'pago') OR p_id IS NULL OR p_reserva_id IS NULL THEN
+    RAISE EXCEPTION 'Tipo o identificador de registro no válido';
+  END IF;
+
+  IF p_tipo = 'cargo' THEN
+    DELETE FROM public.cargos
+     WHERE id = p_id
+       AND reserva_id = p_reserva_id
+       AND COALESCE(descripcion, '') NOT IN
+         ('__PMS_IVA__', '__PMS_OTRO_PRECIO__', '__PMS_AJUSTE_TOTAL_MANUAL__');
+  ELSE
+    DELETE FROM public.pagos
+     WHERE id = p_id
+       AND reserva_id = p_reserva_id;
+  END IF;
+
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows = 0 THEN
+    RAISE EXCEPTION 'El registro no existe, no pertenece a esta reserva o es un cargo interno protegido';
+  END IF;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.eliminar_dato_financiero(text, uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.eliminar_dato_financiero(text, uuid, uuid) TO authenticated;
