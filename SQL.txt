@@ -7549,13 +7549,13 @@ BEGIN
     RAISE EXCEPTION 'Sesión no válida';
   END IF;
 
-  SELECT lower(trim(p.rol::text))
+  SELECT regexp_replace(lower(trim(p.rol::text)), '[\\s-]+', '_', 'g')
     INTO v_rol
     FROM public.perfiles p
    WHERE p.id = v_user
      AND p.activo = true;
 
-  IF v_rol IS NULL OR NOT COALESCE(public.es_personal(), false) THEN
+  IF v_rol IS NULL OR v_rol NOT IN ('recepcion','administracion','gerencia','sysadmin','system_admin','systemadmin') THEN
     RAISE EXCEPTION 'Usuario sin perfil de personal activo';
   END IF;
 
