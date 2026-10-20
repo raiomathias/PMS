@@ -3659,8 +3659,8 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='2.5';
+const VERSION_ACTUAL='2.6';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
-async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Nueva versión v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
+async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Actualización v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar ahora</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
 </script></body></html>
