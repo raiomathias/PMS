@@ -1264,21 +1264,38 @@ function abrirNueva(p={}){
 function abrirRevisarDisponibilidad(){
  const hoy=hoyStr();
  $('#mo').innerHTML=`
- <div style="width:860px;max-width:calc(100vw - 40px)">
-  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">✓ Revisar Disponibilidad Global</h3><button onclick="cerrar()">✕</button></div>
-  <p class="mu" style="margin:6px 0 14px">Busca en todos los edificios y categorías, incluso en los que tu usuario no puede visualizar normalmente. La consulta no crea reservas ni modifica reservas existentes. Si no hay disponibilidad para todo el período, buscará estadías más cortas, desde la salida solicitada hasta una noche como mínimo.</p>
+ <div style="width:900px;max-width:calc(100vw - 32px)">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">✓ Revisar Disponibilidad</h3><button onclick="cerrar()">✕</button></div>
+  <p class="mu" style="margin:6px 0 14px">Puedes filtrar por edificio, categoría o unidad, o dejar cualquiera en “Global” para buscar en todos. La búsqueda incluye edificios fuera de tus permisos de visualización, que se identificarán para derivar al huésped a su Administración.</p>
+  <div class="sec c3"><h4 class="st">🔎 ¿Dónde buscar?</h4><div class="g2">
+   <label>Edificio<select id="ad_edificio" onchange="actualizarFiltrosDisponibilidad()"><option value="">Global (todos los edificios)</option>${(S.edificiosPermitidos||S.edificios||[]).map(e=>'<option value="'+esc(e.id)+'">'+esc(e.nombre)+'</option>').join('')}</select></label>
+   <label>Categoría<select id="ad_categoria" onchange="actualizarFiltrosDisponibilidad()"><option value="">Global (todas las categorías)</option>${Object.entries(S.tipos||{}).map(([id,t])=>'<option value="'+esc(id)+'">'+esc(t.nombre)+'</option>').join('')}</select></label>
+   <label>Unidad<select id="ad_unidad" onchange="actualizarFiltrosDisponibilidad()"><option value="">Global (cualquier unidad)</option></select></label>
+  </div></div>
   <div class="sec c3"><h4 class="st">📅 Fechas de estadía</h4><div class="g2">
    <label>Entrada<input id="ad_ent" type="date" value="${hoy}"></label>
    <label>Salida deseada<input id="ad_sal" type="date" value="${addD(hoy,1)}"></label>
   </div></div>
   <div id="ad_result" style="margin-top:12px"></div>
-  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="cerrar()">Cerrar</button><button class="p" onclick="consultarDisponibilidad()">Buscar en todos los edificios</button></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="cerrar()">Cerrar</button><button class="p" onclick="consultarDisponibilidad()">Buscar disponibilidad</button></div>
  </div>`;
  $('#mo').style.display='grid';
+ actualizarFiltrosDisponibilidad();
+}
+function actualizarFiltrosDisponibilidad(){
+ const ed=$('#ad_edificio')?.value||'',cat=$('#ad_categoria')?.value||'',sel=$('#ad_unidad'),actual=sel?.value||'';
+ if(!sel)return;
+ const unidades=(S.unidades||[]).filter(u=>(!ed||u.edificio_id===ed)&&(!cat||u.tipo_unidad_id===cat));
+ sel.innerHTML='<option value="">Global (cualquier unidad)</option>'+unidades.map(u=>'<option value="'+esc(u.id)+'">'+esc((u.edificios?.nombre?u.edificios.nombre+' · ':'')+u.codigo)+'</option>').join('');
+ if(unidades.some(u=>u.id===actual))sel.value=actual;
 }
 function fechaDisponibilidadLarga(s){
  if(!s)return '—';
  return new Date(s+'T00:00:00Z').toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric',timeZone:'UTC'});
+}
+function filtrarResultadosDisponibilidad(resultados){
+ const ed=$('#ad_edificio')?.value||'',cat=$('#ad_categoria')?.value||'',unidad=$('#ad_unidad')?.value||'';
+ return (resultados||[]).filter(x=>(!ed||x.edificio_id===ed)&&(!cat||x.categoria_id===cat)&&(!unidad||x.unidad_id===unidad));
 }
 function renderOpcionesDisponibilidad(resultados,fe,fsSolicitada,fsEncontrada){
  const ordenados=[...(resultados||[])].sort((a,b)=>{
@@ -1302,32 +1319,33 @@ function renderOpcionesDisponibilidad(resultados,fe,fsSolicitada,fsEncontrada){
  let html='';
  if(permitidos.length)html+='<section class="sec c3"><h4 class="st">✓ Primero: edificios a los que tienes acceso ('+permitidos.length+')</h4><div class="cg">'+permitidos.map(tarjeta).join('')+'</div></section>';
  if(otros.length)html+='<section class="sec c4"><h4 class="st">⚠ Otros edificios · derivar a su Administración ('+otros.length+')</h4><p class="mu">Se muestran porque la búsqueda es global, pero tu usuario no puede administrar esas reservas. Las opciones de tus edificios aparecen siempre primero.</p><div class="cg">'+otros.map(tarjeta).join('')+'</div></section>';
- return html||'<div class="al r">No se encontraron opciones para estas fechas.</div>';
+ return html||'<div class="al r">No se encontraron opciones para estos filtros y fechas.</div>';
 }
 async function consultarDisponibilidad(){
  const fe=$('#ad_ent')?.value,fs=$('#ad_sal')?.value,out=$('#ad_result');
  if(!fe||!fs||fs<=fe)return msg('La salida debe ser posterior a la entrada',1);
  const boton=[...document.querySelectorAll('#mo button')].find(b=>b.getAttribute('onclick')==='consultarDisponibilidad()');
  if(boton){boton.disabled=true;boton.dataset.originalText=boton.textContent;boton.textContent='Buscando…';boton.style.background='#9ca3af';boton.style.color='#fff';}
- out.innerHTML='<div class="al">⏳ Buscando disponibilidad global y evaluando reacomodaciones inteligentes…</div>';
+ out.innerHTML='<div class="al">⏳ Buscando disponibilidad y evaluando reacomodaciones inteligentes…</div>';
  try{
   let salida=fs,resultado=[],errorBusqueda=null;
   const salidaMinima=addD(fe,1);
   while(salida>fe){
-   out.innerHTML='<div class="al">⏳ Revisando disponibilidad global del <b>'+esc(fechaDisponibilidadLarga(fe))+'</b> al <b>'+esc(fechaDisponibilidadLarga(salida))+'</b> en todos los edificios, incluyendo reacomodación inteligente…</div>';
+   out.innerHTML='<div class="al">⏳ Revisando del <b>'+esc(fechaDisponibilidadLarga(fe))+'</b> al <b>'+esc(fechaDisponibilidadLarga(salida))+'</b> con los filtros seleccionados y reacomodación inteligente…</div>';
    const {data,error}=await sb.rpc('buscar_disponibilidad_global',{p_entrada:fe,p_salida:salida});
    if(error){errorBusqueda=error;break}
-   resultado=Array.isArray(data)?data:(data&&typeof data==='object'?[data]:[]);
+   const todos=Array.isArray(data)?data:(data&&typeof data==='object'?[data]:[]);
+   resultado=filtrarResultadosDisponibilidad(todos);
    if(resultado.length)break;
    if(salida===salidaMinima)break;
    salida=addD(salida,-1);
   }
   if(errorBusqueda){
-   out.innerHTML='<div class="al r">No se pudo completar la búsqueda global: '+esc(errTxt(errorBusqueda))+'<br><span class="mu">No se mostrarán resultados parciales porque no se pudo verificar toda la búsqueda.</span></div>';
+   out.innerHTML='<div class="al r">No se pudo completar la búsqueda: '+esc(errTxt(errorBusqueda))+'<br><span class="mu">No se mostrarán resultados parciales porque no se pudo verificar toda la búsqueda.</span></div>';
    return;
   }
   if(!resultado.length){
-   out.innerHTML='<div class="al r"><b>✕ No se encontró disponibilidad</b><br>Se revisaron todas las fechas posibles, desde la salida solicitada hasta una estadía de una noche, usando disponibilidad directa y reacomodación inteligente en todos los edificios.</div>';
+   out.innerHTML='<div class="al r"><b>✕ No se encontró disponibilidad</b><br>Se revisaron todos los períodos posibles, desde la salida solicitada hasta una estadía de una noche, con los filtros seleccionados, disponibilidad directa y reacomodación inteligente.</div>';
    return;
   }
   const parcial=salida!==fs;
@@ -1338,7 +1356,7 @@ async function consultarDisponibilidad(){
  }catch(e){
   out.innerHTML='<div class="al r">Ocurrió un error al buscar disponibilidad: '+esc(e?.message||e)+'</div>';
  }finally{
-  if(boton){boton.disabled=false;boton.textContent=boton.dataset.originalText||'Buscar en todos los edificios';boton.style.background='';boton.style.color='';}
+  if(boton){boton.disabled=false;boton.textContent=boton.dataset.originalText||'Buscar disponibilidad';boton.style.background='';boton.style.color='';}
  }
 }
 function syncBookingRef(){const c=$('#nc')?.value,b=c==='booking',a=c==='airbnb',x=$('#nx');if(!x)return;x.required=b||a;x.placeholder=b?'Obligatorio para Booking':a?'Obligatorio para Airbnb (ID de transacción)':'Opcional';if(b||a)x.closest('label')?.querySelector('span')?.remove()}
