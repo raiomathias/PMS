@@ -607,10 +607,27 @@ begin
   end if;
 
   if p_total_manual is not null and public.tiene_permiso_edicion(v_user,'total') then
-    delete from cargos where reserva_id=r.id and tipo='otro' and descripcion='__PMS_AJUSTE_TOTAL_MANUAL__';
-    select ((v_sal-v_ent)*coalesce((select tarifa_noche from reservas where id=r.id),r.tarifa_noche))+coalesce(sum(case when descripcion not in ('__PMS_AJUSTE_TOTAL_MANUAL__') then total else 0 end),0) into v_base_total from cargos where reserva_id=r.id;
-    v_ajuste:=p_total_manual-coalesce(v_base_total,0);
-    if v_ajuste<>0 then insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) values(r.id,'otro','__PMS_AJUSTE_TOTAL_MANUAL__',1,v_ajuste); end if;
+    -- El total manual corresponde exclusivamente a la estadía.
+    -- Los cargos extra nunca se suman al total base ni generan ajustes
+    -- negativos para compensarlos. Se eliminan ajustes antiguos al guardar.
+    delete from cargos
+     where reserva_id=r.id
+       and tipo='otro'
+       and descripcion='__PMS_AJUSTE_TOTAL_MANUAL__';
+
+    select (v_sal-v_ent) * coalesce(
+      (select tarifa_noche from reservas where id=r.id),
+      r.tarifa_noche
+    )
+      into v_base_total;
+
+    -- Solo se conserva un ajuste positivo si el total manual supera
+    -- noches × tarifa; los cargos extra quedan completamente aparte.
+    v_ajuste := p_total_manual - coalesce(v_base_total,0);
+    if v_ajuste > 0 then
+      insert into cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario)
+      values(r.id,'otro','__PMS_AJUSTE_TOTAL_MANUAL__',1,v_ajuste);
+    end if;
   end if;
 end;
 $function$;
