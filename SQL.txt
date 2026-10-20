@@ -7492,7 +7492,7 @@ BEGIN
     RAISE EXCEPTION 'Solo Gerencia y SysAdmin pueden eliminar cargos o pagos';
   END IF;
 
-  IF p_tipo NOT IN ('cargo', 'pago') OR p_id IS NULL OR p_reserva_id IS NULL THEN
+  IF COALESCE(p_tipo, '') NOT IN ('cargo', 'pago') OR p_id IS NULL OR p_reserva_id IS NULL THEN
     RAISE EXCEPTION 'Tipo o identificador de registro no válido';
   END IF;
 
