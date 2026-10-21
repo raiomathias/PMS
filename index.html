@@ -3284,7 +3284,7 @@ function audAgrupar(rows){
 function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
  function audLista(){
   const R=AUD.rows;if(!R.length){$('#alst').innerHTML='<div class="mu" style="text-align:center;padding:40px">Sin resultados con estos filtros.</div>';return}
-  const groups=audAgrupar(R);let h='',dia='';
+  const groups=audAgrupar(R),visibles=groups.reduce((n,g)=>n+g.items.length,0),omitidos=R.length-visibles;let h='',dia='';
   for(const g of groups){
    const a=g.items[0],d=audDia(a.fecha);if(d!==dia){dia=d;h+=`<div class="au-d">${audDiaTxt(d)}</div>`}
    if(g.kind==='single'){h+=audFila(a);continue}
@@ -3293,7 +3293,7 @@ function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
    const who=first.usuario_nombre||(first.usuario_id?'Usuario eliminado':'Sistema / SQL'),when=audFechaHora(first.fecha),res=first.reserva_uid||'Reserva vinculada',open=!!AUD.groupOpen[g.key];
    h+=`<section class="au-group"><div class="au-group-head" role="button" tabindex="0" aria-expanded="${open}" onclick="audGrupoTog('${g.key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();audGrupoTog('${g.key}')}"><div class="au-av">↔</div><div class="main"><h4>${esc(verb)} · ${esc(res)}</h4><p>${esc(who)} · ${esc(when)} · ${esc(tables.join(' · '))}</p>${audGrupoDetalle(g.items)}</div><span class="au-count">${g.items.length} registros</span><span aria-hidden="true">${open?'▴':'▾'}</span></div>${open?`<div class="au-group-items">${g.items.map(audFila).join('')}</div>`:''}</section>`
   }
-  h+=`<div style="text-align:center;margin:14px 0" class="mu">Mostrando ${R.length} registros de auditoría (${groups.length} elementos visuales) de ${AUD.tot}${R.length<AUD.tot?' <button class="p" onclick="audCargar(false)">Cargar más</button>':''}</div>`;
+  h+=`<div style="text-align:center;margin:14px 0" class="mu">Mostrando ${visibles} eventos con cambios reales en ${groups.length} tarjetas${omitidos>0?' · '+omitidos+' eventos sin cambios visibles omitidos':''} · ${AUD.tot} registros coinciden con los filtros${R.length<AUD.tot?' <button class="p" onclick="audCargar(false)">Cargar más</button>':''}</div>`;
   $('#alst').innerHTML=h}
  function audChips(){
  $('#aq').innerHTML=AUD_Q.map((q,i)=>`<button onclick="audAtajo(${i})">${q.n}</button>`).join('');
