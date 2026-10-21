@@ -7695,3 +7695,81 @@ $function$;
 REVOKE ALL ON FUNCTION public.buscar_disponibilidad_global(date,date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.buscar_disponibilidad_global(date,date) TO authenticated;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- PMS v2.8.2 · Métricas de auditoría basadas en cambios reales
+-- Las filas históricas se conservan. Las UPDATE que solo cambian
+-- timestamps se contabilizan por separado y no inflan "Modificados".
+-- Aplicada en Supabase el 2026-10-21.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.auditoria_resumen(
+  p_desde date DEFAULT NULL::date,
+  p_hasta date DEFAULT NULL::date,
+  p_usuario uuid DEFAULT NULL::uuid,
+  p_sin_usuario boolean DEFAULT false,
+  p_tablas text[] DEFAULT NULL::text[],
+  p_acciones text[] DEFAULT NULL::text[],
+  p_texto text DEFAULT NULL::text,
+  p_monto_min numeric DEFAULT NULL::numeric,
+  p_monto_max numeric DEFAULT NULL::numeric,
+  p_campos text[] DEFAULT NULL::text[]
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO public
+AS $function$
+DECLARE
+  r jsonb;
+BEGIN
+  IF COALESCE(public.pms_rol(), '') NOT IN ('gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Gerencia o SysAdmin pueden ver la auditoría';
+  END IF;
+
+  WITH f AS (
+    SELECT * FROM public._aud_filtrada(
+      p_desde, p_hasta, p_usuario, p_sin_usuario, p_tablas, p_acciones,
+      p_texto, p_monto_min, p_monto_max, p_campos
+    )
+  ),
+  reales AS (
+    SELECT f.* FROM f
+    WHERE f.accion <> 'UPDATE' OR EXISTS (
+      SELECT 1 FROM jsonb_each(COALESCE(f.datos_anteriores, '{}'::jsonb)) o
+      FULL JOIN jsonb_each(COALESCE(f.datos_nuevos, '{}'::jsonb)) n ON o.key = n.key
+      WHERE COALESCE(o.key, n.key) NOT IN ('actualizado_en','updated_at','modificado_en')
+        AND o.value IS DISTINCT FROM n.value
+    )
+  ),
+  sin_cambios AS (
+    SELECT f.* FROM f
+    WHERE f.accion = 'UPDATE' AND NOT EXISTS (
+      SELECT 1 FROM jsonb_each(COALESCE(f.datos_anteriores, '{}'::jsonb)) o
+      FULL JOIN jsonb_each(COALESCE(f.datos_nuevos, '{}'::jsonb)) n ON o.key = n.key
+      WHERE COALESCE(o.key, n.key) NOT IN ('actualizado_en','updated_at','modificado_en')
+        AND o.value IS DISTINCT FROM n.value
+    )
+  )
+  SELECT jsonb_build_object(
+    'total', (SELECT count(*) FROM f),
+    'crear', (SELECT count(*) FROM reales WHERE accion = 'INSERT'),
+    'modificar', (SELECT count(*) FROM reales WHERE accion = 'UPDATE'),
+    'eliminar', (SELECT count(*) FROM reales WHERE accion = 'DELETE'),
+    'sin_cambios', (SELECT count(*) FROM sin_cambios),
+    'usuarios', (SELECT count(*) FROM public.perfiles WHERE activo = true),
+    'pagos_n', (SELECT count(*) FROM reales WHERE tabla = 'pagos' AND accion = 'INSERT'),
+    'pagos_monto', (SELECT COALESCE(sum(monto), 0) FROM reales WHERE tabla = 'pagos' AND accion = 'INSERT'),
+    'pagos_alterados', (SELECT count(*) FROM reales WHERE tabla = 'pagos' AND accion IN ('UPDATE','DELETE')),
+    'top_usuarios', (
+      SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.n DESC), '[]'::jsonb)
+      FROM (
+        SELECT usuario_id, COALESCE(usuario_nombre, 'Sistema / SQL') AS nombre, count(*) AS n
+        FROM reales GROUP BY 1, 2 ORDER BY n DESC LIMIT 6
+      ) x
+    )
+  ) INTO r;
+  RETURN r;
+END
+$function$;
