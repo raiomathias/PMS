@@ -7896,3 +7896,157 @@ WHERE a.accion='UPDATE'
   AND (COALESCE(a.datos_anteriores,'{}'::jsonb)-ARRAY['actualizado_en','updated_at','modificado_en']::text[])
       =(COALESCE(a.datos_nuevos,'{}'::jsonb)-ARRAY['actualizado_en','updated_at','modificado_en']::text[]);
 
+
+
+-- ============================================================
+-- PMS · Corrección de roles en búsqueda global de disponibilidad
+-- Aplicado en Supabase el 2026-10-21.
+-- La expresión regular anterior interpretaba la letra s como parte
+-- del conjunto de caracteres y alteraba roles como administracion
+-- y sysadmin. Se compara el rol normalizado sin modificar sus letras.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.buscar_disponibilidad_global(p_entrada date, p_salida date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'auth'
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_rol text;
+  v_item record;
+  v_plan jsonb;
+  v_target_id uuid;
+  v_target record;
+  v_result jsonb := '[]'::jsonb;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT lower(trim(p.rol::text))
+    INTO v_rol
+    FROM public.perfiles p
+   WHERE p.id = v_user
+     AND p.activo = true;
+
+  IF v_rol IS NULL OR v_rol NOT IN ('recepcion','administracion','gerencia','sysadmin','system_admin','systemadmin') THEN
+    RAISE EXCEPTION 'Usuario sin perfil de personal activo';
+  END IF;
+
+  IF p_entrada IS NULL OR p_salida IS NULL OR p_salida <= p_entrada THEN
+    RAISE EXCEPTION 'La fecha de salida debe ser posterior a la fecha de entrada';
+  END IF;
+
+  FOR v_item IN
+    SELECT
+      u.id AS unidad_id,
+      u.codigo::text AS unidad,
+      u.edificio_id,
+      e.nombre AS edificio,
+      e.orden AS edificio_orden,
+      tu.id AS categoria_id,
+      tu.nombre::text AS categoria,
+      (
+        v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+        OR EXISTS (
+          SELECT 1 FROM public.perfiles_edificios pe
+           WHERE pe.perfil_id = v_user AND pe.edificio_id = u.edificio_id
+        )
+      ) AS acceso
+    FROM public.unidades u
+    JOIN public.edificios e ON e.id = u.edificio_id AND e.activo = true
+    JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
+    WHERE u.activo = true
+      AND NOT EXISTS (
+        SELECT 1 FROM public.reservas r
+         WHERE r.unidad_id = u.id
+           AND r.fecha_entrada < p_salida
+           AND r.fecha_salida > p_entrada
+           AND r.estado NOT IN ('cancelada','no_show')
+      )
+    ORDER BY acceso DESC, e.orden NULLS LAST, e.nombre, tu.nombre, u.orden NULLS LAST, u.codigo
+  LOOP
+    v_result := v_result || jsonb_build_array(jsonb_build_object(
+      'edificio_id', v_item.edificio_id,
+      'edificio', v_item.edificio,
+      'edificio_orden', v_item.edificio_orden,
+      'categoria_id', v_item.categoria_id,
+      'categoria', v_item.categoria,
+      'unidad_id', v_item.unidad_id,
+      'unidad', v_item.unidad,
+      'tipo', 'directa',
+      'plan', '[]'::jsonb,
+      'acceso', v_item.acceso
+    ));
+  END LOOP;
+
+  FOR v_item IN
+    SELECT DISTINCT u.edificio_id, e.nombre AS edificio, e.orden AS edificio_orden,
+           u.tipo_unidad_id AS categoria_id, tu.nombre AS categoria,
+           (
+             v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+             OR EXISTS (
+               SELECT 1 FROM public.perfiles_edificios pe
+                WHERE pe.perfil_id = v_user AND pe.edificio_id = u.edificio_id
+             )
+           ) AS acceso
+      FROM public.unidades u
+      JOIN public.edificios e ON e.id = u.edificio_id AND e.activo = true
+      JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
+     WHERE u.activo = true
+       AND NOT EXISTS (
+         SELECT 1
+           FROM public.unidades libre
+          WHERE libre.activo = true
+            AND libre.edificio_id = u.edificio_id
+            AND libre.tipo_unidad_id = u.tipo_unidad_id
+            AND NOT EXISTS (
+              SELECT 1 FROM public.reservas r
+               WHERE r.unidad_id = libre.id
+                 AND r.fecha_entrada < p_salida
+                 AND r.fecha_salida > p_entrada
+                 AND r.estado NOT IN ('cancelada','no_show')
+            )
+       )
+     ORDER BY acceso DESC, e.orden NULLS LAST, e.nombre, tu.nombre
+  LOOP
+    v_plan := public.buscar_reacomodacion(
+      p_edificio_id => v_item.edificio_id,
+      p_tipo_unidad_id => v_item.categoria_id,
+      p_entrada => p_entrada,
+      p_salida => p_salida
+    );
+
+    v_target_id := NULLIF(v_plan->>'unidad_id','')::uuid;
+    IF v_target_id IS NULL THEN CONTINUE; END IF;
+
+    SELECT u.id AS unidad_id, u.codigo::text AS unidad,
+           u.edificio_id, e.nombre AS edificio, e.orden AS edificio_orden,
+           tu.id AS categoria_id, tu.nombre::text AS categoria
+      INTO v_target
+      FROM public.unidades u
+      JOIN public.edificios e ON e.id = u.edificio_id
+      JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
+     WHERE u.id = v_target_id AND u.activo = true;
+
+    IF NOT FOUND THEN CONTINUE; END IF;
+
+    v_result := v_result || jsonb_build_array(jsonb_build_object(
+      'edificio_id', v_target.edificio_id,
+      'edificio', v_target.edificio,
+      'edificio_orden', v_target.edificio_orden,
+      'categoria_id', v_target.categoria_id,
+      'categoria', v_target.categoria,
+      'unidad_id', v_target.unidad_id,
+      'unidad', v_target.unidad,
+      'tipo', 'reacomodacion',
+      'plan', COALESCE(v_plan->'plan','[]'::jsonb),
+      'acceso', v_item.acceso
+    ));
+  END LOOP;
+
+  RETURN v_result;
+END;
+$function$
+;
