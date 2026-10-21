@@ -8560,3 +8560,43 @@ NOTIFY pgrst,'reload schema';
 -- egana_huasco, egana_interno, huasco_interno, egana_limpieza,
 -- huasco_limpieza, egana_gerencia, huasco_gerencia, gerencia_general.
 -- Los chats privados se crean automáticamente por usuario.
+
+
+-- ============================================================
+-- FIX v2.9.3 · Error "column reference privado_usuario_id is ambiguous"
+-- Motivo: RETURNS TABLE declara privado_usuario_id como variable
+-- de salida PL/pgSQL y ON CONFLICT usaba el mismo nombre sin
+-- resolver la colisión. Se fija resolución a columnas SQL.
+-- Aplicado en Supabase.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.buzon_conversaciones_listar()
+RETURNS TABLE(conversacion_id uuid,clave text,nombre text,descripcion text,tipo text,privado_usuario_id uuid,ultimo_mensaje text,ultimo_mensaje_en timestamptz,no_leidos bigint)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+#variable_conflict use_column
+DECLARE v_rol text; v_name text;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+ SELECT lower(trim(p.rol::text)),p.nombre_completo INTO v_rol,v_name FROM public.perfiles p WHERE p.id=auth.uid() AND p.activo=true;
+ IF v_rol IS NULL THEN RAISE EXCEPTION 'Usuario sin perfil activo'; END IF;
+ INSERT INTO public.buzon_conversaciones(nombre,descripcion,tipo,privado_usuario_id,creado_por)
+ VALUES('Privado · '||COALESCE(NULLIF(v_name,''),'Usuario'),'Conversación privada entre este usuario y Gerencia. Solo el usuario titular y Gerencia pueden verla.','privado_gerencia',auth.uid(),auth.uid())
+ ON CONFLICT (privado_usuario_id) WHERE tipo='privado_gerencia' DO NOTHING;
+ IF v_rol IN ('gerencia','sysadmin','system_admin','systemadmin') THEN
+  INSERT INTO public.buzon_conversaciones(nombre,descripcion,tipo,privado_usuario_id,creado_por)
+  SELECT 'Privado · '||COALESCE(NULLIF(p.nombre_completo,''),p.id::text),'Conversación privada entre este usuario y Gerencia.','privado_gerencia',p.id,p.id
+  FROM public.perfiles p WHERE p.activo=true AND p.id<>auth.uid()
+  ON CONFLICT (privado_usuario_id) WHERE tipo='privado_gerencia' DO NOTHING;
+ END IF;
+ RETURN QUERY SELECT c.id,c.clave,
+  CASE WHEN c.tipo='privado_gerencia' AND c.privado_usuario_id<>auth.uid() THEN 'Privado · '||COALESCE(NULLIF(p.nombre_completo,''),'Usuario') ELSE c.nombre END,
+  c.descripcion,c.tipo,c.privado_usuario_id,
+  (SELECT b.mensaje FROM public.buzon_mensajes b WHERE b.conversacion_id=c.id AND b.activo AND b.eliminado_en IS NULL AND NOT EXISTS(SELECT 1 FROM public.buzon_ocultos o WHERE o.mensaje_id=b.id AND o.usuario_id=auth.uid()) AND NOT EXISTS(SELECT 1 FROM public.buzon_limpiezas_globales g WHERE g.mensaje_id=b.id) ORDER BY b.creado_en DESC LIMIT 1),
+  (SELECT max(b.creado_en) FROM public.buzon_mensajes b WHERE b.conversacion_id=c.id AND b.activo AND NOT EXISTS(SELECT 1 FROM public.buzon_ocultos o WHERE o.mensaje_id=b.id AND o.usuario_id=auth.uid()) AND NOT EXISTS(SELECT 1 FROM public.buzon_limpiezas_globales g WHERE g.mensaje_id=b.id)),
+  (SELECT count(*) FROM public.buzon_mensajes b WHERE b.conversacion_id=c.id AND b.activo AND b.remitente_id<>auth.uid() AND NOT EXISTS(SELECT 1 FROM public.buzon_lecturas l WHERE l.mensaje_id=b.id AND l.usuario_id=auth.uid()) AND NOT EXISTS(SELECT 1 FROM public.buzon_ocultos o WHERE o.mensaje_id=b.id AND o.usuario_id=auth.uid()) AND NOT EXISTS(SELECT 1 FROM public.buzon_limpiezas_globales g WHERE g.mensaje_id=b.id))
+ FROM public.buzon_conversaciones c LEFT JOIN public.perfiles p ON p.id=c.privado_usuario_id
+ WHERE c.activo AND public.buzon_puede_acceder_conversacion(c.id)
+ ORDER BY (c.tipo='privado_gerencia') DESC,(SELECT max(b.creado_en) FROM public.buzon_mensajes b WHERE b.conversacion_id=c.id AND b.activo) DESC NULLS LAST,c.nombre;
+END $$;
+REVOKE ALL ON FUNCTION public.buzon_conversaciones_listar() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.buzon_conversaciones_listar() TO authenticated;
+NOTIFY pgrst,'reload schema';
