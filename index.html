@@ -3618,7 +3618,7 @@ function hueDibujarLista29(){
 async function verHuesped29(id){
  const g=HUE29.guests.find(x=>x.id===id);if(!g)return;
  HUE29.id=id;
- const [nt,cl,bl]=await Promise.all([sb.from('notas_huesped').select('*,perfiles:creado_por(nombre_completo)').eq('huesped_id',id).order('creado_en',{ascending:false}),sb.from('reclamos_sugerencias').select('*').eq('huesped_id',id).order('creado_en',{ascending:false}),sb.from('lista_negra_solicitudes').select('id,estado,motivo,solicitado_en,decision_motivo').eq('huesped_id',id).order('solicitado_en',{ascending:false})]);
+ const [nt,cl,bl]=await Promise.all([sb.from('notas_huesped').select('*').eq('huesped_id',id).order('creado_en',{ascending:false}),sb.from('reclamos_sugerencias').select('*').eq('huesped_id',id).order('creado_en',{ascending:false}),sb.from('lista_negra_solicitudes').select('id,estado,motivo,solicitado_en,decision_motivo').eq('huesped_id',id).order('solicitado_en',{ascending:false})]);
  if(HUE29.id!==id)return;HUE29.notes=nt.data||[];HUE29.reclamos=cl.data||[];HUE29.solicitudes=bl.data||[];
  const rs=HUE29.reservas.filter(r=>r.huesped_id===id),st=hueStats29(g),edit=puedeEditarHuesped29();
  const fld=(k,l,t,v)=>'<label>'+l+'<input data-hue29="'+k+'" type="'+t+'" value="'+esc(v??'')+'" '+(edit?'':'disabled')+'></label>';
