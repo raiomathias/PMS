@@ -344,6 +344,36 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 #hue .hue29-merge{margin-top:10px;background:#2563eb;color:white;border-color:#2563eb;font-weight:750}#hue .hue29-stay{padding:12px 0;border-bottom:1px solid var(--bd)}#hue .hue29-stay:last-child{border:0}#hue .hue29-staytop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}#hue .hue29-staytop b{display:block}#hue .hue29-staytop small{display:block;color:var(--mu);margin-top:3px}#hue .hue29-status{background:var(--bg);padding:4px 8px;border-radius:99px;font-size:11px;white-space:nowrap}#hue .hue29-stay p{font-size:12px;color:var(--mu);line-height:1.5}#hue .hue29-note{padding:10px 0;border-bottom:1px solid var(--bd)}#hue .hue29-note:last-child{border:0}#hue .hue29-note small{display:block;color:var(--mu);font-size:11px;margin-top:3px}#hue .hue29-note p{white-space:pre-wrap;font-size:13px}
 #hue .hue29-audit{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;font-weight:750}
 @media(max-width:760px){#hue .hue29-head{padding:12px}#hue .hue29-body{padding:12px}#hue .hue29-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#hue .hue29-detailgrid{grid-template-columns:1fr}#hue .hue29-form{grid-template-columns:1fr}#hue .hue29-actions{margin-left:0;width:100%}}
+
+/* PMS v2.9.3 · Buzón profesional */
+.mail-box.bx-pro{width:min(960px,calc(100vw - 84px));height:min(680px,calc(100vh - 30px));border-radius:16px;background:var(--pn);box-shadow:0 22px 70px rgba(0,0,0,.30)}
+.bx-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--bd);background:var(--pn);flex:none}
+.bx-brand{width:36px;height:36px;border-radius:11px;background:color-mix(in srgb,var(--ac) 12%,var(--bg));display:grid;place-items:center;font-size:19px}
+.bx-title{font-weight:750;font-size:16px;line-height:1.2}.bx-subtitle{font-size:11px;color:var(--mu);margin-top:3px}
+.bx-head-actions{display:flex;gap:6px;margin-left:auto}.bx-layout{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:0;flex:1}
+.bx-side{border-right:1px solid var(--bd);min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.bx-side-top{padding:12px 10px 8px}.bx-side-top label{display:block;font-size:10px;color:var(--mu);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:0 5px 7px}
+.bx-search{width:100%;box-sizing:border-box;background:var(--pn);padding:9px 10px;border-radius:9px}
+.bx-list{overflow:auto;padding:3px 7px 12px;min-height:0}.bx-section{padding:12px 8px 5px;color:var(--mu);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.bx-conv{display:flex;gap:10px;align-items:center;width:100%;border:0;background:transparent;text-align:left;padding:10px 9px;border-radius:10px;margin:2px 0}
+.bx-conv:hover{background:color-mix(in srgb,var(--ac) 7%,var(--pn))}.bx-conv.active{background:color-mix(in srgb,var(--ac) 12%,var(--pn));box-shadow:inset 3px 0 var(--ac)}
+.bx-avatar{width:36px;height:36px;flex:none;border-radius:11px;background:var(--pn);border:1px solid var(--bd);display:grid;place-items:center;font-size:17px}
+.bx-conv-copy{min-width:0;flex:1}.bx-conv-name{font-size:12px;font-weight:750;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bx-conv-preview{font-size:10px;color:var(--mu);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.bx-unread{border-radius:99px;background:var(--ac);color:#fff;min-width:19px;padding:2px 5px;font-size:10px;text-align:center;font-weight:800}
+.bx-main{display:flex;flex-direction:column;min-width:0;min-height:0}.bx-chat-head{padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex:none}
+.bx-chat-title{font-size:14px;font-weight:800}.bx-chat-desc{font-size:11px;color:var(--mu);margin-top:3px;line-height:1.35}
+.bx-messages{flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.bx-date{align-self:center;font-size:10px;color:var(--mu);background:var(--pn);border:1px solid var(--bd);border-radius:99px;padding:4px 9px;margin:4px 0}
+.bx-msg{max-width:min(82%,600px);align-self:flex-start;background:var(--pn);border:1px solid var(--bd);border-radius:12px 12px 12px 4px;padding:9px 11px;box-shadow:0 1px 2px rgba(0,0,0,.035)}
+.bx-msg.mine{align-self:flex-end;background:color-mix(in srgb,var(--ac) 9%,var(--pn));border-color:color-mix(in srgb,var(--ac) 25%,var(--bd));border-radius:12px 12px 4px 12px}
+.bx-msg-author{font-size:10px;font-weight:800;color:var(--ac);margin-bottom:4px}.bx-msg-body{font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.bx-msg-time{text-align:right;color:var(--mu);font-size:9px;margin-top:5px}
+.bx-compose{padding:11px 13px;border-top:1px solid var(--bd);background:var(--pn);display:flex;gap:8px;align-items:flex-end;flex:none}
+.bx-compose textarea{flex:1;min-height:38px;max-height:110px;resize:vertical;padding:10px 11px;border-radius:10px;line-height:1.4}
+.bx-send{min-height:38px;padding:8px 14px;border-radius:10px;white-space:nowrap}
+.bx-empty{margin:auto;text-align:center;max-width:290px;color:var(--mu);padding:22px}.bx-empty b{display:block;color:var(--tx);font-size:14px;margin:10px 0 5px}.bx-empty-icon{font-size:34px}
+.bx-privacy{font-size:10px;color:var(--mu);padding:0 14px 8px;background:var(--pn)}
+.bx-mobile-back{display:none}
+@media(max-width:680px){.mail-box.bx-pro{left:8px!important;bottom:8px!important;width:calc(100vw - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:14px}.bx-layout{grid-template-columns:minmax(0,1fr)}.bx-side{border-right:0}.bx-main{display:none}.bx-layout.bx-chat-open .bx-side{display:none}.bx-layout.bx-chat-open .bx-main{display:flex}.bx-mobile-back{display:inline-flex}.bx-msg{max-width:90%}.bx-side-top{padding:10px}.bx-conv{padding:11px 9px}.bx-head{padding:10px 12px}}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()"><button class="p" onclick="entrar()">Entrar</button></div>
 <div id="app" style="display:none">
@@ -763,155 +793,120 @@ function protegerMutacionesRealtime(){
 }
 
 
+
 let MAIL={mode:'grid',open:false,preview:false,previewRows:[],rows:[],timer:null,channel:null,known:new Set(),initialized:false,draft:{audiencia:'recepcion_egana',text:''}};
+let BX={conversations:[],selected:null,messages:[],draft:'',search:'',loading:false,lastIds:new Set(),mobileChat:false};
 function mailBoxEl(){return document.getElementById(MAIL.mode==='limpieza'?'mailBoxLimp':'mailBox')}
 function mailBadgeEl(){return document.getElementById(MAIL.mode==='limpieza'?'mailBadgeLimp':'mailBadge')}
-
-function mailPuedeJefes(){return esAdminPlus(S.perfil?.rol)}
-function mailPuedeEliminarMensaje(x){
- return !!x&&!x.eliminado_en&&(x.remitente_id===S.perfil?.id||['gerencia','sysadmin','system_admin','systemadmin'].includes(rolNormalizado(S.perfil?.rol)));
-}
+function mailPuedeJefes(){return ['gerencia','sysadmin','system_admin','systemadmin'].includes(rolNormalizado(S.perfil?.rol))}
+function mailPuedeEliminarMensaje(x){return !!x&&!x.eliminado_en&&(x.remitente_id===S.perfil?.id||mailPuedeJefes())}
 function mailPuedeRecepcion(){return mailPuedeJefes()}
-function mailPuedeEnviar(a){return ['recepcion_egana','recepcion_huasco','administracion','gerencia'].includes(a)}
-function mailAudienciaLabel(a){return ({recepcion_egana:'Recepción Egaña',recepcion_huasco:'Recepción Huasco',administracion:'Administración',gerencia:'Gerencia'})[a]||a}
-function mailFormato(v){if(!v)return '';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-function mailBeep(){
- try{
-  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-  const c=new C(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=880;g.gain.value=.045;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.16);
-  setTimeout(()=>c.close().catch(()=>{}),300);
- }catch(e){}
-}
-function mailHayAcceso(r){
- if(r==='jefes')return mailPuedeJefes()||rolNormalizado(S.perfil?.rol)==='recepcion';
- if(r==='recepcion')return mailPuedeRecepcion();
- return true;
-}
-async function cargarBuzon(autopopup=false){
- if(!S.perfil)return;
- const {data,error}=await sb.rpc('buzon_listar');
- if(error){
-  if(!MAIL.sqlWarned){MAIL.sqlWarned=true;msg('Buzón: debes ejecutar el SQL del sistema de mensajería en Supabase.',1)}
-  return;
- }
- const rows=(data||[]).map(x=>({...x,unread:!x.leido_en}));
- const ids=new Set(rows.map(x=>x.id));
- const nuevos=rows.filter(x=>!MAIL.known.has(x.id)&&x.remitente_id!==S.perfil.id);
- const unread=rows.filter(x=>x.unread);
- const first=!MAIL.initialized;
- MAIL.rows=rows;MAIL.known=ids;MAIL.initialized=true;
- actualizarBadge(unread.length);
- if(nuevos.length){
-  mailBeep();
-  abrirBuzon(true,nuevos.slice(-1));
- }else if(first&&unread.length){
-  abrirBuzon(true,[unread[unread.length-1]]);
- }
- // No renderizar el Buzón completo durante el polling: así no se destruye
- // el textarea ni se pierde lo que el usuario está escribiendo.
-}
+function mailPuedeEnviar(){return true}
+function mailFormato(v){if(!v)return '';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function bxHora(v){if(!v)return '';const d=new Date(v);return isNaN(d)?'':d.toLocaleTimeString('es-CL',{timeZone:'America/Santiago',hour:'2-digit',minute:'2-digit'})}
+function bxIcon(c){const k=c?.clave||'';if(k.includes('egana_huasco'))return '↔';if(k.includes('limpieza'))return '🧹';if(k.includes('gerencia')||c?.tipo==='privado_gerencia')return '🔒';if(k.includes('egana'))return '🏢';if(k.includes('huasco'))return '🏨';return '💬'}
+function bxSection(c){return c.tipo==='privado_gerencia'?'Mensajes privados con Gerencia':c.clave==='gerencia_general'?'Administración y Gerencia':'Chats de equipo'}
+function bxPrivacy(c){return c?.tipo==='privado_gerencia'?'Privado: solo tú y Gerencia pueden leer esta conversación.':'Este chat es compartido únicamente con los usuarios autorizados para este canal.'}
 function actualizarBadge(n){const b=mailBadgeEl();if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
-function cerrarBuzon(){MAIL.open=false;MAIL.preview=false;MAIL.previewRows=[];const b=mailBoxEl();if(b){b.style.display='none';b.classList.remove('mail-preview')}}
-function toggleBuzon(){if(MAIL.open)cerrarBuzon();else abrirBuzon()}
-function mostrarBuzonCompleto(){MAIL.preview=false;MAIL.previewRows=[];const b=mailBoxEl();if(b)b.classList.remove('mail-preview');renderBuzon()}
-async function marcarMensajeLeido(id){
- const r=await sb.rpc('buzon_marcar_leido',{p_id:id});
- if(!r.error){
-  const x=MAIL.rows.find(m=>m.id===id);if(x)x.unread=false;
-  const px=MAIL.previewRows.find(m=>m.id===id);if(px)px.unread=false;
-  actualizarBadge(MAIL.rows.filter(x=>x.unread).length);
-  renderBuzon();
+async function cargarBuzon(){
+ if(!S.perfil)return;
+ const {data,error}=await sb.rpc('buzon_conversaciones_listar');
+ if(error){if(!MAIL.sqlWarned){MAIL.sqlWarned=true;msg('No se pudo cargar el nuevo Buzón. Verifica la migración v2.9.3: '+error.message,1)}return}
+ const convs=data||[];
+ const total=convs.reduce((a,c)=>a+Number(c.no_leidos||0),0);
+ const prev=BX.conversations;
+ const newestIds=new Set(convs.map(c=>c.conversacion_id));
+ BX.conversations=convs;
+ actualizarBadge(total);
+ if(prev.length&&convs.some(c=>Number(c.no_leidos||0)>0&&(!prev.find(p=>p.conversacion_id===c.conversacion_id)||Number(c.no_leidos||0)>Number(prev.find(p=>p.conversacion_id===c.conversacion_id)?.no_leidos||0)))){try{mailBeep()}catch(e){}}
+ if(BX.selected&&!newestIds.has(BX.selected))BX.selected=null;
+ if(MAIL.open){
+  if(!BX.selected&&convs.length)BX.selected=convs[0].conversacion_id;
+  bxRender();
+  if(BX.selected)await bxCargarMensajes(BX.selected,true);
  }
 }
-async function marcarTodosBuzon(){
- const ids=MAIL.rows.filter(x=>x.unread).map(x=>x.id);
- for(const id of ids)await sb.rpc('buzon_marcar_leido',{p_id:id});
- MAIL.rows.forEach(x=>x.unread=false);actualizarBadge(0);renderBuzon();
-}
-async function enviarMensajeBuzon(){
- const a=$('#mailAudience')?.value||'recepcion_egana';
- const t=$('#mailText')?.value.trim()||'';
- if(!t)return msg('Escribe el mensaje antes de enviarlo.',1);
- if(!mailPuedeEnviar(a))return msg('No tienes permiso para enviar a ese destino.',1);
- const {error}=await sb.rpc('buzon_enviar',{p_audiencia:a,p_mensaje:t,p_receptor_id:null});
- if(error)return msg(error.message,1);
- MAIL.draft={audiencia:'recepcion_egana',text:''};$('#mailText').value='';msg('Mensaje enviado a '+mailAudienciaLabel(a)+'.');
- await cargarBuzon(false);
-}
-async function eliminarMensajeBuzon(id){
- const x=MAIL.rows.find(m=>m.id===id)||MAIL.previewRows.find(m=>m.id===id);
- if(!x||x.eliminado_en)return;
- if(!mailPuedeEliminarMensaje(x))return msg('No tienes permiso para eliminar este mensaje.',1);
- const propio=x.remitente_id===S.perfil?.id;
- const texto=propio
-  ?'¿Eliminar este mensaje? Seguirá en el Buzón como “Mensaje eliminado por el autor”, conservando su remitente y hora.'
-  :'¿Eliminar el mensaje de otra persona? Gerencia+ lo verá como “Mensaje eliminado por un administrador”, conservando el remitente y la hora.';
- if(!confirm(texto))return;
- const {error}=await sb.rpc('buzon_eliminar_mensaje',{p_id:id});
- if(error)return msg(error.message,1);
- await cargarBuzon(false);
- MAIL.previewRows=MAIL.previewRows.map(p=>MAIL.rows.find(m=>m.id===p.id)||p);
- if(MAIL.open)renderBuzon();
- msg('Mensaje eliminado.');
-}
-async function limpiarBandejaBuzon(){
- if(!MAIL.rows.length)return msg('La bandeja ya está limpia.');
- if(!confirm('¿Limpiar la bandeja? Los mensajes no se eliminarán del sistema ni de Auditoría; solo dejarán de aparecer en tu Buzón.'))return;
- const {data,error}=await sb.rpc('buzon_limpiar_bandeja');
- if(error)return msg(error.message,1);
- MAIL.preview=false;MAIL.previewRows=[];
- await cargarBuzon(false);
- if(!MAIL.rows.length)cerrarBuzon();else renderBuzon();
- msg('Bandeja limpiada.');
-}
-async function limpiarTodosBuzones(){
- if(!mailPuedeJefes())return msg('Solo Gerencia o superior puede realizar esta acción.',1);
- if(!confirm('¿Limpiar TODOS los buzones? Los mensajes no se eliminarán del sistema ni de Auditoría; solo dejarán de aparecer en los buzones actuales de todos los usuarios.'))return;
- const {error}=await sb.rpc('buzon_limpiar_todos');
- if(error)return msg(error.message,1);
- MAIL.rows=[];MAIL.previewRows=[];MAIL.known=new Set();actualizarBadge(0);
- if(MAIL.open)renderBuzon();
- msg('Todos los buzones fueron limpiados.');
-}
-function renderBuzon(){
- const b=mailBoxEl();if(!b)return;
- if(!MAIL.preview&&$('#mailText')){
-  MAIL.draft={audiencia:$('#mailAudience')?.value||MAIL.draft.audiencia||'recepcion_egana',text:$('#mailText')?.value||''};
+function mailBeep(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const c=new C(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=880;g.gain.value=.04;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.13);setTimeout(()=>c.close().catch(()=>{}),250)}catch(e){}}
+async function bxCargarMensajes(id,quiet=false){
+ if(!id)return;
+ const {data,error}=await sb.rpc('buzon_conversacion_mensajes',{p_conversacion_id:id});
+ if(error){if(!quiet)msg('No se pudo abrir la conversación: '+error.message,1);return}
+ if(BX.selected!==id)return;
+ BX.messages=data||[];
+ if(BX.messages.some(m=>!m.mio&&!m.leido_en)){
+  const r=await sb.rpc('buzon_marcar_conversacion_leida',{p_conversacion_id:id});
+  if(!r.error){BX.messages.forEach(m=>{if(!m.mio)m.leido_en=m.leido_en||new Date().toISOString()});}
  }
- const opts=[['recepcion_egana','Recepción Egaña'],['recepcion_huasco','Recepción Huasco'],['administracion','Administración'],['gerencia','Gerencia']];
- const rows=MAIL.preview&&MAIL.previewRows.length?MAIL.previewRows:MAIL.rows;
- const preview=MAIL.preview;
- b.classList.toggle('mail-preview',preview);
- b.innerHTML=`<div class="mail-head"><b>🔔</b><h3>Buzón</h3>${preview?'<span class="mu">Nuevo mensaje</span>':'<button onclick="marcarTodosBuzon()" title="Marcar todo como leído">✓</button><button onclick="cargarBuzon(false)" title="Actualizar">↻</button><button class="mail-clear-btn" onclick="limpiarBandejaBuzon()" title="Limpiar bandeja" aria-label="Limpiar bandeja">🗑️ <span>Limpiar</span></button><button class="mail-clear-all-btn" onclick="limpiarTodosBuzones()" title="Limpiar todos los buzones">🗑️ <span>Todos</span></button>'}<button onclick="cerrarBuzon()" title="Cerrar">✕</button></div><div class="mail-body">${rows.length?`<div class="mail-list">${rows.map(x=>`<div class="mail-item ${x.audiencia} ${x.unread?'unread':''} ${x.eliminado_en?'deleted':''}" onclick="marcarMensajeLeido('${x.id}')"><div class="mail-meta"><span>${esc(x.remitente_nombre||'Usuario')} · ${esc(mailAudienciaLabel(x.audiencia))}</span><span>${esc(mailFormato(x.creado_en))}${x.unread?' · 🔵':''}</span></div><div class="mail-text">${esc(x.mensaje)}</div>${mailPuedeEliminarMensaje(x)?`<div style="display:flex;justify-content:flex-end;margin-top:5px"><button type="button" class="r" style="padding:3px 7px;font-size:11px" title="Eliminar mensaje" onclick="event.stopPropagation();eliminarMensajeBuzon('${x.id}')">🗑️ Eliminar</button></div>`:''}</div>`).join('')}</div>`:'<div class="mail-empty">No hay mensajes disponibles.</div>'}</div>${preview?'<div class="mail-preview-actions"><button class="p" onclick="mostrarBuzonCompleto()">Ver más</button></div>':`<div class="mail-compose"><select id="mailAudience">${opts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select><button class="p" onclick="enviarMensajeBuzon()">Enviar</button><textarea id="mailText" maxlength="4000" placeholder="Escribe un mensaje para Recepción Egaña, Recepción Huasco, Administración o Gerencia…"></textarea></div>`}`;
- if(!preview){
-  const sel=$('#mailAudience'),ta=$('#mailText');
-  if(sel)sel.value=MAIL.draft.audiencia||'recepcion_egana';
-  if(ta)ta.value=MAIL.draft.text||'';
- }
+ bxRenderMessages();
 }
+function bxSeleccionar(id){
+ const ta=$('#bx-compose-text');if(ta)BX.draft=ta.value;
+ BX.selected=id;BX.messages=[];BX.mobileChat=true;
+ bxRender();
+ bxCargarMensajes(id);
+}
+function bxCerrar(){MAIL.open=false;MAIL.preview=false;const b=mailBoxEl();if(b){b.style.display='none';b.classList.remove('mail-preview','bx-pro')}}
+function cerrarBuzon(){bxCerrar()}
+function toggleBuzon(){if(MAIL.open)bxCerrar();else abrirBuzon()}
+function mostrarBuzonCompleto(){abrirBuzon()}
 function abrirBuzon(auto=false,rows=null){
- MAIL.open=true;MAIL.preview=!!(auto&&rows?.length);MAIL.previewRows=rows||[];
+ MAIL.open=true;MAIL.preview=false;
  const b=mailBoxEl();if(!b)return;
- b.style.display='flex';renderBuzon();
- if(auto&&rows?.length)rows.forEach(x=>marcarMensajeLeido(x.id));
+ b.style.display='flex';b.classList.add('bx-pro');
+ if(!BX.selected&&BX.conversations.length)BX.selected=BX.conversations[0].conversacion_id;
+ bxRender();
+ if(BX.selected)bxCargarMensajes(BX.selected,true);
+ if(!BX.conversations.length)cargarBuzon();
+}
+function bxRender(){
+ const b=mailBoxEl();if(!b||!MAIL.open)return;
+ const convs=BX.conversations.filter(c=>(c.nombre+' '+(c.descripcion||'')+' '+(c.ultimo_mensaje||'')).toLocaleLowerCase().includes(BX.search.toLocaleLowerCase()));
+ const active=BX.conversations.find(c=>c.conversacion_id===BX.selected);
+ const groups=[{title:'Chats de equipo',items:convs.filter(c=>c.tipo==='canal'&&c.clave!=='gerencia_general')},{title:'Administración y Gerencia',items:convs.filter(c=>c.clave==='gerencia_general')},{title:'Mensajes privados con Gerencia',items:convs.filter(c=>c.tipo==='privado_gerencia')}].filter(g=>g.items.length);
+ const list=groups.map(g=>'<div class="bx-section">'+esc(g.title)+'</div>'+g.items.map(c=>'<button type="button" class="bx-conv '+(c.conversacion_id===BX.selected?'active':'')+'" onclick="bxSeleccionar(\''+c.conversacion_id+'\')"><span class="bx-avatar">'+bxIcon(c)+'</span><span class="bx-conv-copy"><span class="bx-conv-name">'+esc(c.nombre)+'</span><span class="bx-conv-preview">'+esc(c.ultimo_mensaje||c.descripcion||'Inicia una conversación')+'</span></span>'+(Number(c.no_leidos||0)?'<span class="bx-unread">'+(Number(c.no_leidos)>99?'99+':c.no_leidos)+'</span>':'')+'</button>').join('')).join('');
+ b.innerHTML='<div class="bx-head"><div class="bx-brand">✉️</div><div><div class="bx-title">Mensajería interna</div><div class="bx-subtitle">MMassisT PMS · '+esc(S.perfil?.nombre_completo||'Usuario')+'</div></div><div class="bx-head-actions"><button type="button" onclick="cargarBuzon()" title="Actualizar conversaciones">↻</button><button type="button" onclick="bxCerrar()" title="Cerrar">✕</button></div></div><div class="bx-layout '+(BX.mobileChat?'bx-chat-open':'')+'"><aside class="bx-side"><div class="bx-side-top"><label>Conversaciones</label><input class="bx-search" value="'+esc(BX.search)+'" placeholder="Buscar chats…" oninput="BX.search=this.value;const p=this.selectionStart;bxRender();const n=mailBoxEl().querySelector(\'.bx-search\');if(n){n.focus();n.setSelectionRange(p,p)}"></div><div class="bx-list">'+(list||'<div class="bx-empty"><div class="bx-empty-icon">💬</div><b>No hay conversaciones</b>Cuando tengas acceso a un canal, aparecerá aquí.</div>')+'</div></aside><main class="bx-main"><div id="bx-chat-head" class="bx-chat-head">'+(active?'<button type="button" class="bx-mobile-back" onclick="BX.mobileChat=false;bxRender()">←</button><span class="bx-avatar">'+bxIcon(active)+'</span><div><div class="bx-chat-title">'+esc(active.nombre)+'</div><div class="bx-chat-desc">'+esc(active.descripcion||'Conversación interna')+'</div></div>':'')+'</div><div id="bx-messages" class="bx-messages">'+(active?'<div class="bx-empty"><div class="bx-empty-icon">💬</div><b>Abriendo conversación…</b></div>':'<div class="bx-empty"><div class="bx-empty-icon">👈</div><b>Selecciona un chat</b>Elige una conversación a la izquierda para ver sus mensajes.</div>')+'</div>'+(active?'<div class="bx-privacy">'+esc(bxPrivacy(active))+'</div><form class="bx-compose" onsubmit="event.preventDefault();bxEnviar()"><textarea id="bx-compose-text" maxlength="4000" placeholder="Escribe un mensaje… (Enter para enviar, Shift+Enter para nueva línea)" oninput="BX.draft=this.value" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();bxEnviar()}">'+esc(BX.draft)+'</textarea><button class="p bx-send" type="submit">Enviar ↗</button></form>':'')+'</main></div>';
+}
+function bxRenderMessages(){
+ const pane=$('#bx-messages');if(!pane)return;
+ const oldScroll=pane.scrollTop,nearBottom=pane.scrollHeight-pane.scrollTop-pane.clientHeight<70;
+ if(!BX.messages.length){pane.innerHTML='<div class="bx-empty"><div class="bx-empty-icon">👋</div><b>Esta conversación está lista</b>Envía el primer mensaje para iniciar la coordinación.</div>';return}
+ let prevDay='';
+ pane.innerHTML=BX.messages.map(m=>{
+  const d=new Date(m.creado_en),day=isNaN(d)?'':d.toLocaleDateString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'long',year:'numeric'});
+  let sep='';if(day!==prevDay){sep='<div class="bx-date">'+esc(day)+'</div>';prevDay=day}
+  return sep+'<article class="bx-msg '+(m.mio?'mine':'')+'"><div class="bx-msg-author">'+esc(m.mio?'Tú':m.remitente_nombre||'Usuario')+'</div><div class="bx-msg-body">'+(m.eliminado_en?'<i>Mensaje eliminado</i>':esc(m.mensaje))+'</div><div class="bx-msg-time">'+esc(bxHora(m.creado_en))+(m.mio&&m.leido_en?' · Leído':'')+'</div></article>'
+ }).join('');
+ pane.scrollTop=nearBottom?pane.scrollHeight:oldScroll;
+}
+async function bxEnviar(){
+ const ta=$('#bx-compose-text'),mensaje=(ta?.value||BX.draft||'').trim();
+ if(!BX.selected)return msg('Selecciona primero una conversación.',1);
+ if(!mensaje)return msg('Escribe un mensaje antes de enviarlo.',1);
+ const btn=mailBoxEl()?.querySelector('.bx-send');if(btn)btn.disabled=true;
+ const {error}=await sb.rpc('buzon_enviar_a_conversacion',{p_conversacion_id:BX.selected,p_mensaje:mensaje});
+ if(btn)btn.disabled=false;
+ if(error)return msg('No se pudo enviar el mensaje: '+error.message,1);
+ BX.draft='';if(ta)ta.value='';
+ await bxCargarMensajes(BX.selected,true);await cargarBuzon();
+ const t=$('#bx-compose-text');if(t)t.focus();
+}
+async function bxLimpiarConversacion(){
+ const c=BX.conversations.find(x=>x.conversacion_id===BX.selected);if(!c)return;
+ if(!confirm('Ocultar esta conversación de tu buzón? No se borrará el historial de los demás participantes.'))return;
+ const {error}=await sb.rpc('buzon_limpiar_conversacion',{p_conversacion_id:BX.selected});
+ if(error)return msg(error.message,1);
+ BX.selected=null;BX.messages=[];await cargarBuzon();bxRender();
 }
 function iniciarBuzon(mode='grid'){
  MAIL.mode=mode;
  const bell=document.getElementById(mode==='limpieza'?'mailBellLimp':'mailBell'),box=mailBoxEl();if(bell)bell.style.display='grid';if(box)box.style.display='none';
- cargarBuzon(true);
- clearInterval(MAIL.timer);
- MAIL.timer=setInterval(()=>cargarBuzon(false),30000);
+ if(box)box.classList.add('bx-pro');
+ cargarBuzon();
+ clearInterval(MAIL.timer);MAIL.timer=setInterval(()=>cargarBuzon(),20000);
  if(MAIL.channel)sb.removeChannel(MAIL.channel);
- MAIL.channel=sb.channel('buzon-realtime-'+S.perfil.id)
-  .on('postgres_changes',{event:'INSERT',schema:'public',table:'buzon_mensajes'},payload=>{
-    if(payload?.new?.remitente_id===S.perfil.id)return;
-    cargarBuzon(false);
-  })
-  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'buzon_mensajes'},async()=>{
-    await cargarBuzon(false);
-    MAIL.previewRows=MAIL.previewRows.map(p=>MAIL.rows.find(m=>m.id===p.id)||p);
-    if(MAIL.open)renderBuzon();
-  })
+ MAIL.channel=sb.channel('buzon-realtime-v293-'+S.perfil.id)
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'buzon_mensajes'},payload=>{if(payload?.new?.remitente_id!==S.perfil.id)cargarBuzon()})
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'buzon_mensajes'},()=>cargarBuzon())
   .subscribe();
 }
 
@@ -2799,7 +2794,7 @@ async function gCfg(k,b){
  const {error}=await sb.from('configuracion').update({valor:v,actualizado_por:session.user.id,actualizado_en:new Date().toISOString()}).eq('clave',k);
  if(!error)S.cfg[k]=v;er(error,'Guardado');
 }
-let UD={user:null,tab:'datos',isNew:false,edificios:[],campos:[],buzon:{recepcion_egana:false,recepcion_huasco:false},allBuildings:[],allUsers:[],allPerms:[],allFields:[]};
+let UD={user:null,tab:'datos',isNew:false,edificios:[],campos:[],buzon:{recepcion_egana:false,recepcion_huasco:false,limpieza_egana:false,limpieza_huasco:false},allBuildings:[],allUsers:[],allPerms:[],allFields:[]};
 async function pUsu(){
  const {data:{session}}=await sb.auth.getSession(),yo=session.user.id,sy=S.perfil.rol==='sysadmin',R=ROLES.filter(r=>sy||r!=='sysadmin');
  const [{data,error},{data:pr,error:perr},{data:ed,error:derr}]=await Promise.all([
@@ -2824,7 +2819,7 @@ function filtrarTablaUsuarios(){
  const count=$('#us-result-count');if(count)count.textContent=n+' usuario'+(n===1?'':'s');
 }
 async function abrirDrawerUsuario(id,tab='datos'){
- const isNew=!id;let u=null,buildings=[],fields=[],buzon={recepcion_egana:false,recepcion_huasco:false};
+ const isNew=!id;let u=null,buildings=[],fields=[],buzon={recepcion_egana:false,recepcion_huasco:false,limpieza_egana:false,limpieza_huasco:false};
  if(!isNew){
   const [{data,error},{data:pr,error:pe},{data:pf,error:fe},{data:bz,error:be}]=await Promise.all([
    sb.from('perfiles').select('id,nombre_completo,usuario,rol,activo').eq('id',id).maybeSingle(),
@@ -2852,7 +2847,7 @@ function renderDrawerUsuario(){
  if(UD.tab==='datos')body=UD.isNew?`<div class="us-form-grid"><label class="us-span2">Nombre completo<input id="ud-name" value="${esc(u.nombre_completo)}" placeholder="Nombre y apellido"></label><label class="us-span2">Email / usuario<input id="ud-email" value="${esc(u.usuario)}" placeholder="correo@empresa.cl" autocomplete="username"></label><label>Rol<select id="ud-role">${roles.map(r=>`<option value="${r}" ${u.rol===r?'selected':''}>${({recepcion:'Recepción',administracion:'Administración',gerencia:'Gerencia',sysadmin:'SysAdmin',system_admin:'SysAdmin',limpieza:'Limpieza'})[r]||r}</option>`).join('')}</select></label><label>Contraseña inicial<input id="ud-pass" type="password" minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></label><label class="us-toggle-row us-span2"><span><b>Cuenta activa</b><small>Permite iniciar sesión en el PMS.</small></span><input id="ud-active" type="checkbox" ${u.activo?'checked':''}></label></div>`:`<div class="us-form-grid"><label class="us-span2">Nombre completo<input id="ud-name" value="${esc(u.nombre_completo)}"></label><label class="us-span2">Email / usuario<input id="ud-email" value="${esc(u.usuario)}"></label><label>Rol<select id="ud-role">${roles.map(r=>`<option value="${r}" ${u.rol===r?'selected':''}>${({recepcion:'Recepción',administracion:'Administración',gerencia:'Gerencia',sysadmin:'SysAdmin',system_admin:'SysAdmin',limpieza:'Limpieza'})[r]||r}</option>`).join('')}</select></label><label class="us-toggle-row"><span><b>Cuenta activa</b><small>Permite iniciar sesión en el PMS.</small></span><input id="ud-active" type="checkbox" ${u.activo?'checked':''}></label></div><div class="us-reset-card"><div><b>Restablecer contraseña</b><p>Define una nueva clave para esta cuenta.</p></div><button onclick="claveU('${u.id}')">Cambiar clave</button></div>`;
  else if(UD.tab==='vista')body=`<div class="us-perm-intro"><div><h4>Acceso a edificios</h4><p>Define qué edificios puede consultar este usuario. Los roles con acceso total conservan su alcance global.</p></div><div class="us-bulk"><button onclick="drawerCheckAll(true)">Seleccionar todos</button><button onclick="drawerCheckAll(false)">Desmarcar todos</button></div></div><div class="us-building-list">${UD.allBuildings.map(e=>`<label class="us-perm-item"><span class="us-building-icon">⌂</span><span class="us-perm-copy"><b>${esc(e.nombre)}</b><small>Permiso de visualización</small></span><input type="checkbox" ${UD.allPerms.includes(u.rol)||UD.edificios.includes(e.id)?'checked':''} ${UD.allPerms.includes(u.rol)?'disabled':''} onchange="drawerSetBuilding('${e.id}',this.checked)"></label>`).join('')}</div>${UD.allPerms.includes(u.rol)?'<p class="us-note">Este rol tiene acceso a todos los edificios. Las asignaciones se conservan para cuando cambie a un rol restringido.</p>':''}`;
  else if(UD.tab==='edicion')body=`<div class="us-perm-intro"><div><h4>Campos editables</h4><p>Habilita los campos que este usuario puede modificar. Gerencia y SysAdmin mantienen acceso completo.</p></div></div><div class="us-fields-grid">${EDIT_FIELDS.map(x=>`<label class="us-perm-item"><span class="us-perm-copy"><b>${esc(x[1])}</b></span><input type="checkbox" ${UD.campos.includes(x[0])?'checked':''} onchange="drawerSetField('${x[0]}',this.checked)"></label>`).join('')}</div>${UD.allPerms.includes(u.rol)?'<p class="us-note">El rol actual ya dispone de permisos de edición completos.</p>':''}`;
- else body=`<div class="us-perm-intro"><div><h4>Canales de recepción</h4><p>Selecciona los buzones que este usuario puede consultar.</p></div></div><div class="us-building-list">${[['recepcion_egana','Recepción Egaña','Mensajes del canal Egaña'],['recepcion_huasco','Recepción Huasco','Mensajes del canal Huasco']].map(([k,t,d])=>`<label class="us-perm-item"><span class="us-building-icon">✉</span><span class="us-perm-copy"><b>${t}</b><small>${d}</small></span><input type="checkbox" ${UD.buzon[k]?'checked':''} onchange="drawerSetBuzon('${k}',this.checked)"></label>`).join('')}</div>`;
+ else body=`<div class="us-perm-intro"><div><h4>Acceso a conversaciones</h4><p>Estos permisos determinan qué canales puede consultar el usuario. Los chats privados con Gerencia se habilitan automáticamente y solo son visibles para el usuario titular y Gerencia.</p></div></div><div class="us-building-list">${[['recepcion_egana','Recepción Egaña','Canal interno y comunicación Egaña ↔ Huasco / Gerencia'],['recepcion_huasco','Recepción Huasco','Canal interno y comunicación Huasco ↔ Egaña / Gerencia'],['limpieza_egana','Limpieza Egaña','Acceso al chat conjunto Recepción + Limpieza de Egaña'],['limpieza_huasco','Limpieza Huasco','Acceso al chat conjunto Recepción + Limpieza de Huasco']].map(([k,t,d])=>`<label class="us-perm-item"><span class="us-building-icon">✉</span><span class="us-perm-copy"><b>${t}</b><small>${d}</small></span><input type="checkbox" ${UD.buzon[k]?'checked':''} onchange="drawerSetBuzon('${k}',this.checked)"></label>`).join('')}</div>`;
  const overlay=document.createElement('div');overlay.id='us-drawer-overlay';overlay.className='us-drawer-overlay';overlay.onclick=e=>{if(e.target===overlay)cerrarDrawerUsuario()};
  overlay.innerHTML=`<aside class="us-drawer" role="dialog" aria-modal="true" aria-label="Configuración de usuario"><header class="us-drawer-head"><div class="us-drawer-person"><span class="us-avatar large">${esc((name||'?').trim().split(/\s+/).slice(0,2).map(n=>n[0]||'').join('').toUpperCase())}</span><div><div class="us-eyebrow">${UD.isNew?'CREAR CUENTA':'GESTIÓN DE ACCESO'}</div><h3>${UD.isNew?'Nuevo usuario':`Configuración: ${esc(name)}`}</h3><p>${UD.isNew?'Crea una cuenta y configura sus permisos':esc(u.usuario||'')}</p></div></div><button class="us-close" aria-label="Cerrar" onclick="cerrarDrawerUsuario()">×</button></header><nav class="us-drawer-tabs">${tab('datos','Datos y rol')}${tab('vista','Edificios')}${tab('edicion','Permisos de edición')}${tab('buzon','Permisos de buzón')}</nav><div class="us-drawer-body">${body}</div><footer class="us-drawer-foot"><button onclick="cerrarDrawerUsuario()">Cancelar</button><button class="us-primary" onclick="guardarDrawerUsuario()">${UD.isNew?'Crear usuario':'Guardar cambios'}</button></footer></aside>`;
  document.querySelector('#us-drawer-overlay')?.remove();document.body.appendChild(overlay);
@@ -2879,7 +2874,7 @@ async function guardarDrawerUsuario(){
  }
  const {error:pe}=await sb.from('perfiles_permisos_edicion').delete().eq('perfil_id',targetId);if(pe)return msg(pe.message,1);
  if(UD.campos.length){const {error:pi}=await sb.from('perfiles_permisos_edicion').insert(UD.campos.map(campo=>({perfil_id:targetId,campo,permitido:true})));if(pi)return msg(pi.message,1)}
- const {error:be}=await sb.rpc('buzon_guardar_permisos',{p_usuario_id:targetId,p_recepcion_egana:UD.buzon.recepcion_egana,p_recepcion_huasco:UD.buzon.recepcion_huasco});if(be)return msg(be.message,1);
+ const {error:be}=await sb.rpc('buzon_guardar_permisos_v293',{p_usuario_id:targetId,p_recepcion_egana:UD.buzon.recepcion_egana,p_recepcion_huasco:UD.buzon.recepcion_huasco,p_limpieza_egana:UD.buzon.limpieza_egana,p_limpieza_huasco:UD.buzon.limpieza_huasco});if(be)return msg(be.message,1);
  msg(UD.isNew?'Usuario y permisos guardados':'Usuario y permisos guardados');cerrarDrawerUsuario();await pUsu();
 }
 
@@ -3999,7 +3994,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='2.9.2';
+const VERSION_ACTUAL='2.9.3';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML='⚠ Actualización v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar ahora</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
