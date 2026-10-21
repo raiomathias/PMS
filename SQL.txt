@@ -7773,3 +7773,126 @@ BEGIN
   RETURN r;
 END
 $function$;
+
+
+-- ============================================================
+-- PMS · Corrección auditoría sin cambios y eliminación de usuarios
+-- Aplicado en Supabase el 2026-10-21.
+-- Los UPDATE que solo cambian marcas de tiempo no se registran.
+-- Se purgaron únicamente filas históricas con ese mismo criterio.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.registrar_auditoria()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE v_viejo jsonb; v_nuevo jsonb;
+BEGIN
+  IF TG_OP IN ('UPDATE','DELETE') THEN v_viejo:=to_jsonb(OLD); END IF;
+  IF TG_OP IN ('INSERT','UPDATE') THEN v_nuevo:=to_jsonb(NEW); END IF;
+  IF TG_OP='UPDATE'
+     AND (v_viejo-ARRAY['actualizado_en','updated_at','modificado_en']::text[])
+         =(v_nuevo-ARRAY['actualizado_en','updated_at','modificado_en']::text[]) THEN
+    RETURN NULL;
+  END IF;
+  INSERT INTO public.auditoria(tabla,registro_id,accion,datos_anteriores,datos_nuevos,usuario_id)
+  VALUES(TG_TABLE_NAME,COALESCE(v_nuevo->>'id',v_viejo->>'id',v_nuevo->>'unidad_id',v_viejo->>'unidad_id')::uuid,TG_OP,v_viejo,v_nuevo,auth.uid());
+  RETURN NULL;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.auditar_cambio()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE v_old jsonb; v_new jsonb; v_row jsonb; v_id uuid;
+BEGIN
+  v_old:=CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) END;
+  v_new:=CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) END;
+  v_row:=COALESCE(v_new,v_old);
+  BEGIN v_id:=COALESCE(v_row->>'id',v_row->>'unidad_id')::uuid;
+  EXCEPTION WHEN OTHERS THEN v_id:=NULL; END;
+  IF TG_OP='UPDATE'
+     AND (v_old-ARRAY['actualizado_en','updated_at','modificado_en']::text[])
+         =(v_new-ARRAY['actualizado_en','updated_at','modificado_en']::text[]) THEN
+    RETURN NEW;
+  END IF;
+  INSERT INTO public.auditoria(tabla,registro_id,accion,datos_anteriores,datos_nuevos,usuario_id,fecha)
+  VALUES(TG_TABLE_NAME,v_id,TG_OP,v_old,v_new,auth.uid(),now());
+  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END
+$function$;
+
+-- Los mensajes permanecen en el Buzón; el remitente se anonimiza al borrar su cuenta.
+ALTER TABLE public.buzon_mensajes ALTER COLUMN remitente_id DROP NOT NULL;
+ALTER TABLE public.buzon_mensajes DROP CONSTRAINT IF EXISTS buzon_mensajes_remitente_id_fkey;
+ALTER TABLE public.buzon_mensajes ADD CONSTRAINT buzon_mensajes_remitente_id_fkey
+  FOREIGN KEY(remitente_id) REFERENCES public.perfiles(id) ON DELETE SET NULL;
+
+CREATE OR REPLACE FUNCTION public.eliminar_usuario_completo(p_usuario_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','auth'
+AS $function$
+DECLARE v_actor uuid:=auth.uid(); v_actor_rol text; v_target_rol text;
+BEGIN
+  IF v_actor IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  SELECT rol::text INTO v_actor_rol FROM public.perfiles WHERE id=v_actor AND activo=true;
+  IF v_actor_rol NOT IN ('gerencia','sysadmin') THEN RAISE EXCEPTION 'No tienes permiso para eliminar usuarios'; END IF;
+  IF p_usuario_id IS NULL THEN RAISE EXCEPTION 'Usuario no especificado'; END IF;
+  IF p_usuario_id=v_actor THEN RAISE EXCEPTION 'No puedes eliminar tu propio usuario'; END IF;
+  SELECT rol::text INTO v_target_rol FROM public.perfiles WHERE id=p_usuario_id;
+  IF v_target_rol IS NULL THEN RAISE EXCEPTION 'Usuario no encontrado'; END IF;
+  IF v_target_rol='sysadmin' AND v_actor_rol<>'sysadmin' THEN RAISE EXCEPTION 'Solo un SysAdmin puede eliminar a otro SysAdmin'; END IF;
+
+  UPDATE public.configuracion SET actualizado_por=NULL WHERE actualizado_por=p_usuario_id;
+  UPDATE public.huespedes SET creado_por=NULL WHERE creado_por=p_usuario_id;
+  UPDATE public.lista_negra SET agregado_por=NULL WHERE agregado_por=p_usuario_id;
+  UPDATE public.reservas SET creado_por=NULL,cancelada_por=NULL WHERE creado_por=p_usuario_id OR cancelada_por=p_usuario_id;
+  UPDATE public.notas_huesped SET creado_por=NULL WHERE creado_por=p_usuario_id;
+  UPDATE public.cargos SET creado_por=NULL WHERE creado_por=p_usuario_id;
+  UPDATE public.pagos SET creado_por=NULL WHERE creado_por=p_usuario_id;
+  UPDATE public.limpieza SET asignado_a=NULL,actualizado_por=NULL WHERE asignado_a=p_usuario_id OR actualizado_por=p_usuario_id;
+  UPDATE public.lista_negra_solicitudes SET solicitado_por=NULL,revisado_por=NULL WHERE solicitado_por=p_usuario_id OR revisado_por=p_usuario_id;
+  UPDATE public.reclamos_sugerencias SET creado_por=NULL WHERE creado_por=p_usuario_id;
+
+  UPDATE public.buzon_mensajes SET remitente_id=NULL WHERE remitente_id=p_usuario_id;
+  UPDATE public.buzon_mensajes SET receptor_id=NULL WHERE receptor_id=p_usuario_id;
+  UPDATE public.buzon_mensajes SET eliminado_por=NULL WHERE eliminado_por=p_usuario_id;
+  UPDATE public.buzon_limpiezas_globales SET limpiado_por=NULL WHERE limpiado_por=p_usuario_id;
+  DELETE FROM public.buzon_ocultos WHERE usuario_id=p_usuario_id;
+  DELETE FROM public.buzon_lecturas WHERE usuario_id=p_usuario_id;
+  DELETE FROM public.perfiles_permisos_buzon WHERE perfil_id=p_usuario_id OR actualizado_por=p_usuario_id;
+  DELETE FROM public.push_subscriptions WHERE user_id=p_usuario_id;
+  DELETE FROM public.perfiles_edificios WHERE perfil_id=p_usuario_id;
+  DELETE FROM public.perfiles_permisos_edicion WHERE perfil_id=p_usuario_id;
+  DELETE FROM public.perfiles WHERE id=p_usuario_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se pudo eliminar el perfil del usuario'; END IF;
+  DELETE FROM auth.users WHERE id=p_usuario_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'El perfil fue eliminado, pero no se encontró la cuenta de autenticación'; END IF;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.buzon_listar()
+RETURNS TABLE(id uuid,audiencia text,receptor_id uuid,mensaje text,creado_en timestamptz,leido_en timestamptz,remitente_id uuid,remitente_nombre text,eliminado_en timestamptz,eliminacion_tipo text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  RETURN QUERY
+  SELECT b.id,b.audiencia,b.receptor_id,b.mensaje,b.creado_en,l.leido_en,b.remitente_id,
+         COALESCE(NULLIF(p.nombre_completo,''),'Usuario eliminado')::text,b.eliminado_en,b.eliminacion_tipo
+  FROM public.buzon_mensajes b
+  LEFT JOIN public.perfiles p ON p.id=b.remitente_id
+  LEFT JOIN public.buzon_lecturas l ON l.mensaje_id=b.id AND l.usuario_id=auth.uid()
+  WHERE b.activo=true
+    AND NOT EXISTS(SELECT 1 FROM public.buzon_limpiezas_globales g WHERE g.mensaje_id=b.id)
+    AND NOT EXISTS(SELECT 1 FROM public.buzon_ocultos o WHERE o.usuario_id=auth.uid() AND o.mensaje_id=b.id)
+    AND public.buzon_puede_ver_audiencia(b.audiencia)
+  ORDER BY b.creado_en DESC LIMIT 100;
+END;
+$$;
+
+-- Limpieza histórica: solo UPDATE sin cambios fuera de marcas de tiempo.
+-- INSERT, DELETE y UPDATE con cambios reales se conservan.
+DELETE FROM public.auditoria a
+WHERE a.accion='UPDATE'
+  AND (COALESCE(a.datos_anteriores,'{}'::jsonb)-ARRAY['actualizado_en','updated_at','modificado_en']::text[])
+      =(COALESCE(a.datos_nuevos,'{}'::jsonb)-ARRAY['actualizado_en','updated_at','modificado_en']::text[]);
+
