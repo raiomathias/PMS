@@ -8218,3 +8218,90 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.combinar_huespedes(uuid,uuid,jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.combinar_huespedes(uuid,uuid,jsonb) TO authenticated;
+
+
+-- ============================================================
+-- PMS v2.9.1 · Comparación y combinación de múltiples huéspedes
+-- Permite combinar 2 o más perfiles en una sola operación atómica.
+-- Se elige un perfil principal y un valor por campo entre todos los
+-- perfiles comparados. Se reasignan las referencias históricas antes
+-- de eliminar los perfiles secundarios.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.combinar_huespedes(p_principal uuid, p_duplicados uuid[], p_datos jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_rol text := lower(trim(public.pms_rol()));
+  v_principal public.huespedes%ROWTYPE;
+  v_id uuid;
+  v_dup public.huespedes%ROWTYPE;
+  v_fk record;
+  v_count integer;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  IF v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Administración, Gerencia o SysAdmin pueden combinar huéspedes';
+  END IF;
+  IF p_principal IS NULL OR p_duplicados IS NULL OR cardinality(p_duplicados) < 1
+     OR array_position(p_duplicados, NULL) IS NOT NULL
+     OR p_principal = ANY(p_duplicados) THEN
+    RAISE EXCEPTION 'Selecciona un perfil principal y al menos un perfil secundario distinto';
+  END IF;
+  SELECT count(DISTINCT x) INTO v_count FROM unnest(p_duplicados) AS t(x);
+  IF v_count <> cardinality(p_duplicados) THEN
+    RAISE EXCEPTION 'La selección contiene perfiles repetidos';
+  END IF;
+  IF p_datos IS NULL OR jsonb_typeof(p_datos) <> 'object' THEN
+    RAISE EXCEPTION 'Debes confirmar los datos que se conservarán';
+  END IF;
+
+  SELECT * INTO v_principal FROM public.huespedes WHERE id=p_principal FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el perfil principal'; END IF;
+
+  FOREACH v_id IN ARRAY p_duplicados LOOP
+    SELECT * INTO v_dup FROM public.huespedes WHERE id=v_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró uno de los perfiles secundarios: %', v_id; END IF;
+  END LOOP;
+
+  UPDATE public.huespedes SET numero_documento=NULL WHERE id = ANY(p_duplicados);
+
+  UPDATE public.huespedes SET
+    nombre_completo = COALESCE(NULLIF(trim(p_datos->>'nombre_completo'),''), v_principal.nombre_completo),
+    tipo_documento = NULLIF(trim(p_datos->>'tipo_documento'),''),
+    numero_documento = NULLIF(trim(p_datos->>'numero_documento'),''),
+    telefono = NULLIF(trim(p_datos->>'telefono'),''),
+    correo = NULLIF(trim(p_datos->>'correo'),''),
+    nacionalidad = NULLIF(trim(p_datos->>'nacionalidad'),''),
+    ciudad_origen = NULLIF(trim(p_datos->>'ciudad_origen'),''),
+    fecha_nacimiento = NULLIF(trim(p_datos->>'fecha_nacimiento'),'')::date,
+    es_vip = COALESCE((p_datos->>'es_vip')::boolean,false)
+  WHERE id=p_principal;
+
+  FOR v_id IN SELECT unnest(p_duplicados) LOOP
+    FOR v_fk IN
+      SELECT c.conrelid::regclass AS tabla, a.attname AS columna
+        FROM pg_constraint c
+        JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+       WHERE c.contype='f' AND c.confrelid='public.huespedes'::regclass
+         AND c.conrelid <> 'public.huespedes'::regclass
+    LOOP
+      EXECUTE format('UPDATE %s SET %I=$1 WHERE %I=$2',v_fk.tabla,v_fk.columna,v_fk.columna)
+        USING p_principal,v_id;
+    END LOOP;
+  END LOOP;
+
+  DELETE FROM public.huespedes WHERE id = ANY(p_duplicados);
+  RETURN jsonb_build_object(
+    'principal_id',p_principal,
+    'combinados',to_jsonb(p_duplicados),
+    'cantidad_combinada',cardinality(p_duplicados)+1,
+    'nombre',(SELECT nombre_completo FROM public.huespedes WHERE id=p_principal)
+  );
+END
+$function$;
+
+REVOKE ALL ON FUNCTION public.combinar_huespedes(uuid,uuid[],jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.combinar_huespedes(uuid,uuid[],jsonb) TO authenticated;
