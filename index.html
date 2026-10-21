@@ -3347,7 +3347,7 @@ function cerrarAud(){$('#aud').style.display='none'}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#aud').style.display==='flex')cerrarAud()});
 async function audCSV(){
  const p=audParams();let rows=[];msg('Preparando CSV…');
- for(let off=0;off<5000;off+=1000){const {data,error}=await sb.rpc('auditoria_buscar',{...p,p_limite:1000,p_desplazamiento:off});if(error)return msg(error.message,1);rows=rows.concat(data||[]);if(!data||data.length<1000)break}
+ let off=0;while(true){const {data,error}=await sb.rpc('auditoria_buscar',{...p,p_limite:1000,p_desplazamiento:off});if(error)return msg(error.message,1);const lote=data||[];rows=rows.concat(lote);off+=lote.length;if(lote.length<1000)break}
  const T=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent},q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
  const L=[['Fecha','Usuario','Rol','Acción','Tabla','Reserva','Huésped','Monto','Detalle','Antes','Después'].map(q).join(',')];
  rows.forEach(a=>L.push([audFechaHora(a.fecha),a.usuario_nombre||'Sistema / SQL',a.usuario_rol||'',a.accion,a.tabla,a.reserva_uid||'',a.huesped||'',a.monto==null?'':a.monto,T(audResumen(a).t),a.datos_anteriores?JSON.stringify(a.datos_anteriores):'',a.datos_nuevos?JSON.stringify(a.datos_nuevos):''].map(q).join(',')));
