@@ -3424,7 +3424,7 @@ function audDet(a){
  return`<div class="au-det"><table class="au-dt"><thead><tr>${head}</tr></thead><tbody>${rows||'<tr><td class="mu">Sin diferencias visibles</td></tr>'}</tbody></table><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">${a.registro_id?`<button onclick="audHist('${a.registro_id}')">🕘 Historial de este registro</button>`:''}${a.reserva_uid?`<button onclick="audIrRes('${a.reserva_id}')">Abrir reserva ${esc(a.reserva_uid)}</button>`:''}<span class="mu">Evento #${a.id} · ${esc(audFechaHora(a.fecha))}${a.registro_id?' · registro '+esc(a.registro_id):''}</span></div><details style="margin-top:8px"><summary class="mu" style="cursor:pointer">Ver JSON completo</summary><pre class="au-pre">${esc(JSON.stringify({antes:a.datos_anteriores,despues:a.datos_nuevos},null,2))}</pre></details></div>`}
 function audTog(id){AUD.open[id]=!AUD.open[id];const a=AUD.rows.find(x=>x.id===id),el=$('#ar'+id);if(a&&el)el.outerHTML=audFila(a)}
 function audIrRes(id){cerrarAud();abrirDr(id)}
-async function audHist(id){AUD.f=audF0();AUD.f.txt=id;AUD.f.per='todo';await abrirAud();if($('#aud').style.display==='flex'){audSync();audChips();await audCargar(true)}}
+async function audHist(id){AUD.f=audF0();AUD.f.txt=id;AUD.f.per='todo';await abrirAud()}
 function audHistReservaActual(){return audHist(S.cur?.uid_reserva||'')}
 function audErr(e){return`<div class="al r">No se pudo cargar la auditoría: ${esc(e.message||e)}<br>Si dice que la función no existe, corre primero el script <b>pms_auditoria.sql</b> en Supabase.</div>`}
 function audParams(){
