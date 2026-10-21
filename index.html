@@ -3336,7 +3336,10 @@ function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
 function audTipo(tipo){const m={todos:[[],[],''],pagos:[['pagos'],['INSERT'],''],pagos_todos:[['pagos'],[],''],cargos:[['cargos'],[],''],noshow:[['reservas'],[],'No-show'],eliminaciones:[[],['DELETE'],''],tarifa:[['reservas','configuracion'],['UPDATE'],'Tarifa'],garantias:[['reservas'],[],'Garantía'],usuarios:[['perfiles','perfiles_edificios'],[],''],configuracion:[['configuracion'],[],'']};const x=m[tipo]||m.todos;AUD.f.tablas=x[0].slice();AUD.f.acc=x[1].slice();AUD.f.campo=x[2];audSync();audChips();audCargar(true)}
 function audSync(){
  const f=AUD.f;$('#atx').value=f.txt;$('#aper').value=f.per;$('#ad1').value=f.d1;$('#ad2').value=f.d2;
- $('#ad1w').style.display=$('#ad2w').style.display=f.per==='custom'?'':'none';$('#ausr').value=f.usr;$('#acm').value=f.campo;$('#am1').value=f.m1;$('#am2').value=f.m2}
+ $('#ad1w').style.display=$('#ad2w').style.display=f.per==='custom'?'':'none';$('#ausr').value=f.usr;$('#acm').value=f.campo;$('#am1').value=f.m1;$('#am2').value=f.m2;
+ const aa=$('#afacc'),tt=$('#aftab');if(aa)aa.value=f.acc.length===1?f.acc[0]:'';if(tt)tt.value=f.tablas.length===1?f.tablas[0]:'';
+ const ty=$('#aftipo');if(ty){let v='todos';if(f.tablas.length===1&&f.tablas[0]==='pagos')v=f.acc.length===1&&f.acc[0]==='INSERT'?'pagos':'pagos_todos';else if(f.tablas.length===1&&f.tablas[0]==='cargos')v='cargos';else if(f.acc.length===1&&f.acc[0]==='DELETE'&&!f.tablas.length)v='eliminaciones';else if(f.tablas.length===1&&f.tablas[0]==='reservas'&&f.txt==='No-show')v='noshow';else if(f.tablas.length===1&&f.tablas[0]==='configuracion')v='configuracion';else if(f.tablas.length===2&&f.tablas.includes('reservas')&&f.tablas.includes('configuracion'))v='tarifa';else if(f.tablas.includes('perfiles'))v='usuarios';else if(f.tablas.length===1&&f.tablas[0]==='reservas'&&f.campo==='Garantía')v='garantias';ty.value=v}
+}
 function audAtajo(i){const q=AUD_Q[i],keep={per:AUD.f.per,d1:AUD.f.d1,d2:AUD.f.d2,usr:AUD.f.usr};AUD.f=Object.assign(audF0(),keep,q.f);audSync();audChips();audCargar(true)}
 function audAcc(v){const a=AUD.f.acc,i=a.indexOf(v);if(i<0)a.push(v);else a.splice(i,1);audChips();audCargar(true)}
 function audTab(t){const a=AUD.f.tablas,i=a.indexOf(t);if(i<0)a.push(t);else a.splice(i,1);audChips();audCargar(true)}
