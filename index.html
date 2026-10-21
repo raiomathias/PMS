@@ -3277,7 +3277,7 @@ async function audCargar(reset){
 function audKpi(){
  const r=AUD.res;if(!r){$('#akp').innerHTML='';return}
  const k=(t,v,c)=>`<div>${t}<b${c?` style="color:${c}"`:''}>${v}</b></div>`;
- $('#akp').innerHTML=`<div class="au-k">${k('Eventos',r.total)}${k('Creados',r.crear,'#16a34a')}${k('Modificados',r.modificar,'#d97706')}${k('Eliminados',r.eliminar,r.eliminar?'#dc2626':'')}${k('Usuarios con actividad',r.usuarios)}${k('Pagos registrados',r.pagos_n+' · '+clp(r.pagos_monto))}${k('Pagos modificados / eliminados',r.pagos_alterados,r.pagos_alterados?'#dc2626':'')}</div>${(r.top_usuarios||[]).length?`<div class="au-chs"><span class="mu">Actividad por usuario:</span>${r.top_usuarios.map(u=>`<button onclick="audUsr('${u.usuario_id||'__sys'}')">${esc(u.nombre)} · ${u.n}</button>`).join('')}</div>`:''}`}
+ $('#akp').innerHTML=`<div class="au-k">${k('Eventos',r.total)}${k('Creados',r.crear,'#16a34a')}${k('Modificados',r.modificar,'#d97706')}${k('Eliminados',r.eliminar,r.eliminar?'#dc2626':'')}${k('Usuarios activos',r.usuarios)}${k('Pagos registrados',r.pagos_n+' · '+clp(r.pagos_monto))}${k('Pagos modificados / eliminados',r.pagos_alterados,r.pagos_alterados?'#dc2626':'')}${k('Actualizaciones sin cambios reales',r.sin_cambios,r.sin_cambios?'#6b7280':'')}</div>${(r.top_usuarios||[]).length?`<div class="au-chs"><span class="mu">Actividad por usuario:</span>${r.top_usuarios.map(u=>`<button onclick="audUsr('${u.usuario_id||'__sys'}')">${esc(u.nombre)} · ${u.n}</button>`).join('')}</div>`:''}`}
 function audAgrupar(rows){
   const out=[];
   for(const a of rows){
