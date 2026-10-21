@@ -1880,16 +1880,18 @@ async function pPermBuzon(id){
  if(error)return msg(error.message,1);
  const v=data?.[0]||{recepcion_egana:false,recepcion_huasco:false};
  $('#mo').innerHTML=`<div style="width:680px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 10px">📬 Permisos de Buzón · ${esc(u.data.nombre_completo)}</h3><button onclick="panel('usuarios')">✕</button></div>
- <p class="mu" style="margin-top:0">Estos permisos controlan qué mensajes de las dos recepciones puede ver este usuario. Ambos destinos de recepción están disponibles para enviar.</p>
+ <p class="mu" style="margin-top:0">Controla por separado los chats de recepción y limpieza. El chat privado con Gerencia se crea automáticamente y solo lo ven el usuario titular y Gerencia.</p>
  <div style="display:grid;gap:10px;margin-top:14px">
-  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_egana" type="checkbox" ${v.recepcion_egana?'checked':''}> <span><b>Recepción Egaña</b><br><span class="mu">Puede ver los mensajes enviados al canal Recepción Egaña.</span></span></label>
-  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_huasco" type="checkbox" ${v.recepcion_huasco?'checked':''}> <span><b>Recepción Huasco</b><br><span class="mu">Puede ver los mensajes enviados al canal Recepción Huasco.</span></span></label>
+  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_egana" type="checkbox" ${v.recepcion_egana?'checked':''}> <span><b>Recepción Egaña</b><br><span class="mu">Canal interno Egaña, coordinación con Huasco y chat con Gerencia.</span></span></label>
+  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_huasco" type="checkbox" ${v.recepcion_huasco?'checked':''}> <span><b>Recepción Huasco</b><br><span class="mu">Canal interno Huasco, coordinación con Egaña y chat con Gerencia.</span></span></label>
+  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_limp_egana" type="checkbox" ${v.limpieza_egana?'checked':''}> <span><b>Limpieza Egaña</b><br><span class="mu">Chat compartido de Recepción + Limpieza Egaña.</span></span></label>
+  <label style="display:flex;flex-direction:row;gap:9px;align-items:center;padding:13px;border:1px solid var(--bd);border-radius:9px;background:var(--pn)"><input id="pb_limp_huasco" type="checkbox" ${v.limpieza_huasco?'checked':''}> <span><b>Limpieza Huasco</b><br><span class="mu">Chat compartido de Recepción + Limpieza Huasco.</span></span></label>
  </div>
  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="panel('usuarios')">Volver</button><button class="p" onclick="guardarPermisosBuzon('${id}')">Guardar permisos</button></div></div>`;
  $('#mo').style.display='grid';
 }
 async function guardarPermisosBuzon(id){
- const {error}=await sb.rpc('buzon_guardar_permisos',{p_usuario_id:id,p_recepcion_egana:$('#pb_egana').checked,p_recepcion_huasco:$('#pb_huasco').checked});
+ const {error}=await sb.rpc('buzon_guardar_permisos_v293',{p_usuario_id:id,p_recepcion_egana:$('#pb_egana').checked,p_recepcion_huasco:$('#pb_huasco').checked,p_limpieza_egana:$('#pb_limp_egana').checked,p_limpieza_huasco:$('#pb_limp_huasco').checked});
  if(error)return msg(error.message,1);
  msg('Permisos de Buzón guardados');panel('usuarios');
 }
