@@ -810,7 +810,7 @@ function bxPrivacy(c){return c?.tipo==='privado_gerencia'?'Privado: solo tú y G
 async function bxEliminarMensaje(id){const m=BX.messages.find(x=>x.id===id);if(!m||m.eliminado_en)return;if(!m.mio&&!mailPuedeJefes())return msg('Solo puedes eliminar tus propios mensajes.',1);if(!confirm(m.mio?'¿Eliminar este mensaje? Se conservará el registro de auditoría.':'¿Eliminar el mensaje de otra persona? Se conservará el registro de auditoría.'))return;const {error}=await sb.rpc('buzon_eliminar_mensaje',{p_id:id});if(error)return msg(error.message,1);await bxCargarMensajes(BX.selected,true);await cargarBuzon();msg('Mensaje eliminado.');}
 async function bxLimpiarTodos(){if(!mailPuedeJefes())return msg('Solo Gerencia o SysAdmin puede limpiar todos los buzones.',1);if(!confirm('¿Ocultar todos los mensajes de todos los buzones? No se borrarán del sistema ni de Auditoría.'))return;const {error}=await sb.rpc('buzon_limpiar_todos');if(error)return msg(error.message,1);BX.selected=null;BX.messages=[];await cargarBuzon();msg('Todos los buzones fueron limpiados.');}
 function actualizarBadge(n){const b=mailBadgeEl();if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
-async function cargarBuzon(){
+async async function cargarBuzon(){
  if(!S.perfil)return;
  const {data,error}=await sb.rpc('buzon_conversaciones_listar');
  if(error){if(!MAIL.sqlWarned){MAIL.sqlWarned=true;msg('No se pudo cargar el nuevo Buzón. Verifica la migración v2.9.3: '+error.message,1)}return}
@@ -894,7 +894,7 @@ async function bxEnviar(){
  await bxCargarMensajes(BX.selected,true);await cargarBuzon();
  const t=$('#bx-compose-text');if(t)t.focus();
 }
-async function bxLimpiarConversacion(){
+async async function bxLimpiarConversacion(){
  const c=BX.conversations.find(x=>x.conversacion_id===BX.selected);if(!c)return;
  if(!confirm('Ocultar esta conversación de tu buzón? No se borrará el historial de los demás participantes.'))return;
  const {error}=await sb.rpc('buzon_limpiar_conversacion',{p_conversacion_id:BX.selected});
