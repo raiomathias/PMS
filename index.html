@@ -2778,16 +2778,27 @@ function renderDrawerUsuario(){
 async function guardarDrawerUsuario(){
  const u=UD.user,nombre=$('#ud-name')?.value?.trim()??u.nombre_completo,usuario=$('#ud-email')?.value?.trim()??u.usuario,rol=$('#ud-role')?.value??u.rol,activo=$('#ud-active')?.checked??u.activo;
  if(!nombre)return msg('Ingresa el nombre completo',1);if(!usuario)return msg('Ingresa el email o nombre de usuario',1);
- if(UD.isNew){const clave=$('#ud-pass')?.value||'';if(clave.length<6)return msg('La contraseña debe tener al menos 6 caracteres',1);try{await fn({accion:'crear',nombre_completo:nombre,usuario,rol,clave});msg('Usuario creado');cerrarDrawerUsuario();await pUsu()}catch(e){msg(e.message,1)}return}
- const {error}=await sb.from('perfiles').update({nombre_completo:nombre,usuario,rol,activo}).eq('id',u.id);if(error)return msg(error.message,1);
- if(!ED_ROLES_TODOS.includes(rol)){
-  const {error:de}=await sb.from('perfiles_edificios').delete().eq('perfil_id',u.id);if(de)return msg(de.message,1);
-  const ids=UD.edificios;if(ids.length){const {error:ie}=await sb.from('perfiles_edificios').insert(ids.map(edificio_id=>({perfil_id:u.id,edificio_id})));if(ie)return msg(ie.message,1)}
+ let targetId=u.id;
+ if(UD.isNew){
+  const clave=$('#ud-pass')?.value||'';if(clave.length<6)return msg('La contraseña debe tener al menos 6 caracteres',1);
+  try{
+   const created=await fn({accion:'crear',nombre_completo:nombre,usuario,rol,clave});
+   targetId=created?.usuario_id||created?.id||created?.perfil?.id||created?.user?.id||null;
+   if(!targetId){const q=await sb.from('perfiles').select('id,rol').eq('nombre_completo',nombre).order('id',{ascending:false}).limit(1);if(q.error)throw q.error;targetId=q.data?.[0]?.id||null}
+   if(!targetId){msg('La cuenta se creó, pero no pude localizar su perfil para guardar los permisos. Revisa la lista de usuarios antes de volver a crearla.',1);cerrarDrawerUsuario();await pUsu();return}
+   const {error:ue}=await sb.from('perfiles').update({usuario,rol,activo:$('#ud-active')?.checked??true}).eq('id',targetId);if(ue)throw ue;
+  }catch(e){return msg(e.message||'No se pudo crear el usuario',1)}
+ }else{
+  const {error}=await sb.from('perfiles').update({nombre_completo:nombre,usuario,rol,activo}).eq('id',targetId);if(error)return msg(error.message,1);
  }
- const {error:pe}=await sb.from('perfiles_permisos_edicion').delete().eq('perfil_id',u.id);if(pe)return msg(pe.message,1);
- if(UD.campos.length){const {error:pi}=await sb.from('perfiles_permisos_edicion').insert(UD.campos.map(campo=>({perfil_id:u.id,campo,permitido:true})));if(pi)return msg(pi.message,1)}
- const {error:be}=await sb.rpc('buzon_guardar_permisos',{p_usuario_id:u.id,p_recepcion_egana:UD.buzon.recepcion_egana,p_recepcion_huasco:UD.buzon.recepcion_huasco});if(be)return msg(be.message,1);
- msg('Usuario y permisos guardados');cerrarDrawerUsuario();await pUsu();
+ if(!ED_ROLES_TODOS.includes(rol)){
+  const {error:de}=await sb.from('perfiles_edificios').delete().eq('perfil_id',targetId);if(de)return msg(de.message,1);
+  const ids=UD.edificios;if(ids.length){const {error:ie}=await sb.from('perfiles_edificios').insert(ids.map(edificio_id=>({perfil_id:targetId,edificio_id})));if(ie)return msg(ie.message,1)}
+ }
+ const {error:pe}=await sb.from('perfiles_permisos_edicion').delete().eq('perfil_id',targetId);if(pe)return msg(pe.message,1);
+ if(UD.campos.length){const {error:pi}=await sb.from('perfiles_permisos_edicion').insert(UD.campos.map(campo=>({perfil_id:targetId,campo,permitido:true})));if(pi)return msg(pi.message,1)}
+ const {error:be}=await sb.rpc('buzon_guardar_permisos',{p_usuario_id:targetId,p_recepcion_egana:UD.buzon.recepcion_egana,p_recepcion_huasco:UD.buzon.recepcion_huasco});if(be)return msg(be.message,1);
+ msg(UD.isNew?'Usuario y permisos guardados':'Usuario y permisos guardados');cerrarDrawerUsuario();await pUsu();
 }
 
 async function pPerm(id){
