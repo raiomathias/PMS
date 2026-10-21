@@ -3182,7 +3182,7 @@ const AUD_Q=[
  {n:'🛡 Garantías',f:{tablas:['garantia_fechas','pagos'],txt:'garantia'}},
  {n:'🔑 Usuarios y permisos',f:{tablas:['perfiles']}},
  {n:'⚙ Configuración',f:{tablas:['configuracion','tipos_unidad','edificios','unidades']}}];
-let AUD={f:null,rows:[],tot:0,res:null,users:{},ops:null,open:{},groupOpen:{},bt:null,q:0};
+let AUD={f:null,rows:[],tot:0,offset:0,omitidos:0,res:null,users:{},ops:null,open:{},groupOpen:{},bt:null,q:0};
 const audF0=()=>({txt:'',per:'7',d1:'',d2:'',usr:'',tablas:[],acc:[],campo:'',m1:'',m2:''});
 AUD_CAMPOS['No-show']=['no_show_en','no_show_por','no_show_nota'];AUD_CAMPOS['Garantía']=['garantia_omitida','garantia_omitida_motivo','garantia_omitida_por_nombre','garantia_omitida_en'];
 const audK=k=>AUD_F[k]||(String(k).charAt(0).toUpperCase()+String(k).slice(1).replace(/_/g,' '));
@@ -3255,12 +3255,23 @@ function audParams(){
  if(f.m1!=='')p.p_monto_min=+f.m1;if(f.m2!=='')p.p_monto_max=+f.m2;if(f.campo)p.p_campos=AUD_CAMPOS[f.campo];
  return p}
 async function audCargar(reset){
- if(reset){AUD.rows=[];AUD.open={};$('#alst').innerHTML='<p class="mu">Buscando…</p>'}
+ if(reset){AUD.rows=[];AUD.offset=0;AUD.omitidos=0;AUD.open={};$('#alst').innerHTML='<p class="mu">Buscando…</p>'}
  const my=AUD.q=(AUD.q||0)+1,p=audParams();
- const [lst,res]=await Promise.all([sb.rpc('auditoria_buscar',{...p,p_limite:50,p_desplazamiento:AUD.rows.length}),reset?sb.rpc('auditoria_resumen',p):Promise.resolve(null)]);
+ const promResumen=reset?sb.rpc('auditoria_resumen',p):Promise.resolve(null);
+ let visibles=[],leidos=0,resultadoTotal=AUD.tot||0;
+ do{
+  const lst=await sb.rpc('auditoria_buscar',{...p,p_limite:500,p_desplazamiento:AUD.offset});
+  if(my!==AUD.q)return;
+  if(lst.error){$('#alst').innerHTML=audErr(lst.error);return}
+  const lote=lst.data||[];
+  if(!lote.length){if(reset&&AUD.offset===0)resultadoTotal=0;break}
+  resultadoTotal=Number(lote[0].total||resultadoTotal);AUD.offset+=lote.length;leidos+=lote.length;
+  const buenos=lote.filter(a=>a.accion!=='UPDATE'||audCambios(a).some(k=>!AUD_IGN.includes(k)));
+  AUD.omitidos+=lote.length-buenos.length;visibles=visibles.concat(buenos);
+ }while(visibles.length<50&&AUD.offset<resultadoTotal&&leidos<2000);
  if(my!==AUD.q)return;
- if(lst.error){$('#alst').innerHTML=audErr(lst.error);return}
- AUD.rows=AUD.rows.concat(lst.data||[]);AUD.tot=(lst.data&&lst.data.length)?+lst.data[0].total:(reset?0:AUD.tot);
+ AUD.rows=AUD.rows.concat(visibles);AUD.tot=resultadoTotal;
+ const res=await promResumen;if(my!==AUD.q)return;
  if(res){AUD.res=res.error?null:res.data;audKpi()}
  audLista()}
 function audKpi(){
@@ -3283,8 +3294,8 @@ function audAgrupar(rows){
  function audGrupoDetalle(items){const ds=[...new Set(items.map(a=>audResumen(a).t).filter(Boolean))];return ds.slice(0,3).map(t=>'<div class="au-change-summary">• '+t+'</div>').join('')+(ds.length>3?'<div class="au-change-summary">+'+(ds.length-3)+' detalles más al expandir</div>':'')}
 function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
  function audLista(){
-  const R=AUD.rows;if(!R.length){$('#alst').innerHTML='<div class="mu" style="text-align:center;padding:40px">Sin resultados con estos filtros.</div>';return}
-  const groups=audAgrupar(R),visibles=groups.reduce((n,g)=>n+g.items.length,0),omitidos=R.length-visibles;let h='',dia='';
+  const R=AUD.rows;if(!R.length){const m=AUD.omitidos?'Se omitieron '+AUD.omitidos+' registros de actualización sin cambios de negocio visibles. No se borraron: se conservan en el historial y en el CSV.':'Sin resultados con estos filtros.';$('#alst').innerHTML='<div class="mu" style="text-align:center;padding:40px">'+m+(AUD.offset<AUD.tot?' <div style="margin-top:12px"><button class="p" onclick="audCargar(false)">Buscar más cambios</button></div>':'')+'</div>';return}
+  const groups=audAgrupar(R),visibles=groups.reduce((n,g)=>n+g.items.length,0);let h='',dia='';
   for(const g of groups){
    const a=g.items[0],d=audDia(a.fecha);if(d!==dia){dia=d;h+=`<div class="au-d">${audDiaTxt(d)}</div>`}
    if(g.kind==='single'){h+=audFila(a);continue}
@@ -3293,7 +3304,7 @@ function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
    const who=first.usuario_nombre||(first.usuario_id?'Usuario eliminado':'Sistema / SQL'),when=audFechaHora(first.fecha),res=first.reserva_uid||'Reserva vinculada',open=!!AUD.groupOpen[g.key];
    h+=`<section class="au-group"><div class="au-group-head" role="button" tabindex="0" aria-expanded="${open}" onclick="audGrupoTog('${g.key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();audGrupoTog('${g.key}')}"><div class="au-av">↔</div><div class="main"><h4>${esc(verb)} · ${esc(res)}</h4><p>${esc(who)} · ${esc(when)} · ${esc(tables.join(' · '))}</p>${audGrupoDetalle(g.items)}</div><span class="au-count">${g.items.length} registros</span><span aria-hidden="true">${open?'▴':'▾'}</span></div>${open?`<div class="au-group-items">${g.items.map(audFila).join('')}</div>`:''}</section>`
   }
-  h+=`<div style="text-align:center;margin:14px 0" class="mu">Mostrando ${visibles} eventos con cambios reales en ${groups.length} tarjetas${omitidos>0?' · '+omitidos+' eventos sin cambios visibles omitidos':''} · ${AUD.tot} registros coinciden con los filtros${R.length<AUD.tot?' <button class="p" onclick="audCargar(false)">Cargar más</button>':''}</div>`;
+  h+=`<div style="text-align:center;margin:14px 0" class="mu">Mostrando ${visibles} eventos con cambios reales en ${groups.length} tarjetas · ${AUD.omitidos} eventos sin cambios de negocio omitidos visualmente · ${AUD.tot} registros coinciden con los filtros${AUD.offset<AUD.tot?' <button class="p" onclick="audCargar(false)">Cargar más cambios</button>':''}</div>`;
   $('#alst').innerHTML=h}
  function audChips(){
  $('#aq').innerHTML=AUD_Q.map((q,i)=>`<button onclick="audAtajo(${i})">${q.n}</button>`).join('');
