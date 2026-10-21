@@ -8152,3 +8152,69 @@ REVOKE ALL ON FUNCTION public.combinar_huespedes(uuid,uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.combinar_huespedes(uuid,uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.guardar_huesped_admin(uuid,jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.guardar_huesped_admin(uuid,jsonb) TO authenticated;
+
+
+-- ============================================================
+-- PMS v2.9.1 · Combinación de huéspedes con selección explícita de datos
+-- La interfaz compara los perfiles y envía p_datos con los valores elegidos.
+-- El historial de ambos perfiles se conserva bajo el perfil principal.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.combinar_huespedes(p_principal uuid, p_duplicado uuid, p_datos jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_rol text := lower(trim(public.pms_rol()));
+  v_principal public.huespedes%ROWTYPE;
+  v_duplicado public.huespedes%ROWTYPE;
+  v_fk record;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  IF v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Administración, Gerencia o SysAdmin pueden combinar huéspedes';
+  END IF;
+  IF p_principal IS NULL OR p_duplicado IS NULL OR p_principal = p_duplicado THEN
+    RAISE EXCEPTION 'Selecciona dos perfiles de huésped distintos';
+  END IF;
+  IF p_datos IS NULL OR jsonb_typeof(p_datos) <> 'object' THEN
+    RAISE EXCEPTION 'Debes confirmar los datos que se conservarán';
+  END IF;
+  SELECT * INTO v_principal FROM public.huespedes WHERE id=p_principal FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el perfil principal'; END IF;
+  SELECT * INTO v_duplicado FROM public.huespedes WHERE id=p_duplicado FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el perfil que se combinará'; END IF;
+
+  -- Liberar el documento del perfil que se eliminará antes de asignarlo al principal.
+  UPDATE public.huespedes SET numero_documento=NULL WHERE id=p_duplicado;
+
+  UPDATE public.huespedes SET
+    nombre_completo = COALESCE(NULLIF(trim(p_datos->>'nombre_completo'),''), v_principal.nombre_completo, v_duplicado.nombre_completo),
+    tipo_documento = NULLIF(trim(p_datos->>'tipo_documento'),''),
+    numero_documento = NULLIF(trim(p_datos->>'numero_documento'),''),
+    telefono = NULLIF(trim(p_datos->>'telefono'),''),
+    correo = NULLIF(trim(p_datos->>'correo'),''),
+    nacionalidad = NULLIF(trim(p_datos->>'nacionalidad'),''),
+    ciudad_origen = NULLIF(trim(p_datos->>'ciudad_origen'),''),
+    fecha_nacimiento = NULLIF(trim(p_datos->>'fecha_nacimiento'),'')::date,
+    es_vip = COALESCE((p_datos->>'es_vip')::boolean,false)
+  WHERE id=p_principal;
+
+  FOR v_fk IN
+    SELECT conrelid::regclass AS tabla, a.attname AS columna
+      FROM pg_constraint c
+      JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+     WHERE c.contype='f' AND c.confrelid='public.huespedes'::regclass
+       AND c.conrelid <> 'public.huespedes'::regclass
+  LOOP
+    EXECUTE format('UPDATE %s SET %I=$1 WHERE %I=$2',v_fk.tabla,v_fk.columna,v_fk.columna)
+      USING p_principal,p_duplicado;
+  END LOOP;
+  DELETE FROM public.huespedes WHERE id=p_duplicado;
+  RETURN jsonb_build_object('principal_id',p_principal,'combinado_id',p_duplicado,'nombre',(SELECT nombre_completo FROM public.huespedes WHERE id=p_principal));
+END
+$function$;
+
+REVOKE ALL ON FUNCTION public.combinar_huespedes(uuid,uuid,jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.combinar_huespedes(uuid,uuid,jsonb) TO authenticated;
