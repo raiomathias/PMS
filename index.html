@@ -3184,6 +3184,7 @@ const AUD_Q=[
  {n:'⚙ Configuración',f:{tablas:['configuracion','tipos_unidad','edificios','unidades']}}];
 let AUD={f:null,rows:[],tot:0,res:null,users:{},ops:null,open:{},groupOpen:{},bt:null,q:0};
 const audF0=()=>({txt:'',per:'7',d1:'',d2:'',usr:'',tablas:[],acc:[],campo:'',m1:'',m2:''});
+AUD_CAMPOS['No-show']=['no_show_en','no_show_por','no_show_nota'];AUD_CAMPOS['Garantía']=['garantia_omitida','garantia_omitida_motivo','garantia_omitida_por_nombre','garantia_omitida_en'];
 const audK=k=>AUD_F[k]||(String(k).charAt(0).toUpperCase()+String(k).slice(1).replace(/_/g,' '));
 const audDia=ts=>new Date(ts).toLocaleDateString('sv',{timeZone:'America/Santiago'});
 function audDiaTxt(d){const h=hoyStr();if(d===h)return'Hoy';if(d===addD(h,-1))return'Ayer';return new Date(d+'T12:00:00Z').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'})}
@@ -3265,7 +3266,7 @@ async function audCargar(reset){
 function audKpi(){
  const r=AUD.res;if(!r){$('#akp').innerHTML='';return}
  const k=(t,v,c)=>`<div>${t}<b${c?` style="color:${c}"`:''}>${v}</b></div>`;
- $('#akp').innerHTML=`<div class="au-k">${k('Eventos',r.total)}${k('Creados',r.crear,'#16a34a')}${k('Modificados',r.modificar,'#d97706')}${k('Eliminados',r.eliminar,r.eliminar?'#dc2626':'')}${k('Usuarios activos',r.usuarios)}${k('Pagos registrados',r.pagos_n+' · '+clp(r.pagos_monto))}${k('Pagos modificados / eliminados',r.pagos_alterados,r.pagos_alterados?'#dc2626':'')}</div>${(r.top_usuarios||[]).length?`<div class="au-chs"><span class="mu">Actividad por usuario:</span>${r.top_usuarios.map(u=>`<button onclick="audUsr('${u.usuario_id||'__sys'}')">${esc(u.nombre)} · ${u.n}</button>`).join('')}</div>`:''}`}
+ $('#akp').innerHTML=`<div class="au-k">${k('Eventos',r.total)}${k('Creados',r.crear,'#16a34a')}${k('Modificados',r.modificar,'#d97706')}${k('Eliminados',r.eliminar,r.eliminar?'#dc2626':'')}${k('Usuarios con actividad',r.usuarios)}${k('Pagos registrados',r.pagos_n+' · '+clp(r.pagos_monto))}${k('Pagos modificados / eliminados',r.pagos_alterados,r.pagos_alterados?'#dc2626':'')}</div>${(r.top_usuarios||[]).length?`<div class="au-chs"><span class="mu">Actividad por usuario:</span>${r.top_usuarios.map(u=>`<button onclick="audUsr('${u.usuario_id||'__sys'}')">${esc(u.nombre)} · ${u.n}</button>`).join('')}</div>`:''}`}
 function audAgrupar(rows){
   const out=[];
   for(const a of rows){
