@@ -3279,7 +3279,8 @@ function audAgrupar(rows){
    else out.push({kind:'single',key:'s'+a.id,items:[a]});
   }return out;
  }
- function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
+ function audGrupoDetalle(items){const ds=[...new Set(items.map(a=>audResumen(a).t).filter(Boolean))];return ds.slice(0,3).map(t=>'<div class="au-change-summary">• '+t+'</div>').join('')+(ds.length>3?'<div class="au-change-summary">+'+(ds.length-3)+' detalles más al expandir</div>':'')}
+function audGrupoTog(key){AUD.groupOpen[key]=!AUD.groupOpen[key];audLista()}
  function audLista(){
   const R=AUD.rows;if(!R.length){$('#alst').innerHTML='<div class="mu" style="text-align:center;padding:40px">Sin resultados con estos filtros.</div>';return}
   const groups=audAgrupar(R);let h='',dia='';
@@ -3289,7 +3290,7 @@ function audAgrupar(rows){
    const first=g.items[0],tables=[...new Set(g.items.map(x=>audT(x.tabla)[0]))],actions=[...new Set(g.items.map(x=>x.accion))];
    const verb=actions.length===1?({INSERT:'Creaciones',UPDATE:'Modificaciones',DELETE:'Eliminaciones'}[actions[0]]||'Actividad'):'Cambios combinados';
    const who=first.usuario_nombre||(first.usuario_id?'Usuario eliminado':'Sistema / SQL'),when=audFechaHora(first.fecha),res=first.reserva_uid||'Reserva vinculada',open=!!AUD.groupOpen[g.key];
-   h+=`<section class="au-group"><div class="au-group-head" role="button" tabindex="0" aria-expanded="${open}" onclick="audGrupoTog('${g.key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();audGrupoTog('${g.key}')}"><div class="au-av">↔</div><div class="main"><h4>${esc(verb)} · ${esc(res)}</h4><p>${esc(who)} · ${esc(when)} · ${esc(tables.join(' · '))}</p></div><span class="au-count">${g.items.length} registros</span><span aria-hidden="true">${open?'▴':'▾'}</span></div>${open?`<div class="au-group-items">${g.items.map(audFila).join('')}</div>`:''}</section>`
+   h+=`<section class="au-group"><div class="au-group-head" role="button" tabindex="0" aria-expanded="${open}" onclick="audGrupoTog('${g.key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();audGrupoTog('${g.key}')}"><div class="au-av">↔</div><div class="main"><h4>${esc(verb)} · ${esc(res)}</h4><p>${esc(who)} · ${esc(when)} · ${esc(tables.join(' · '))}</p>${audGrupoDetalle(g.items)}</div><span class="au-count">${g.items.length} registros</span><span aria-hidden="true">${open?'▴':'▾'}</span></div>${open?`<div class="au-group-items">${g.items.map(audFila).join('')}</div>`:''}</section>`
   }
   h+=`<div style="text-align:center;margin:14px 0" class="mu">Mostrando ${R.length} registros de auditoría (${groups.length} elementos visuales) de ${AUD.tot}${R.length<AUD.tot?' <button class="p" onclick="audCargar(false)">Cargar más</button>':''}</div>`;
   $('#alst').innerHTML=h}
