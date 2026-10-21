@@ -271,6 +271,19 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 @media(max-width:600px){.us-page-head{align-items:flex-start}.us-page-head h2{font-size:22px}.us-page-head .us-primary{white-space:nowrap}.us-drawer-head{padding:16px}.us-drawer-body{padding:16px}.us-drawer-tabs{padding:0 10px}.us-drawer-tab{padding:12px 6px!important}.us-building-list,.us-fields-grid,.us-form-grid{grid-template-columns:1fr}.us-form-grid .us-span2{grid-column:span 1}.us-table-foot{display:none}}
 
 /* Administración: lenguaje visual SaaS coherente con Usuarios. Auditoría (#aud) se mantiene aislada. */
+#mo.admin-full .admin-field{display:flex;flex-direction:column;align-items:stretch;gap:5px;flex:1 1 145px;min-width:120px;color:#475569;font-size:10px;font-weight:650}
+#mo.admin-full .admin-field>span:first-child{font-size:10px;line-height:1.3;color:#64748b;letter-spacing:.01em}
+#mo.admin-full .admin-field input:not([type=checkbox]),#mo.admin-full .admin-field select{width:100%;min-width:0}
+#mo.admin-full .admin-fields-row{align-items:flex-end;gap:10px}
+#mo.admin-full .admin-field-action{flex:0 0 auto;align-self:stretch;justify-content:flex-end}
+#mo.admin-full .admin-field-action>span{display:block}
+#mo.admin-full .admin-list-header{display:none}
+#mo.admin-full .admin-field-value{display:flex;align-items:center;min-height:36px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc;color:#334155}
+#mo.admin-full .admin-field label{font-size:11px}
+#mo.admin-full .photo-filters{padding:12px;background:#fff;border:1px solid #e2e8f0;border-radius:10px}
+#mo.admin-full .photo-filters .admin-field{min-width:170px}
+@media(max-width:600px){#mo.admin-full .admin-field{flex-basis:100%;min-width:0}#mo.admin-full .admin-fields-row{align-items:stretch}#mo.admin-full .admin-field-action{flex-basis:100%}}
+
 #mo.admin-full>div.admin-shell{background:#f8fafc;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
 #mo.admin-full .admin-top{align-items:center;padding:2px 2px 16px;border-bottom:1px solid #e2e8f0;margin-bottom:16px}
 #mo.admin-full .admin-top h3{font-size:22px;letter-spacing:-.035em;color:#0f172a}
@@ -2652,19 +2665,23 @@ async function panel(t){
 }
 async function pUni(){
  const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
+ if(u.error||e.error||t.error)return msg((u.error||e.error||t.error).message,1);
  const E=(e.data||[]).map(x=>[x.id,x.nombre]),T=(t.data||[]).map(x=>[x.id,x.nombre,x.edificio_id]);window._T=T;const TT=ed=>T.filter(x=>x[2]===ed);
  const L=(u.data||[]).sort((a,b)=>(a.edificios.orden-b.edificios.orden)||a.codigo.localeCompare(b.codigo,'es',{numeric:true}));
- $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw">${SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"')}${NI('codigo','','Códigos (ej. 201, 202 o 201-205)')}${SO('tipo_unidad_id',TT(E[0]?.[0]),'',1)}${NI('piso','','Piso')}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo,tipo_unidad_id')">Crear</button></div><p class="mu" style="margin:4px 0 12px">Ingresa códigos separados por coma (201, 202) o un rango con guion (201-205). Puedes combinar ambos formatos; se crearán unidades independientes con el mismo edificio, categoría y piso. Máximo 200 por operación.</p>
- <h4>Unidades (${L.length})</h4>${L.map(x=>`<div class="rw"><span style="flex:0 0 90px">${esc(x.edificios.nombre)}</span>${NI('codigo',x.codigo,'Código')}${SO('tipo_unidad_id',TT(x.edificio_id),x.tipo_unidad_id,1)}${NI('piso',x.piso,'Piso')}${CK('activo',x.activo,'Activa')}<button onclick="gd('unidades','${x.id}',this)">Guardar</button></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Cada categoría pertenece a un edificio: aquí solo aparecen las del edificio elegido.</p>`;
+ const campo=(label,html,wide='')=>`<label class="admin-field ${wide}"><span>${label}</span>${html}</label>`;
+ $('#pc').innerHTML=`<h4 style="margin-top:0">Nueva unidad</h4><div class="rw admin-fields-row">${campo('Edificio',SO('edificio_id',E,'').replace('<select','<select onchange="fT(this)"'))}${campo('Códigos de unidad',NI('codigo','','Ej. 201, 202 o 201-205'))}${campo('Categoría',SO('tipo_unidad_id',TT(E[0]?.[0]),'',1))}${campo('Piso',NI('piso','','Piso'))}<button class="p" onclick="nw('unidades',this,'edificio_id,codigo,tipo_unidad_id')">Crear</button></div><p class="mu" style="margin:4px 0 12px">Ingresa códigos separados por coma (201, 202) o un rango con guion (201-205). Puedes combinar ambos formatos; se crearán unidades independientes con el mismo edificio, categoría y piso. Máximo 200 por operación.</p>
+ <h4>Unidades (${L.length})</h4><div class="rw admin-list-header"><span>Edificio</span><span>Código</span><span>Categoría</span><span>Piso</span><span>Estado</span><span>Acciones</span></div>${L.map(x=>`<div class="rw admin-fields-row"><label class="admin-field"><span>Edificio</span><span class="admin-field-value" data-edificio-nombre>${esc(x.edificios.nombre)}</span></label>${campo('Código',NI('codigo',x.codigo,'Código'))}${campo('Categoría',SO('tipo_unidad_id',TT(x.edificio_id),x.tipo_unidad_id,1))}${campo('Piso',NI('piso',x.piso,'—'))}<label class="admin-field"><span>Estado</span>${CK('activo',x.activo,'Activa')}</label><div class="admin-field admin-field-action"><span>Acciones</span><button onclick="gd('unidades','${x.id}',this)">Guardar</button></div></div>`).join('')}<p class="mu">Una unidad desactivada deja de aparecer en la grilla. Cada categoría pertenece a un edificio: aquí solo aparecen las del edificio elegido.</p>`;
  instalarFiltrosUnidades(E,T);
 }
 function fT(s){const r=s.closest('.rw').querySelector('[data-c=tipo_unidad_id]');r.innerHTML='<option value="">—</option>'+_T.filter(t=>t[2]===s.value).map(t=>`<option value="${t[0]}">${esc(t[1])}</option>`).join('')}
 async function pTip(){
  const [t,e]=await Promise.all([sb.from('tipos_unidad').select('*').order('nombre'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden')]);
+ if(t.error||e.error)return msg((t.error||e.error).message,1);
  const E=(e.data||[]).map(x=>[x.id,x.nombre]),eo=Object.fromEntries(E.map((x,k)=>[x[0],k]));
- const f=(x,v)=>`${SO('edificio_id',E,x.edificio_id,v)}${NI('nombre',x.nombre,'Categoría (ej. Completo)')}${NI('max_adultos',x.max_adultos,'Máx. adultos','number')}${NI('max_menores',x.max_menores,'Máx. menores','number')}${NI('tarifa_base',x.tarifa_base,'Tarifa por noche (CLP)','number')}`;
+ const campo=(label,html)=>`<label class="admin-field"><span>${label}</span>${html}</label>`;
+ const f=(x,v)=>`${campo('Edificio',SO('edificio_id',E,x.edificio_id,v))}${campo('Categoría',NI('nombre',x.nombre,'Nombre de categoría'))}${campo('Máx. adultos',NI('max_adultos',x.max_adultos,'Adultos','number'))}${campo('Máx. menores',NI('max_menores',x.max_menores,'Menores','number'))}${campo('Tarifa por noche (CLP)',NI('tarifa_base',x.tarifa_base,'Monto en pesos','number'))}`;
  const L=(t.data||[]).sort((a,b)=>((eo[a.edificio_id]??99)-(eo[b.edificio_id]??99))||a.nombre.localeCompare(b.nombre,'es'));
- $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Edificio · categoría · máx. adultos · máx. menores · tarifa por noche. Cada categoría pertenece a un edificio. Los cambios de tarifa valen para reservas nuevas; las existentes conservan la suya.</p><h4>Nueva categoría</h4><div class="rw">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0},0)}<button class="p" onclick="nw('tipos_unidad',this,'nombre,edificio_id')">Crear</button></div><h4>Categorías</h4>${L.map(x=>`<div class="rw">${f(x,1)}<button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div>`).join('')}`;
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Cada campo tiene su propia etiqueta. Los cambios de tarifa valen para reservas nuevas; las reservas existentes conservan su tarifa guardada.</p><h4>Nueva categoría</h4><div class="rw admin-fields-row">${f({nombre:'',max_adultos:2,max_menores:0,tarifa_base:0},0)}<div class="admin-field admin-field-action"><span>Acciones</span><button class="p" onclick="nw('tipos_unidad',this,'nombre,edificio_id')">Crear</button></div></div><h4>Categorías (${L.length})</h4><div class="rw admin-list-header"><span>Edificio</span><span>Categoría</span><span>Máx. adultos</span><span>Máx. menores</span><span>Tarifa por noche</span><span>Acciones</span></div>${L.map(x=>`<div class="rw admin-fields-row">${f(x,1)}<div class="admin-field admin-field-action"><span>Acciones</span><button onclick="gd('tipos_unidad','${x.id}',this)">Guardar</button><button onclick="pDet('${x.id}')">📷 Detalle</button></div></div>`).join('')}`;
  instalarFiltrosTipos(t.data||[],E);
 }
 function crearSelectFiltro(label,id,opciones,valor,alCambiar){
@@ -2687,7 +2704,7 @@ function instalarFiltrosUnidades(E,T){
   const catNow=cs.value;
   pc.querySelectorAll('button').forEach(b=>{if(!(b.getAttribute('onclick')||'').startsWith("gd('unidades'"))return;
    const row=b.closest('.rw'),nombre=row?.querySelector('span')?.textContent?.trim()||'',sel=row?.querySelector('select[data-c="tipo_unidad_id"]');
-   const coincideEd=!ed||nombre===(E.find(x=>x[0]===ed)?.[1]||''),coincideCat=!catNow||sel?.value===catNow;
+   const coincideEd=!ed||(row?.querySelector('[data-edificio-nombre]')?.textContent?.trim()||nombre)===(E.find(x=>x[0]===ed)?.[1]||''),coincideCat=!catNow||sel?.value===catNow;
    if(row)row.style.display=coincideEd&&coincideCat?'':'none';
   });
  };
@@ -2724,20 +2741,17 @@ async function pFotosCatalogo(){
   sb.from('edificios').select('id,nombre,orden').eq('activo',true).order('orden')
  ]);
  if(tr.error||er.error)return msg((tr.error||er.error).message,1);
- const edificios=Object.fromEntries((er.data||[]).map(x=>[x.id,x.nombre]));
- const categorias=(tr.data||[]).slice().sort((a,b)=>
-  (edificios[a.edificio_id]||'').localeCompare(edificios[b.edificio_id]||'','es')||
-  a.nombre.localeCompare(b.nombre,'es')
- );
+ const listaEdificios=er.data||[],edificios=Object.fromEntries(listaEdificios.map(x=>[x.id,x.nombre]));
+ const categorias=(tr.data||[]).slice().sort((a,b)=>(edificios[a.edificio_id]||'').localeCompare(edificios[b.edificio_id]||'','es')||a.nombre.localeCompare(b.nombre,'es'));
  const cards=categorias.map(x=>{
-  const fotos=normalizarFotos(x.fotos);
-  const portada=fotos.find(f=>f.rank===0)||fotos[0];
-  const imagen=portada
-   ?`<img src="${esc(FU(portada.path))}" alt="Foto de ${esc(x.nombre)}" loading="lazy">`
-   :'<div class="photo-placeholder" style="width:150px;height:112px;display:grid;place-items:center;background:var(--bg);border-radius:9px;color:var(--mu)">Sin fotos</div>';
-  return `<article class="photo-card">${imagen}<div class="pc-body"><div><b>${esc(x.nombre)}</b><div class="mu">${esc(edificios[x.edificio_id]||'Edificio no disponible')}</div><div class="dis ${fotos.length?'ok':'nd'}">${fotos.length} foto${fotos.length===1?'':'s'}</div></div><button class="p" onclick="pDet('${x.id}','catalogofotos')">📷 Administrar fotos</button></div></article>`;
+  const fotos=normalizarFotos(x.fotos),portada=fotos.find(f=>f.rank===0)||fotos[0];
+  const imagen=portada?`<img src="${esc(FU(portada.path))}" alt="Foto de ${esc(x.nombre)}" loading="lazy">`:'<div class="photo-placeholder" style="width:150px;height:112px;display:grid;place-items:center;background:var(--bg);border-radius:9px;color:var(--mu)">Sin fotos</div>';
+  return `<article class="photo-card" data-nombre="${esc(x.nombre.toLocaleLowerCase('es'))}" data-edificio="${esc(edificios[x.edificio_id]||'')}" data-fotos="${fotos.length}">${imagen}<div class="pc-body"><div><b>${esc(x.nombre)}</b><div class="mu">${esc(edificios[x.edificio_id]||'Edificio no disponible')}</div><div class="dis ${fotos.length?'ok':'nd'}">${fotos.length} foto${fotos.length===1?'':'s'}</div></div><button class="p" onclick="pDet('${x.id}','catalogofotos')">📷 Administrar fotos</button></div></article>`;
  }).join('');
- $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Administra las imágenes que aparecen en el catálogo. Selecciona una categoría para subir fotos, elegir portada y ordenar las miniaturas. Los cambios se guardan en la categoría correspondiente.</p><div class="photo-admin">${cards||'<p class="mu">No hay categorías creadas todavía.</p>'}</div>`;
+ const opciones=[['','Todos los edificios'],...listaEdificios.map(x=>[x.id,x.nombre])].map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Administra las imágenes del catálogo. Filtra por texto, edificio o categorías con/sin fotos; luego abre una categoría para subir, ordenar o elegir la portada.</p><div class="rw admin-fields-row photo-filters"><label class="admin-field"><span>Buscar categoría o edificio</span><input id="fotoFiltroTexto" type="search" placeholder="Escribe un nombre…"></label><label class="admin-field"><span>Edificio</span><select id="fotoFiltroEdificio">${opciones}</select></label><label class="admin-field"><span>Estado de fotos</span><select id="fotoFiltroEstado"><option value="">Todas</option><option value="con">Con fotos</option><option value="sin">Sin fotos</option></select></label><div class="admin-field admin-field-action"><span>Acciones</span><button type="button" id="fotoLimpiarFiltros">Limpiar filtros</button></div></div><p class="mu" id="fotoFiltroConteo" aria-live="polite"></p><div class="photo-admin">${cards||'<p class="mu">No hay categorías creadas todavía.</p>'}</div>`;
+ const aplicar=()=>{const q=$('#fotoFiltroTexto').value.trim().toLocaleLowerCase('es'),ed=$('#fotoFiltroEdificio').value,estado=$('#fotoFiltroEstado').value;let visibles=0;$('#pc').querySelectorAll('.photo-card').forEach(card=>{const coincideTexto=(card.dataset.nombre+' '+card.dataset.edificio.toLocaleLowerCase('es')).includes(q),coincideEd=!ed||categorias.find(x=>x.nombre.toLocaleLowerCase('es')===card.dataset.nombre&&x.edificio_id===ed),coincideEstado=!estado||(estado==='con'?+card.dataset.fotos>0:+card.dataset.fotos===0),ok=!!coincideTexto&&!!coincideEd&&!!coincideEstado;card.style.display=ok?'':'none';if(ok)visibles++});$('#fotoFiltroConteo').textContent=`Mostrando ${visibles} de ${categorias.length} categorías`};
+ $('#fotoFiltroTexto').addEventListener('input',aplicar);$('#fotoFiltroEdificio').addEventListener('change',aplicar);$('#fotoFiltroEstado').addEventListener('change',aplicar);$('#fotoLimpiarFiltros').addEventListener('click',()=>{$('#fotoFiltroTexto').value='';$('#fotoFiltroEdificio').value='';$('#fotoFiltroEstado').value='';aplicar()});aplicar();
 }
 async function pRanking(){
  const [e,t,r]=await Promise.all([sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre'),sb.from('categoria_ranking_edificio').select('edificio_id,tipo_unidad_id,ranking')]);
@@ -2748,8 +2762,10 @@ async function pRanking(){
 }
 async function guardarRanking(){const rows=[...document.querySelectorAll('.rk')].filter(x=>x.value!==''),seen=new Set();for(const x of rows){const key=x.dataset.ed+'|'+x.dataset.cat;if(seen.has(x.dataset.ed+'|'+x.value))return msg('No puede repetirse el mismo ranking dentro de un edificio',1);seen.add(key);const ranking=+x.value;if(!Number.isInteger(ranking)||ranking<1)return msg('Ranking inválido',1)}const {error}=await sb.from('categoria_ranking_edificio').delete().neq('id','00000000-0000-0000-0000-000000000000');if(error)return msg(error.message,1);if(rows.length){const {error:e}=await sb.from('categoria_ranking_edificio').insert(rows.map(x=>({edificio_id:x.dataset.ed,tipo_unidad_id:x.dataset.cat,ranking:+x.value})));if(e)return msg(e.message,1)}msg('Ranking de upgrades guardado');pRanking()}
 async function pEdi(){
- const {data}=await sb.from('edificios').select('*').order('orden');
- $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Nombre · dirección · cupos de estacionamiento · orden en la grilla.</p><h4>Nuevo edificio</h4><div class="rw">${NI('nombre','','Nombre')}${NI('orden',(data||[]).length+1,'Orden','number')}<button class="p" onclick="nw('edificios',this,'nombre')">Crear</button></div><h4>Edificios</h4>${(data||[]).map(x=>`<div class="rw">${NI('nombre',x.nombre,'Nombre')}${NI('direccion',x.direccion,'Dirección')}${NI('cupos_estacionamiento',x.cupos_estacionamiento,'Cupos de estacionamiento','number')}${NI('orden',x.orden,'Orden','number')}${CK('acceso_remoto',x.acceso_remoto,'Remoto')}${CK('requiere_documento',x.requiere_documento,'Pide doc.')}${CK('activo',x.activo,'Activo')}<button onclick="gd('edificios','${x.id}',this)">Guardar</button></div>`).join('')}`;
+ const {data,error}=await sb.from('edificios').select('*').order('orden');
+ if(error)return msg(error.message,1);
+ const campo=(label,html)=>`<label class="admin-field"><span>${label}</span>${html}</label>`;
+ $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Cada dato se muestra con su nombre. Los cupos indican la capacidad de estacionamiento y el orden define la posición del edificio en la grilla.</p><h4>Nuevo edificio</h4><div class="rw admin-fields-row">${campo('Nombre',NI('nombre','','Nombre'))}${campo('Orden en la grilla',NI('orden',(data||[]).length+1,'Número','number'))}<div class="admin-field admin-field-action"><span>Acciones</span><button class="p" onclick="nw('edificios',this,'nombre')">Crear</button></div></div><h4>Edificios (${(data||[]).length})</h4><div class="rw admin-list-header"><span>Nombre</span><span>Dirección</span><span>Cupos estacionamiento</span><span>Orden</span><span>Acceso remoto</span><span>Documento obligatorio</span><span>Estado</span><span>Acciones</span></div>${(data||[]).map(x=>`<div class="rw admin-fields-row">${campo('Nombre',NI('nombre',x.nombre,'Nombre'))}${campo('Dirección',NI('direccion',x.direccion,'Dirección'))}${campo('Cupos estacionamiento',NI('cupos_estacionamiento',x.cupos_estacionamiento,'Cantidad','number'))}${campo('Orden',NI('orden',x.orden,'Posición','number'))}<label class="admin-field"><span>Acceso remoto</span>${CK('acceso_remoto',x.acceso_remoto,'Habilitado')}</label><label class="admin-field"><span>Documento obligatorio</span>${CK('requiere_documento',x.requiere_documento,'Requerir')}</label><label class="admin-field"><span>Estado</span>${CK('activo',x.activo,'Activo')}</label><div class="admin-field admin-field-action"><span>Acciones</span><button onclick="gd('edificios','${x.id}',this)">Guardar</button></div></div>`).join('')}`;
 }
 async function pCfg(){
  const {data}=await sb.from('configuracion').select('*').order('clave');
