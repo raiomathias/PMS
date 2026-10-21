@@ -8050,3 +8050,105 @@ BEGIN
 END;
 $function$
 ;
+
+
+-- ============================================================
+-- PMS v2.9 · Directorio de huéspedes y combinación de duplicados
+-- Aplicado directamente en Supabase. Roles autorizados: administración,
+-- gerencia y sysadmin. Recepción conserva solo lectura en este directorio.
+-- La combinación reasigna todas las FK hacia public.huespedes, conserva
+-- los datos no vacíos del perfil principal y bloquea documentos distintos.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.combinar_huespedes(p_principal uuid, p_duplicado uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_rol text := lower(trim(public.pms_rol()));
+  v_principal public.huespedes%ROWTYPE;
+  v_duplicado public.huespedes%ROWTYPE;
+  v_fk record;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  IF v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Administración, Gerencia o SysAdmin pueden combinar huéspedes';
+  END IF;
+  IF p_principal IS NULL OR p_duplicado IS NULL OR p_principal = p_duplicado THEN
+    RAISE EXCEPTION 'Selecciona dos perfiles de huésped distintos';
+  END IF;
+  SELECT * INTO v_principal FROM public.huespedes WHERE id=p_principal FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el perfil principal'; END IF;
+  SELECT * INTO v_duplicado FROM public.huespedes WHERE id=p_duplicado FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el perfil duplicado'; END IF;
+  IF v_principal.documento_normalizado IS NOT NULL AND v_duplicado.documento_normalizado IS NOT NULL
+     AND v_principal.documento_normalizado <> v_duplicado.documento_normalizado THEN
+    RAISE EXCEPTION 'Los documentos son distintos. Revisa y corrige los datos antes de combinar los perfiles.';
+  END IF;
+  -- Evita una colisión temporal con la restricción única del documento normalizado.
+  IF v_principal.numero_documento IS NULL AND v_duplicado.numero_documento IS NOT NULL THEN
+    UPDATE public.huespedes SET numero_documento=NULL WHERE id=p_duplicado;
+  END IF;
+  UPDATE public.huespedes SET
+    nombre_completo = CASE WHEN NULLIF(trim(v_principal.nombre_completo),'') IS NULL THEN v_duplicado.nombre_completo ELSE v_principal.nombre_completo END,
+    tipo_documento = COALESCE(v_principal.tipo_documento,v_duplicado.tipo_documento),
+    numero_documento = COALESCE(v_principal.numero_documento,v_duplicado.numero_documento),
+    telefono = COALESCE(NULLIF(trim(v_principal.telefono),''),NULLIF(trim(v_duplicado.telefono),'')),
+    correo = COALESCE(NULLIF(trim(v_principal.correo),''),NULLIF(trim(v_duplicado.correo),'')),
+    nacionalidad = COALESCE(NULLIF(trim(v_principal.nacionalidad),''),NULLIF(trim(v_duplicado.nacionalidad),'')),
+    ciudad_origen = COALESCE(NULLIF(trim(v_principal.ciudad_origen),''),NULLIF(trim(v_duplicado.ciudad_origen),'')),
+    fecha_nacimiento = COALESCE(v_principal.fecha_nacimiento,v_duplicado.fecha_nacimiento),
+    es_vip = v_principal.es_vip OR v_duplicado.es_vip
+  WHERE id=p_principal;
+  FOR v_fk IN
+    SELECT conrelid::regclass AS tabla, a.attname AS columna
+      FROM pg_constraint c
+      JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+     WHERE c.contype='f' AND c.confrelid='public.huespedes'::regclass
+       AND c.conrelid <> 'public.huespedes'::regclass
+  LOOP
+    EXECUTE format('UPDATE %s SET %I=$1 WHERE %I=$2',v_fk.tabla,v_fk.columna,v_fk.columna)
+      USING p_principal,p_duplicado;
+  END LOOP;
+  DELETE FROM public.huespedes WHERE id=p_duplicado;
+  RETURN jsonb_build_object('principal_id',p_principal,'combinado_id',p_duplicado,'nombre',v_principal.nombre_completo);
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.guardar_huesped_admin(p_huesped_id uuid, p_datos jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_rol text := lower(trim(public.pms_rol()));
+  v_h public.huespedes%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sesión no válida'; END IF;
+  IF v_rol NOT IN ('administracion','gerencia','sysadmin') THEN
+    RAISE EXCEPTION 'Solo Administración, Gerencia o SysAdmin pueden modificar fichas de huéspedes';
+  END IF;
+  IF p_datos IS NULL OR jsonb_typeof(p_datos) <> 'object' THEN RAISE EXCEPTION 'Datos de huésped no válidos'; END IF;
+  UPDATE public.huespedes SET
+    nombre_completo = COALESCE(NULLIF(trim(p_datos->>'nombre_completo'),''),nombre_completo),
+    tipo_documento = NULLIF(trim(p_datos->>'tipo_documento'),''),
+    numero_documento = NULLIF(trim(p_datos->>'numero_documento'),''),
+    telefono = NULLIF(trim(p_datos->>'telefono'),''),
+    correo = NULLIF(trim(p_datos->>'correo'),''),
+    nacionalidad = NULLIF(trim(p_datos->>'nacionalidad'),''),
+    ciudad_origen = NULLIF(trim(p_datos->>'ciudad_origen'),''),
+    fecha_nacimiento = NULLIF(trim(p_datos->>'fecha_nacimiento'),'')::date,
+    es_vip = COALESCE((p_datos->>'es_vip')::boolean,false)
+  WHERE id=p_huesped_id
+  RETURNING * INTO v_h;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el huésped'; END IF;
+  RETURN jsonb_build_object('id',v_h.id,'nombre_completo',v_h.nombre_completo);
+END
+$function$;
+
+REVOKE ALL ON FUNCTION public.combinar_huespedes(uuid,uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.combinar_huespedes(uuid,uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.guardar_huesped_admin(uuid,jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.guardar_huesped_admin(uuid,jsonb) TO authenticated;
