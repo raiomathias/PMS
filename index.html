@@ -819,7 +819,7 @@ async function cargarBuzon(){
  BX.conversations=convs;
  actualizarBadge(total);
  if(prev.length&&convs.some(c=>Number(c.no_leidos||0)>0&&(!prev.find(p=>p.conversacion_id===c.conversacion_id)||Number(c.no_leidos||0)>Number(prev.find(p=>p.conversacion_id===c.conversacion_id)?.no_leidos||0)))){try{mailBeep()}catch(e){}}
- if(BX.selected&&!newestIds.has(BX.selected))BX.selected=null;
+ if(BX.selected&&BX.selected!=='__all__'&&!newestIds.has(BX.selected))BX.selected=null;
  if(MAIL.open){
   if(!BX.selected&&convs.length)BX.selected=convs[0].conversacion_id;
   bxRender();
@@ -878,7 +878,7 @@ function bxRenderMessages(){
   let sep='';if(day!==prevDay){sep='<div class="bx-date">'+esc(day)+'</div>';prevDay=day}
   return sep+'<article class="bx-msg '+(m.mio?'mine':'')+'">'+(m.conversacion_nombre?'<div class="bx-msg-author">'+esc(m.conversacion_nombre)+'</div>':'')+'<div class="bx-msg-author">'+esc(m.mio?'Tú':m.remitente_nombre||'Usuario')+'</div><div class="bx-msg-body">'+(m.eliminado_en?'<i>Mensaje eliminado</i>':esc(m.mensaje))+'</div><div class="bx-msg-time">'+esc(bxHora(m.creado_en))+(m.mio&&m.leido_en?' · Leído':'')+'</div></article>'
  }).join('');
- pane.scrollTop=nearBottom?pane.scrollHeight:oldScroll;
+ pane.scrollTop=BX.selected==='__all__'?0:(nearBottom?pane.scrollHeight:oldScroll);
 }
 async function bxEnviar(){
  const ta=$('#bx-compose-text'),mensaje=(ta?.value||BX.draft||'').trim();
