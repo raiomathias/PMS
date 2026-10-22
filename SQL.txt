@@ -8664,3 +8664,53 @@ drop policy if exists "PMS usuarios autenticados distribucion pagos compartidos"
 create policy "PMS usuarios autenticados distribucion pagos compartidos" on public.pagos_compartidos_distribucion for all to authenticated using (true) with check (true);
 grant select,insert,update,delete on public.pagos_compartidos to authenticated;
 grant select,insert,update,delete on public.pagos_compartidos_distribucion to authenticated;
+
+
+
+-- ============================================================
+-- PMS v2.9.6 · Reservas múltiples completas y pago compartido
+-- ============================================================
+ALTER TABLE public.pagos_compartidos_distribucion
+  ADD COLUMN IF NOT EXISTS pago_id uuid REFERENCES public.pagos(id) ON DELETE SET NULL;
+
+CREATE OR REPLACE FUNCTION public.crear_reserva_grupal_completa(
+  p_nombre_grupo text, p_reservas jsonb, p_pago jsonb DEFAULT NULL, p_observaciones_grupo text DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE
+ v_grupo uuid; v_item jsonb; v_guest jsonb; v_reserva jsonb; v_huesped uuid; v_reserva_id uuid;
+ v_pago_id uuid; v_pago_fila uuid; v_metodo metodo_pago; v_moneda char(3); v_tipo_cambio numeric;
+ v_monto_original numeric; v_total_asignado integer:=0; v_total_pago integer:=0; v_fechas date[];
+ v_ids jsonb:='[]'::jsonb; v_idx integer:=0; v_alloc integer; v_perm_sobrecupo boolean;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión para crear reservas grupales'; END IF;
+ IF jsonb_typeof(p_reservas)<>'array' OR jsonb_array_length(p_reservas)<2 OR jsonb_array_length(p_reservas)>20 THEN RAISE EXCEPTION 'El grupo debe contener entre 2 y 20 reservas'; END IF;
+ FOR v_item IN SELECT value FROM jsonb_array_elements(p_reservas) LOOP
+  v_reserva:=v_item->'reserva';
+  IF NULLIF(v_reserva->>'unidad_id','') IS NULL OR NULLIF(v_reserva->>'fecha_entrada','') IS NULL OR NULLIF(v_reserva->>'fecha_salida','') IS NULL OR (v_reserva->>'fecha_salida')::date<=(v_reserva->>'fecha_entrada')::date THEN RAISE EXCEPTION 'Una reserva del grupo tiene unidad o fechas inválidas'; END IF;
+  IF NULLIF(v_item->'huesped'->>'nombre_completo','') IS NULL THEN RAISE EXCEPTION 'Cada reserva debe tener un huésped principal'; END IF;
+  IF COALESCE((v_reserva->>'usa_estacionamiento')::boolean,false) AND (NULLIF(v_reserva->>'modelo_vehiculo','') IS NULL OR NULLIF(v_reserva->>'patente_vehiculo','') IS NULL) THEN RAISE EXCEPTION 'Falta modelo o patente del vehículo en una reserva con estacionamiento'; END IF;
+  IF COALESCE(jsonb_array_length(COALESCE(v_item->'plan','[]'::jsonb)),0)=0 AND EXISTS(SELECT 1 FROM public.reservas r WHERE r.unidad_id=(v_reserva->>'unidad_id')::uuid AND r.estado NOT IN ('cancelada','no_show') AND r.fecha_entrada<(v_reserva->>'fecha_salida')::date AND r.fecha_salida>(v_reserva->>'fecha_entrada')::date) THEN RAISE EXCEPTION 'Una unidad seleccionada está ocupada. No se guardó ninguna reserva del grupo.'; END IF;
+ END LOOP;
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_reservas) WITH ORDINALITY a(value,ord) JOIN jsonb_array_elements(p_reservas) WITH ORDINALITY b(value,ord) ON b.ord>a.ord WHERE a.value->'reserva'->>'unidad_id'=b.value->'reserva'->>'unidad_id' AND (a.value->'reserva'->>'fecha_entrada')::date<(b.value->'reserva'->>'fecha_salida')::date AND (a.value->'reserva'->>'fecha_salida')::date>(b.value->'reserva'->>'fecha_entrada')::date) THEN RAISE EXCEPTION 'Dos reservas del grupo se superponen en la misma unidad. No se guardó el grupo.'; END IF;
+ IF p_pago IS NOT NULL AND COALESCE((p_pago->>'monto_clp')::integer,0)>0 THEN
+  v_total_pago:=(p_pago->>'monto_clp')::integer; SELECT COALESCE(sum((value->>'pago_asignado_clp')::integer),0) INTO v_total_asignado FROM jsonb_array_elements(p_reservas);
+  IF v_total_asignado<>v_total_pago THEN RAISE EXCEPTION 'La distribución del pago suma % CLP, pero el pago total es % CLP',v_total_asignado,v_total_pago; END IF;
+  v_metodo:=(p_pago->>'metodo')::metodo_pago;v_moneda:=COALESCE(NULLIF(p_pago->>'moneda',''),'CLP')::char(3);v_tipo_cambio:=NULLIF(p_pago->>'tipo_cambio','')::numeric;v_monto_original:=(p_pago->>'monto_original')::numeric;
+  IF v_moneda='USD' AND (v_tipo_cambio IS NULL OR v_tipo_cambio<=0) THEN RAISE EXCEPTION 'Indica un tipo de cambio válido para pagos en USD'; END IF;
+  IF v_monto_original<=0 THEN RAISE EXCEPTION 'El monto del pago debe ser mayor que cero'; END IF;
+ END IF;
+ INSERT INTO public.reserva_grupos(nombre,observaciones,creado_por) VALUES(COALESCE(NULLIF(p_nombre_grupo,''),'Reserva grupal'),NULLIF(p_observaciones_grupo,''),auth.uid()) RETURNING id INTO v_grupo;
+ IF v_total_pago>0 THEN INSERT INTO public.pagos_compartidos(metodo,moneda,monto_original,tipo_cambio,monto_clp,id_transaccion,referencia,creado_por) VALUES(v_metodo::text,v_moneda,v_monto_original,v_tipo_cambio,v_total_pago,NULLIF(p_pago->>'id_transaccion',''),NULLIF(p_pago->>'referencia',''),auth.uid()) RETURNING id INTO v_pago_id; END IF;
+ FOR v_item IN SELECT value FROM jsonb_array_elements(p_reservas) LOOP
+  v_idx:=v_idx+1;v_guest:=v_item->'huesped';v_huesped:=NULLIF(v_item->>'huesped_id','')::uuid;
+  IF v_huesped IS NULL THEN INSERT INTO public.huespedes(nombre_completo,tipo_documento,numero_documento,telefono,correo,nacionalidad,ciudad_origen) VALUES(v_guest->>'nombre_completo',NULLIF(v_guest->>'tipo_documento',''),NULLIF(v_guest->>'numero_documento',''),NULLIF(v_guest->>'telefono',''),NULLIF(v_guest->>'correo',''),NULLIF(v_guest->>'nacionalidad',''),NULLIF(v_guest->>'ciudad_origen','')) RETURNING id INTO v_huesped;
+  ELSE UPDATE public.huespedes SET nombre_completo=v_guest->>'nombre_completo',tipo_documento=NULLIF(v_guest->>'tipo_documento',''),numero_documento=NULLIF(v_guest->>'numero_documento',''),telefono=NULLIF(v_guest->>'telefono',''),correo=NULLIF(v_guest->>'correo',''),nacionalidad=NULLIF(v_guest->>'nacionalidad',''),ciudad_origen=NULLIF(v_guest->>'ciudad_origen','') WHERE id=v_huesped;IF NOT FOUND THEN RAISE EXCEPTION 'No se encontró el huésped seleccionado en la reserva %',v_idx;END IF;END IF;
+  v_reserva:=(v_item->'reserva')||jsonb_build_object('huesped_id',v_huesped);
+  v_reserva_id:=public.crear_reserva_con_reacomodacion(v_reserva,COALESCE(v_item->'plan','[]'::jsonb),0,COALESCE((v_reserva->>'otro_total')::integer,0));
+  UPDATE public.reservas SET observaciones=NULLIF(v_reserva->>'observaciones',''),huesped_nombre_copia=v_guest->>'nombre_completo',huesped_documento_copia=NULLIF(v_guest->>'numero_documento',''),huesped_telefono_copia=NULLIF(v_guest->>'telefono',''),hora_llegada_aprox=NULLIF(v_reserva->>'hora_llegada_aprox','')::time,hora_salida_aprox=NULLIF(v_reserva->>'hora_salida_aprox','')::time WHERE id=v_reserva_id;
+  IF COALESCE((v_reserva->>'usa_estacionamiento')::boolean,false) THEN SELECT array_agg(x::date) INTO v_fechas FROM jsonb_array_elements_text(COALESCE(v_item->'parking_fechas','[]'::jsonb)) x;IF COALESCE(cardinality(v_fechas),0)<1 THEN RAISE EXCEPTION 'Selecciona las fechas de estacionamiento de la reserva %',v_idx;END IF;v_perm_sobrecupo:=COALESCE((v_item->>'permitir_sobrecupo')::boolean,false);PERFORM * FROM public.guardar_fechas_estacionamiento(v_fechas,v_reserva_id,v_perm_sobrecupo);END IF;
+  INSERT INTO public.reserva_grupo_miembros(grupo_id,reserva_id,orden) VALUES(v_grupo,v_reserva_id,v_idx);v_ids:=v_ids||jsonb_build_array(jsonb_build_object('reserva_id',v_reserva_id,'orden',v_idx));v_alloc:=COALESCE((v_item->>'pago_asignado_clp')::integer,0);
+  IF v_pago_id IS NOT NULL AND v_alloc>0 THEN INSERT INTO public.pagos(reserva_id,metodo,moneda,monto_original,tipo_cambio,monto_clp,referencia,anticipado,motivo,id_transaccion,creado_por) VALUES(v_reserva_id,v_metodo,v_moneda,CASE WHEN v_moneda='USD' THEN round(v_alloc/v_tipo_cambio,2) ELSE v_alloc END,v_tipo_cambio,v_alloc,NULLIF(p_pago->>'referencia',''),false,'estadia',NULLIF(p_pago->>'id_transaccion',''),auth.uid()) RETURNING id INTO v_pago_fila;INSERT INTO public.pagos_compartidos_distribucion(pago_compartido_id,reserva_id,pago_id,motivo,monto_clp) VALUES(v_pago_id,v_reserva_id,v_pago_fila,'estadia',v_alloc);END IF;
+ END LOOP;
+ RETURN jsonb_build_object('grupo_id',v_grupo,'reservas',v_ids,'pago_compartido_id',v_pago_id);
+END; $$;
