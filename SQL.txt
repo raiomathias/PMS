@@ -8714,3 +8714,28 @@ BEGIN
  END LOOP;
  RETURN jsonb_build_object('grupo_id',v_grupo,'reservas',v_ids,'pago_compartido_id',v_pago_id);
 END; $$;
+
+
+-- PMS v2.9.6: persistir horas aproximadas también en la creación individual.
+CREATE OR REPLACE FUNCTION public.crear_reserva_con_reacomodacion(
+ p_reserva jsonb,p_plan jsonb DEFAULT '[]'::jsonb,p_iva integer DEFAULT 0,p_otro integer DEFAULT 0
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $function$
+DECLARE x jsonb;r reservas%rowtype;v_id uuid;
+BEGIN
+ IF p_plan IS NOT NULL AND jsonb_typeof(p_plan)='array' THEN
+  FOR x IN SELECT value FROM jsonb_array_elements(p_plan) ORDER BY (value->>'profundidad')::int DESC LOOP
+   SELECT * INTO r FROM reservas WHERE id=(x->>'reserva_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva del plan no encontrada';END IF;
+   IF r.estado='en_casa' THEN RAISE EXCEPTION 'No se puede mover una reserva que está en casa';END IF;
+   IF r.estado='bloqueado' THEN RAISE EXCEPTION 'Un bloqueo de unidad no puede ser movido automáticamente';END IF;
+   IF COALESCE(r.no_mover_unidad,false) THEN RAISE EXCEPTION 'La reserva % está marcada para no mover de unidad',r.uid_reserva;END IF;
+   IF EXISTS(SELECT 1 FROM reservas q WHERE q.unidad_id=(x->>'unidad_destino')::uuid AND q.id<>r.id AND q.fecha_entrada<r.fecha_salida AND q.fecha_salida>r.fecha_entrada AND q.estado NOT IN ('cancelada','no_show')) THEN RAISE EXCEPTION 'La cadena ya no es válida: destino ocupado';END IF;
+   UPDATE reservas SET unidad_id=(x->>'unidad_destino')::uuid,actualizado_en=now() WHERE id=r.id;
+  END LOOP;
+ END IF;
+ INSERT INTO reservas(huesped_id,unidad_id,fecha_entrada,fecha_salida,estado,canal,referencia_externa,adultos,menores,tarifa_noche,usa_estacionamiento,noches_estacionamiento,modelo_vehiculo,patente_vehiculo,no_mover_unidad,hora_llegada_aprox,hora_salida_aprox,observaciones)
+ VALUES((p_reserva->>'huesped_id')::uuid,(p_reserva->>'unidad_id')::uuid,(p_reserva->>'fecha_entrada')::date,(p_reserva->>'fecha_salida')::date,(p_reserva->>'estado')::estado_reserva,(p_reserva->>'canal')::canal_reserva,NULLIF(p_reserva->>'referencia_externa',''),COALESCE((p_reserva->>'adultos')::int,1),COALESCE((p_reserva->>'menores')::int,0),COALESCE((p_reserva->>'tarifa_noche')::int,0),COALESCE((p_reserva->>'usa_estacionamiento')::boolean,false),COALESCE((p_reserva->>'noches_estacionamiento')::int,0),NULLIF(p_reserva->>'modelo_vehiculo',''),NULLIF(p_reserva->>'patente_vehiculo',''),COALESCE((p_reserva->>'no_mover_unidad')::boolean,false),NULLIF(p_reserva->>'hora_llegada_aprox','')::time,NULLIF(p_reserva->>'hora_salida_aprox','')::time,NULLIF(p_reserva->>'observaciones','')) RETURNING id INTO v_id;
+ IF COALESCE(p_iva,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_IVA__',1,p_iva);END IF;
+ IF COALESCE(p_otro,0)<>0 THEN INSERT INTO cargos(reserva_id,tipo,descripcion,cantidad,monto_unitario) VALUES(v_id,'otro','__PMS_OTRO_PRECIO__',1,p_otro);END IF;
+ RETURN v_id;
+END $function$;
