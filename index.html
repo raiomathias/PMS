@@ -1702,7 +1702,7 @@ async function elegirH(id){
  $('#na').innerHTML=antec(hh.data||[])+(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
 }
 async function guardarNueva(){
- const fe=$('#ne').value,fs=$('#ns').value,horaE=$('#nhe')?.value.trim()||'',horaS=$('#nhs')?.value.trim()||'';if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);if(horaE&&!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(horaE))return msg('La hora aproximada de llegada debe usar HH:MM',1);if(horaS&&!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(horaS))return msg('La hora aproximada de salida debe usar HH:MM',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;const parkingDates=parkingSelectedDates();
+ const fe=$('#ne').value,fs=$('#ns').value,horaE=$('#nhe')?.value.trim()||'',horaS=$('#nhs')?.value.trim()||'';if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);if(horaE&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(horaE))return msg('La hora aproximada de llegada debe usar HH:MM',1);if(horaS&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(horaS))return msg('La hora aproximada de salida debe usar HH:MM',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;const parkingDates=parkingSelectedDates();
  if($('#nt').value==='b'){const {error}=await sb.from('reservas').insert({unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'bloqueado',observaciones:$('#nm').value||'Bloqueo'});if(error)return msg(errTxt(error),1);cerrar();return cargar()}
  if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
  const nochesEst=$('#nk').checked?parkingDates.length:0;
