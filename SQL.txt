@@ -8600,3 +8600,67 @@ END $$;
 REVOKE ALL ON FUNCTION public.buzon_conversaciones_listar() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.buzon_conversaciones_listar() TO authenticated;
 NOTIFY pgrst,'reload schema';
+
+
+
+
+-- PMS v2.9.5 — reservas grupales y estructura para pagos compartidos
+-- Las reservas siguen siendo registros independientes. Los pagos compartidos se modelan
+-- mediante una operación original y asignaciones; los pagos individuales existentes no cambian.
+create table if not exists public.reserva_grupos (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null default 'Reserva grupal',
+  estado text not null default 'activo' check (estado in ('activo','cancelado','cerrado')),
+  creado_por uuid default auth.uid() references public.perfiles(id),
+  creado_en timestamptz not null default now(),
+  observaciones text
+);
+create table if not exists public.reserva_grupo_miembros (
+  id uuid primary key default gen_random_uuid(),
+  grupo_id uuid not null references public.reserva_grupos(id) on delete cascade,
+  reserva_id uuid not null unique references public.reservas(id) on delete cascade,
+  orden integer not null default 0,
+  creado_en timestamptz not null default now()
+);
+create index if not exists reserva_grupo_miembros_grupo_idx on public.reserva_grupo_miembros(grupo_id);
+alter table public.reserva_grupos enable row level security;
+alter table public.reserva_grupo_miembros enable row level security;
+drop policy if exists "PMS usuarios autenticados reserva grupos" on public.reserva_grupos;
+create policy "PMS usuarios autenticados reserva grupos" on public.reserva_grupos for all to authenticated using (true) with check (true);
+drop policy if exists "PMS usuarios autenticados reserva grupo miembros" on public.reserva_grupo_miembros;
+create policy "PMS usuarios autenticados reserva grupo miembros" on public.reserva_grupo_miembros for all to authenticated using (true) with check (true);
+grant select,insert,update,delete on public.reserva_grupos to authenticated;
+grant select,insert,update,delete on public.reserva_grupo_miembros to authenticated;
+
+create table if not exists public.pagos_compartidos (
+  id uuid primary key default gen_random_uuid(),
+  metodo text not null,
+  moneda char(3) not null default 'CLP' check (moneda in ('CLP','USD')),
+  monto_original numeric not null check (monto_original > 0),
+  tipo_cambio numeric,
+  monto_clp integer not null check (monto_clp > 0),
+  id_transaccion text,
+  referencia text,
+  pagado_en timestamptz not null default now(),
+  creado_por uuid default auth.uid() references public.perfiles(id),
+  creado_en timestamptz not null default now(),
+  check (moneda <> 'USD' or tipo_cambio > 0)
+);
+create table if not exists public.pagos_compartidos_distribucion (
+  id uuid primary key default gen_random_uuid(),
+  pago_compartido_id uuid not null references public.pagos_compartidos(id) on delete cascade,
+  reserva_id uuid not null references public.reservas(id) on delete restrict,
+  motivo text not null default 'estadia' check (motivo in ('estadia','estacionamiento','horario_extra','penalizacion','consumos','garantia','otro')),
+  monto_clp integer not null check (monto_clp > 0),
+  creado_en timestamptz not null default now()
+);
+create index if not exists pagos_compartidos_distribucion_pago_idx on public.pagos_compartidos_distribucion(pago_compartido_id);
+create index if not exists pagos_compartidos_distribucion_reserva_idx on public.pagos_compartidos_distribucion(reserva_id);
+alter table public.pagos_compartidos enable row level security;
+alter table public.pagos_compartidos_distribucion enable row level security;
+drop policy if exists "PMS usuarios autenticados pagos compartidos" on public.pagos_compartidos;
+create policy "PMS usuarios autenticados pagos compartidos" on public.pagos_compartidos for all to authenticated using (true) with check (true);
+drop policy if exists "PMS usuarios autenticados distribucion pagos compartidos" on public.pagos_compartidos_distribucion;
+create policy "PMS usuarios autenticados distribucion pagos compartidos" on public.pagos_compartidos_distribucion for all to authenticated using (true) with check (true);
+grant select,insert,update,delete on public.pagos_compartidos to authenticated;
+grant select,insert,update,delete on public.pagos_compartidos_distribucion to authenticated;
