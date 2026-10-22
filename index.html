@@ -417,12 +417,12 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .rm-shell .rm-list-head{position:sticky;top:0;z-index:20;background:#fff!important;opacity:1;border-bottom:1px solid #e2e8f0;padding:8px 0 12px;margin:0 0 8px}
 .rm-shell .rm-row{background:#fff!important;position:relative;z-index:0}
 .rm-shell .rm-actions{position:static!important;background:#fff!important;border:0!important;padding:8px 0!important}
-.rm-shell>.sec.c4{flex:0 0 auto;max-height:22vh;overflow-y:auto;box-sizing:border-box;margin:0!important;padding:10px 16px!important;border:0!important;border-top:1px solid #e2e8f0!important;border-radius:0!important;background:#fff!important;scrollbar-width:thin}
+.rm-shell>.sec.c4{flex:0 0 auto;max-height:none;overflow:visible;box-sizing:border-box;margin:0!important;padding:8px 16px!important;border:0!important;border-top:1px solid #e2e8f0!important;border-radius:0!important;background:#fff!important}
 .rm-shell .rm-footer{box-sizing:border-box;position:sticky!important;bottom:0;z-index:30;flex:0 0 auto;background:#fff!important;opacity:1;border-top:1px solid #e2e8f0!important;padding:14px 16px!important;margin:0!important;box-shadow:0 -5px 14px rgba(15,23,42,.05)}
 .rm-shell .rm-footer,.rm-shell .rm-footer *{background-color:#fff}
 .rm-shell .rm-footer .p{background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}
 .rm-shell .rm-footer span{white-space:normal}
-@media(max-width:850px){#mo:has(.rm-shell)>.rm-shell{height:100dvh!important;max-height:100dvh!important;width:100vw!important;border-radius:0!important}.rm-shell .rm-workspace{grid-template-columns:1fr;overflow:hidden}.rm-shell .rm-sidebar{position:relative;max-height:42%;overflow-y:auto;scrollbar-width:thin}.rm-shell .rm-main{min-height:0}.rm-shell>.sec.c4{max-height:20vh}}
+@media(max-width:850px){#mo:has(.rm-shell)>.rm-shell{height:100dvh!important;max-height:100dvh!important;width:100vw!important;border-radius:0!important}.rm-shell .rm-workspace{grid-template-columns:1fr;overflow:hidden}.rm-shell .rm-sidebar{position:relative;max-height:42%;overflow-y:auto;scrollbar-width:thin}.rm-shell .rm-main{min-height:0}.rm-shell>.sec.c4{max-height:none}}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button></div>
 <div id="app" style="display:none">
