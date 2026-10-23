@@ -8917,3 +8917,40 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.registrar_pago_compartido_grupo(uuid,text,char,numeric,numeric,text,text,jsonb) TO authenticated;
+
+-- ============================================================
+-- PMS v2.9.7: cargos asociados a grupos de reservas
+-- Ejecutar una sola vez en Supabase SQL Editor.
+-- Cada cargo grupal conserva su definición y genera un cargo
+-- individual en cada reserva seleccionada.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.cargos_grupales (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  grupo_id uuid NOT NULL REFERENCES public.reserva_grupos(id) ON DELETE CASCADE,
+  tipo text NOT NULL,
+  descripcion text,
+  cantidad_por_reserva numeric NOT NULL DEFAULT 1 CHECK (cantidad_por_reserva > 0),
+  monto_unitario integer NOT NULL CHECK (monto_unitario > 0),
+  cantidad_reservas integer NOT NULL CHECK (cantidad_reservas > 0),
+  total integer NOT NULL CHECK (total > 0),
+  reservas_ids uuid[] NOT NULL DEFAULT '{}',
+  creado_por uuid DEFAULT auth.uid() REFERENCES public.perfiles(id),
+  creado_en timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.cargos
+  ADD COLUMN IF NOT EXISTS cargo_grupal_id uuid
+  REFERENCES public.cargos_grupales(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS cargos_grupales_grupo_idx
+  ON public.cargos_grupales(grupo_id);
+CREATE INDEX IF NOT EXISTS cargos_cargo_grupal_idx
+  ON public.cargos(cargo_grupal_id);
+
+ALTER TABLE public.cargos_grupales ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "PMS usuarios autenticados cargos grupales" ON public.cargos_grupales;
+CREATE POLICY "PMS usuarios autenticados cargos grupales"
+  ON public.cargos_grupales FOR ALL TO authenticated
+  USING (true) WITH CHECK (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cargos_grupales TO authenticated;
+
