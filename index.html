@@ -3,7 +3,102 @@
 <title>PMS</title><link rel="manifest" href="./manifest.webmanifest">
 <link rel="preconnect" href="https://pnakzbuncxsgxmbtjwuf.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js">
+/* ---------- Gestión centralizada de grupos ---------- */
+let GM={grupos:[],seleccion:null,miembros:[],pagos:[]};
+async function abrirGestionGrupos(){
+ GM={grupos:[],seleccion:null,miembros:[],pagos:[]};
+ $('#mo').innerHTML='<div id="grupoManager"><header class="gm-head"><div><h3 style="margin:0">👥 Gestionar Grupos</h3><p class="mu" style="margin:4px 0 0">Administra grupos, reservas vinculadas, canal global y pagos compartidos.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="p" onclick="cerrar();abrirReservaMultiple()">＋ Crear reserva grupal</button><button onclick="cerrar()">✕ Cerrar</button></div></header><div class="gm-body"><aside><input id="gmSearch" placeholder="Buscar grupos…" style="width:100%;box-sizing:border-box;margin-bottom:8px" oninput="gmDibujarLista()"><div id="gmList" class="gm-list">Cargando grupos…</div><button style="width:100%;margin-top:8px" onclick="gmCrearGrupoVacio()">＋ Crear grupo vacío</button></aside><section id="gmDetail" class="gm-detail"><div class="al">Selecciona un grupo.</div></section></div><footer class="gm-footer"><span id="gmStatus" class="mu">Las reservas individuales no se eliminan al quitar un grupo.</span><button onclick="cerrar()">Cerrar</button></footer></div>';
+ $('#mo').style.display='grid';await gmCargarGrupos();
+}
+async function gmCargarGrupos(sel){
+ const q=await sb.from('reserva_grupos').select('id,nombre,estado,observaciones,creado_en,canal,codigo_externo').order('creado_en',{ascending:false}).limit(300);
+ if(q.error){if($('#gmList'))$('#gmList').innerHTML='<div class="al r">No se pudieron cargar los grupos: '+esc(errTxt(q.error))+'<br>Si menciona canal o codigo_externo, ejecuta la migración incluida en SQL.txt.</div>';return}
+ GM.grupos=q.data||[];if(sel)GM.seleccion=sel;gmDibujarLista();const id=sel||GM.seleccion||GM.grupos[0]?.id;if(id)await gmAbrirGrupo(id);else if($('#gmDetail'))$('#gmDetail').innerHTML='<div class="al">Todavía no hay grupos. Crea una reserva grupal o un grupo vacío.</div>';
+}
+function gmDibujarLista(){
+ const out=$('#gmList');if(!out)return;const q=($('#gmSearch')?.value||'').trim().toLocaleLowerCase('es');
+ const a=GM.grupos.filter(g=>!q||[g.nombre,g.estado,g.codigo_externo,g.canal].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(q));
+ out.innerHTML=a.map(g=>'<button class="gm-item '+(GM.seleccion===g.id?'active':'')+'" data-id="'+g.id+'" onclick="gmAbrirGrupo(this.dataset.id)"><b>'+esc(g.nombre||'Reserva grupal')+'</b><div class="mu">'+esc(g.estado||'activo')+' · '+esc(g.canal||'directo')+'</div><div class="mu">'+esc(g.codigo_externo||'Sin código externo')+'</div></button>').join('')||'<div class="mu" style="padding:12px">No hay grupos que coincidan.</div>';
+}
+async function gmCrearGrupoVacio(){
+ const nombre=prompt('Nombre del nuevo grupo:');if(nombre===null)return;if(!nombre.trim())return msg('El nombre del grupo es obligatorio.',1);
+ const q=await sb.from('reserva_grupos').insert({nombre:nombre.trim(),estado:'activo',canal:'directo'}).select('id').single();
+ if(q.error)return msg('No se pudo crear el grupo: '+errTxt(q.error),1);await gmCargarGrupos(q.data.id);msg('Grupo creado. Puedes agregar reservas existentes.');
+}
+async function gmAbrirGrupo(id){
+ GM.seleccion=id;gmDibujarLista();const out=$('#gmDetail');if(!out)return;out.innerHTML='<div class="al">Cargando grupo…</div>';
+ const g=GM.grupos.find(x=>x.id===id);if(!g)return;
+ const l=await sb.from('reserva_grupo_miembros').select('id,reserva_id,orden').eq('grupo_id',id).order('orden');
+ if(l.error){out.innerHTML='<div class="al r">'+esc(errTxt(l.error))+'</div>';return}
+ const ids=(l.data||[]).map(x=>x.reserva_id);
+ const rq=ids.length?await sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,estado,huesped_nombre_copia,huesped_telefono_copia').in('id',ids):{data:[],error:null};
+ if(rq.error){out.innerHTML='<div class="al r">'+esc(errTxt(rq.error))+'</div>';return}
+ GM.miembros=(l.data||[]).map(x=>({...x,reserva:(rq.data||[]).find(r=>r.id===x.reserva_id)})).filter(x=>x.reserva);
+ const pq=await sb.from('pagos_compartidos').select('id,metodo,moneda,monto_original,monto_clp,referencia,id_transaccion,pagado_en').eq('grupo_id',id).order('pagado_en',{ascending:false});
+ GM.pagos=pq.error?[]:(pq.data||[]);
+ const rsv=(S.res||[]).filter(r=>!GM.miembros.some(m=>m.reserva_id===r.id));
+ const opts=rsv.map(r=>{const u=S.unidades.find(x=>x.id===r.unidad_id);return '<option value="'+esc(r.id)+'">'+esc((u?.edificios?.nombre||'Edificio')+' · '+(u?.codigo||'Unidad')+' · '+(r.huesped_nombre_copia||'Huésped')+' · '+r.fecha_entrada+' → '+r.fecha_salida)+'</option>'}).join('');
+ const rows=GM.miembros.map(m=>{const r=m.reserva,u=S.unidades.find(x=>x.id===r.unidad_id);return '<tr><td><b>'+esc(u?.edificios?.nombre||'Edificio')+' · '+esc(u?.codigo||'Unidad')+'</b><div class="mu">'+esc(r.uid_reserva||r.id)+'</div></td><td>'+esc(r.huesped_nombre_copia||'Huésped')+'<div class="mu">'+esc(r.huesped_telefono_copia||'')+'</div></td><td>'+esc(r.fecha_entrada)+' → '+esc(r.fecha_salida)+'<div class="mu">'+esc(r.estado||'')+'</div></td><td><button data-reserva="'+r.id+'" onclick="abrirDr(this.dataset.reserva)">Abrir</button> <button data-group="'+id+'" data-reserva="'+r.id+'" onclick="gmQuitarReserva(this.dataset.group,this.dataset.reserva)">Desvincular</button></td></tr>'}).join('');
+ const pays=GM.pagos.map(p=>'<div class="cat"><b>$'+Number(p.monto_clp||0).toLocaleString('es-CL')+' CLP</b> · '+esc(p.metodo)+' · '+esc(p.moneda)+' '+esc(p.monto_original)+'<div class="mu">'+esc(p.pagado_en||'')+' '+esc(p.referencia||'')+' '+esc(p.id_transaccion||'')+'</div></div>').join('')||'<p class="mu">Todavía no hay pagos compartidos.</p>';
+ out.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0">'+esc(g.nombre||'Reserva grupal')+'</h3><span class="mu">'+GM.miembros.length+' reserva(s) · '+esc(g.estado||'activo')+'</span></div><button class="r" data-id="'+id+'" onclick="gmEliminarGrupo(this.dataset.id)">Eliminar grupo</button></div>'+
+ '<div class="sec c3" style="margin-top:12px"><h4 class="st">Datos globales del grupo</h4><div class="g2"><label>Nombre<input id="gmNombre" value="'+esc(g.nombre||'')+'"></label><label>Estado<select id="gmEstado">'+[['activo','Activo'],['cerrado','Cerrado'],['cancelado','Cancelado']].map(x=>'<option value="'+x[0]+'" '+((g.estado||'activo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Canal global<select id="gmCanal">'+[['directo','Directo'],['booking','Booking.com'],['expedia','Expedia'],['airbnb','Airbnb'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+((g.canal||'directo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Código externo global<input id="gmCodigo" value="'+esc(g.codigo_externo||'')+'" placeholder="Compartido por todas las reservas"></label></div><label>Observaciones del grupo<textarea id="gmObs" rows="2">'+esc(g.observaciones||'')+'</textarea></label><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="p" data-id="'+id+'" onclick="gmGuardarDatos(this.dataset.id)">Guardar datos globales</button></div><p class="mu">El canal y código se propagan a todas las reservas vinculadas.</p></div>'+
+ '<div class="sec c3"><h4 class="st">Reservas del grupo</h4><div style="overflow:auto"><table class="gm-members"><thead><tr><th>Unidad</th><th>Huésped</th><th>Estadía / estado</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:8px;margin-top:10px;align-items:center"><select id="gmAddReserva" style="flex:1;min-width:0"><option value="">Seleccionar reserva existente</option>'+opts+'</select><button data-id="'+id+'" onclick="gmAgregarReserva(this.dataset.id)">＋ Agregar</button></div></div>'+
+ '<div class="sec c3"><h4 class="st">Registrar pago compartido</h4><div class="g2"><label>Método<select id="gmPagoMetodo">'+[['efectivo','Efectivo'],['transferencia','Transferencia'],['webpay','Webpay'],['tarjeta_debito','Tarjeta débito'],['tarjeta_credito','Tarjeta crédito']].map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></label><label>Moneda<select id="gmPagoMoneda" onchange="gmPagoMonedaCambio()"><option value="CLP">CLP</option><option value="USD">USD</option></select></label><label>Monto recibido<input id="gmPagoMonto" type="number" min="0" value="0"></label><label>Tipo de cambio CLP/USD<input id="gmPagoCambio" type="number" min="0" step="0.01" value="900"></label><label>ID transacción<input id="gmPagoTx"></label><label>Referencia<input id="gmPagoRef"></label></div><p class="mu">Se distribuye automáticamente en partes iguales en CLP entre las reservas vinculadas.</p><button class="p" data-id="'+id+'" onclick="gmRegistrarPago(this.dataset.id)">Registrar pago al grupo</button></div><div class="sec c3"><h4 class="st">Historial de pagos compartidos</h4>'+pays+'</div>';
+}
+async function gmGuardarDatos(id){
+ const nombre=$('#gmNombre')?.value.trim(),canal=$('#gmCanal')?.value||'directo',ref=$('#gmCodigo')?.value.trim()||null;
+ if(!nombre)return msg('El nombre del grupo es obligatorio.',1);if(['booking','airbnb'].includes(canal)&&!ref)return msg('El código externo es obligatorio para este canal.',1);
+ const q=await sb.from('reserva_grupos').update({nombre,estado:$('#gmEstado').value,canal,codigo_externo:ref,observaciones:$('#gmObs').value.trim()||null}).eq('id',id);
+ if(q.error)return msg('No se pudieron guardar los datos: '+errTxt(q.error),1);
+ const ids=GM.miembros.map(x=>x.reserva_id);if(ids.length){const u=await sb.from('reservas').update({canal,referencia_externa:ref}).in('id',ids);if(u.error)return msg('Se guardó el grupo, pero falló la propagación: '+errTxt(u.error),1)}
+ await gmCargarGrupos(id);msg('Datos globales guardados y propagados.');
+}
+async function gmAgregarReserva(id){
+ const rid=$('#gmAddReserva')?.value;if(!rid)return msg('Selecciona una reserva existente.',1);
+ const q=await sb.from('reserva_grupo_miembros').insert({grupo_id:id,reserva_id:rid,orden:GM.miembros.length+1});
+ if(q.error)return msg('No se pudo agregar la reserva. Puede que ya pertenezca a otro grupo: '+errTxt(q.error),1);
+ const g=GM.grupos.find(x=>x.id===id);const prop=await sb.from('reservas').update({canal:g?.canal||'directo',referencia_externa:g?.codigo_externo||null}).eq('id',rid);if(prop.error)return msg('La reserva quedó vinculada, pero no se pudo propagar el canal global: '+errTxt(prop.error),1);
+ await gmCargarGrupos(id);msg('Reserva agregada al grupo.');
+}
+async function gmQuitarReserva(id,rid){
+ if(!confirm('¿Desvincular esta reserva? No se eliminará la reserva ni sus pagos individuales.'))return;
+ const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id).eq('reserva_id',rid);
+ if(q.error)return msg('No se pudo desvincular: '+errTxt(q.error),1);await gmCargarGrupos(id);msg('Reserva desvinculada.');
+}
+async function gmEliminarGrupo(id){
+ if(!confirm('¿Eliminar este grupo? Las reservas individuales se conservarán.'))return;
+ const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id);if(q.error)return msg('No se pudieron desvincular las reservas: '+errTxt(q.error),1);
+ const d=await sb.from('reserva_grupos').delete().eq('id',id);if(d.error)return msg('No se pudo eliminar el grupo: '+errTxt(d.error),1);
+ GM.seleccion=null;await gmCargarGrupos();msg('Grupo eliminado; las reservas se conservaron.');
+}
+function gmPagoMonedaCambio(){const c=$('#gmPagoCambio');if(c)c.disabled=$('#gmPagoMoneda')?.value!=='USD'}
+async function gmRegistrarPago(id){
+ if(!GM.miembros.length)return msg('Agrega al menos una reserva antes de registrar un pago.',1);
+ const moneda=$('#gmPagoMoneda').value,monto=Number($('#gmPagoMonto').value)||0,cambio=Number($('#gmPagoCambio').value)||0;
+ if(monto<=0)return msg('El monto debe ser mayor que cero.',1);if(moneda==='USD'&&cambio<=0)return msg('Indica un tipo de cambio válido.',1);
+ const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),n=GM.miembros.length,base=Math.floor(total/n),rem=total-base*n;
+ if(base<=0)return msg('El monto es demasiado bajo para distribuirlo entre las reservas.',1);
+ const distribucion=GM.miembros.map((m,i)=>({reserva_id:m.reserva_id,monto_clp:base+(i<rem?1:0),motivo:'estadia'}));
+ const q=await sb.rpc('registrar_pago_compartido_grupo',{p_grupo_id:id,p_metodo:$('#gmPagoMetodo').value,p_moneda:moneda,p_monto_original:monto,p_tipo_cambio:moneda==='USD'?cambio:null,p_id_transaccion:$('#gmPagoTx').value.trim()||null,p_referencia:$('#gmPagoRef').value.trim()||null,p_distribucion:distribucion});
+ if(q.error)return msg('No se registró el pago: '+errTxt(q.error)+'. Comprueba que ejecutaste la migración de SQL.txt.',1);
+ await gmAbrirGrupo(id);msg('Pago compartido registrado y distribuido entre las reservas.');
+}
+
+
+
+/* Exponer explícitamente los handlers usados por onclick en el HTML */
+window.abrirGestionGrupos = abrirGestionGrupos;
+window.gmFiltrarLista = gmFiltrarLista;
+window.gmCrearGrupoVacio = gmCrearGrupoVacio;
+window.gmAbrirGrupo = gmAbrirGrupo;
+window.gmGuardarDatos = gmGuardarDatos;
+window.gmAgregarReserva = gmAgregarReserva;
+window.gmQuitarReserva = gmQuitarReserva;
+window.gmEliminarGrupo = gmEliminarGrupo;
+window.gmPagoMonedaCambio = gmPagoMonedaCambio;
+window.gmRegistrarPago = gmRegistrarPago;
+</script>
 <style>
 :root{--bg:#f4f5f7;--pn:#fff;--tx:#1c2430;--mu:#6b7686;--bd:#dfe3ea;--ac:#2563eb;--w:46px}
 [data-theme=dark]{--bg:#12161c;--pn:#1b212a;--tx:#e6eaf0;--mu:#8b96a5;--bd:#2c3542}
@@ -1498,87 +1593,6 @@ let pago=null;if($('#rmPagoActivo').checked){const moneda=$('#rmMoneda').value,m
 const {data,error}=await sb.rpc('crear_reserva_grupal_completa',{p_nombre_grupo:$('#rmNombre').value.trim()||'Reserva grupal',p_reservas:payload,p_pago:pago,p_observaciones_grupo:$('#rmObsGrupo').value.trim()||null});if(error){if(btn){btn.disabled=false;btn.textContent='Guardar grupo completo'}return msg('No se creó ninguna reserva del grupo: '+errTxt(error),1)}const count=data?.reservas?.length||v.rows.length;const gid=data?.grupo_id;if(gid){await sb.from('reserva_grupos').update({canal:RM.group.canal||'directo',codigo_externo:RM.group.ref||null}).eq('id',gid);const ids=(data?.reservas||[]).map(x=>x.reserva_id).filter(Boolean);if(ids.length)await sb.from('reservas').update({canal:RM.group.canal||'directo',referencia_externa:RM.group.ref||null}).in('id',ids);if(data?.pago_compartido_id)await sb.from('pagos_compartidos').update({grupo_id:gid}).eq('id',data.pago_compartido_id)}cerrar();await cargar();msg('Grupo guardado: '+count+' reservas individuales'+(data?.pago_compartido_id?' y pago compartido distribuido sin duplicar el total en caja.':'.'))}
 
 
-
-/* ---------- Gestión centralizada de grupos ---------- */
-let GM={grupos:[],seleccion:null,miembros:[],pagos:[]};
-async function abrirGestionGrupos(){
- GM={grupos:[],seleccion:null,miembros:[],pagos:[]};
- $('#mo').innerHTML='<div id="grupoManager"><header class="gm-head"><div><h3 style="margin:0">👥 Gestionar Grupos</h3><p class="mu" style="margin:4px 0 0">Administra grupos, reservas vinculadas, canal global y pagos compartidos.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="p" onclick="cerrar();abrirReservaMultiple()">＋ Crear reserva grupal</button><button onclick="cerrar()">✕ Cerrar</button></div></header><div class="gm-body"><aside><input id="gmSearch" placeholder="Buscar grupos…" style="width:100%;box-sizing:border-box;margin-bottom:8px" oninput="gmDibujarLista()"><div id="gmList" class="gm-list">Cargando grupos…</div><button style="width:100%;margin-top:8px" onclick="gmCrearGrupoVacio()">＋ Crear grupo vacío</button></aside><section id="gmDetail" class="gm-detail"><div class="al">Selecciona un grupo.</div></section></div><footer class="gm-footer"><span id="gmStatus" class="mu">Las reservas individuales no se eliminan al quitar un grupo.</span><button onclick="cerrar()">Cerrar</button></footer></div>';
- $('#mo').style.display='grid';await gmCargarGrupos();
-}
-async function gmCargarGrupos(sel){
- const q=await sb.from('reserva_grupos').select('id,nombre,estado,observaciones,creado_en,canal,codigo_externo').order('creado_en',{ascending:false}).limit(300);
- if(q.error){if($('#gmList'))$('#gmList').innerHTML='<div class="al r">No se pudieron cargar los grupos: '+esc(errTxt(q.error))+'<br>Si menciona canal o codigo_externo, ejecuta la migración incluida en SQL.txt.</div>';return}
- GM.grupos=q.data||[];if(sel)GM.seleccion=sel;gmDibujarLista();const id=sel||GM.seleccion||GM.grupos[0]?.id;if(id)await gmAbrirGrupo(id);else if($('#gmDetail'))$('#gmDetail').innerHTML='<div class="al">Todavía no hay grupos. Crea una reserva grupal o un grupo vacío.</div>';
-}
-function gmDibujarLista(){
- const out=$('#gmList');if(!out)return;const q=($('#gmSearch')?.value||'').trim().toLocaleLowerCase('es');
- const a=GM.grupos.filter(g=>!q||[g.nombre,g.estado,g.codigo_externo,g.canal].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(q));
- out.innerHTML=a.map(g=>'<button class="gm-item '+(GM.seleccion===g.id?'active':'')+'" data-id="'+g.id+'" onclick="gmAbrirGrupo(this.dataset.id)"><b>'+esc(g.nombre||'Reserva grupal')+'</b><div class="mu">'+esc(g.estado||'activo')+' · '+esc(g.canal||'directo')+'</div><div class="mu">'+esc(g.codigo_externo||'Sin código externo')+'</div></button>').join('')||'<div class="mu" style="padding:12px">No hay grupos que coincidan.</div>';
-}
-async function gmCrearGrupoVacio(){
- const nombre=prompt('Nombre del nuevo grupo:');if(nombre===null)return;if(!nombre.trim())return msg('El nombre del grupo es obligatorio.',1);
- const q=await sb.from('reserva_grupos').insert({nombre:nombre.trim(),estado:'activo',canal:'directo'}).select('id').single();
- if(q.error)return msg('No se pudo crear el grupo: '+errTxt(q.error),1);await gmCargarGrupos(q.data.id);msg('Grupo creado. Puedes agregar reservas existentes.');
-}
-async function gmAbrirGrupo(id){
- GM.seleccion=id;gmDibujarLista();const out=$('#gmDetail');if(!out)return;out.innerHTML='<div class="al">Cargando grupo…</div>';
- const g=GM.grupos.find(x=>x.id===id);if(!g)return;
- const l=await sb.from('reserva_grupo_miembros').select('id,reserva_id,orden').eq('grupo_id',id).order('orden');
- if(l.error){out.innerHTML='<div class="al r">'+esc(errTxt(l.error))+'</div>';return}
- const ids=(l.data||[]).map(x=>x.reserva_id);
- const rq=ids.length?await sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,estado,huesped_nombre_copia,huesped_telefono_copia').in('id',ids):{data:[],error:null};
- if(rq.error){out.innerHTML='<div class="al r">'+esc(errTxt(rq.error))+'</div>';return}
- GM.miembros=(l.data||[]).map(x=>({...x,reserva:(rq.data||[]).find(r=>r.id===x.reserva_id)})).filter(x=>x.reserva);
- const pq=await sb.from('pagos_compartidos').select('id,metodo,moneda,monto_original,monto_clp,referencia,id_transaccion,pagado_en').eq('grupo_id',id).order('pagado_en',{ascending:false});
- GM.pagos=pq.error?[]:(pq.data||[]);
- const rsv=(S.res||[]).filter(r=>!GM.miembros.some(m=>m.reserva_id===r.id));
- const opts=rsv.map(r=>{const u=S.unidades.find(x=>x.id===r.unidad_id);return '<option value="'+esc(r.id)+'">'+esc((u?.edificios?.nombre||'Edificio')+' · '+(u?.codigo||'Unidad')+' · '+(r.huesped_nombre_copia||'Huésped')+' · '+r.fecha_entrada+' → '+r.fecha_salida)+'</option>'}).join('');
- const rows=GM.miembros.map(m=>{const r=m.reserva,u=S.unidades.find(x=>x.id===r.unidad_id);return '<tr><td><b>'+esc(u?.edificios?.nombre||'Edificio')+' · '+esc(u?.codigo||'Unidad')+'</b><div class="mu">'+esc(r.uid_reserva||r.id)+'</div></td><td>'+esc(r.huesped_nombre_copia||'Huésped')+'<div class="mu">'+esc(r.huesped_telefono_copia||'')+'</div></td><td>'+esc(r.fecha_entrada)+' → '+esc(r.fecha_salida)+'<div class="mu">'+esc(r.estado||'')+'</div></td><td><button data-reserva="'+r.id+'" onclick="abrirDr(this.dataset.reserva)">Abrir</button> <button data-group="'+id+'" data-reserva="'+r.id+'" onclick="gmQuitarReserva(this.dataset.group,this.dataset.reserva)">Desvincular</button></td></tr>'}).join('');
- const pays=GM.pagos.map(p=>'<div class="cat"><b>$'+Number(p.monto_clp||0).toLocaleString('es-CL')+' CLP</b> · '+esc(p.metodo)+' · '+esc(p.moneda)+' '+esc(p.monto_original)+'<div class="mu">'+esc(p.pagado_en||'')+' '+esc(p.referencia||'')+' '+esc(p.id_transaccion||'')+'</div></div>').join('')||'<p class="mu">Todavía no hay pagos compartidos.</p>';
- out.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0">'+esc(g.nombre||'Reserva grupal')+'</h3><span class="mu">'+GM.miembros.length+' reserva(s) · '+esc(g.estado||'activo')+'</span></div><button class="r" data-id="'+id+'" onclick="gmEliminarGrupo(this.dataset.id)">Eliminar grupo</button></div>'+
- '<div class="sec c3" style="margin-top:12px"><h4 class="st">Datos globales del grupo</h4><div class="g2"><label>Nombre<input id="gmNombre" value="'+esc(g.nombre||'')+'"></label><label>Estado<select id="gmEstado">'+[['activo','Activo'],['cerrado','Cerrado'],['cancelado','Cancelado']].map(x=>'<option value="'+x[0]+'" '+((g.estado||'activo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Canal global<select id="gmCanal">'+[['directo','Directo'],['booking','Booking.com'],['expedia','Expedia'],['airbnb','Airbnb'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+((g.canal||'directo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Código externo global<input id="gmCodigo" value="'+esc(g.codigo_externo||'')+'" placeholder="Compartido por todas las reservas"></label></div><label>Observaciones del grupo<textarea id="gmObs" rows="2">'+esc(g.observaciones||'')+'</textarea></label><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="p" data-id="'+id+'" onclick="gmGuardarDatos(this.dataset.id)">Guardar datos globales</button></div><p class="mu">El canal y código se propagan a todas las reservas vinculadas.</p></div>'+
- '<div class="sec c3"><h4 class="st">Reservas del grupo</h4><div style="overflow:auto"><table class="gm-members"><thead><tr><th>Unidad</th><th>Huésped</th><th>Estadía / estado</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:8px;margin-top:10px;align-items:center"><select id="gmAddReserva" style="flex:1;min-width:0"><option value="">Seleccionar reserva existente</option>'+opts+'</select><button data-id="'+id+'" onclick="gmAgregarReserva(this.dataset.id)">＋ Agregar</button></div></div>'+
- '<div class="sec c3"><h4 class="st">Registrar pago compartido</h4><div class="g2"><label>Método<select id="gmPagoMetodo">'+[['efectivo','Efectivo'],['transferencia','Transferencia'],['webpay','Webpay'],['tarjeta_debito','Tarjeta débito'],['tarjeta_credito','Tarjeta crédito']].map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></label><label>Moneda<select id="gmPagoMoneda" onchange="gmPagoMonedaCambio()"><option value="CLP">CLP</option><option value="USD">USD</option></select></label><label>Monto recibido<input id="gmPagoMonto" type="number" min="0" value="0"></label><label>Tipo de cambio CLP/USD<input id="gmPagoCambio" type="number" min="0" step="0.01" value="900"></label><label>ID transacción<input id="gmPagoTx"></label><label>Referencia<input id="gmPagoRef"></label></div><p class="mu">Se distribuye automáticamente en partes iguales en CLP entre las reservas vinculadas.</p><button class="p" data-id="'+id+'" onclick="gmRegistrarPago(this.dataset.id)">Registrar pago al grupo</button></div><div class="sec c3"><h4 class="st">Historial de pagos compartidos</h4>'+pays+'</div>';
-}
-async function gmGuardarDatos(id){
- const nombre=$('#gmNombre')?.value.trim(),canal=$('#gmCanal')?.value||'directo',ref=$('#gmCodigo')?.value.trim()||null;
- if(!nombre)return msg('El nombre del grupo es obligatorio.',1);if(['booking','airbnb'].includes(canal)&&!ref)return msg('El código externo es obligatorio para este canal.',1);
- const q=await sb.from('reserva_grupos').update({nombre,estado:$('#gmEstado').value,canal,codigo_externo:ref,observaciones:$('#gmObs').value.trim()||null}).eq('id',id);
- if(q.error)return msg('No se pudieron guardar los datos: '+errTxt(q.error),1);
- const ids=GM.miembros.map(x=>x.reserva_id);if(ids.length){const u=await sb.from('reservas').update({canal,referencia_externa:ref}).in('id',ids);if(u.error)return msg('Se guardó el grupo, pero falló la propagación: '+errTxt(u.error),1)}
- await gmCargarGrupos(id);msg('Datos globales guardados y propagados.');
-}
-async function gmAgregarReserva(id){
- const rid=$('#gmAddReserva')?.value;if(!rid)return msg('Selecciona una reserva existente.',1);
- const q=await sb.from('reserva_grupo_miembros').insert({grupo_id:id,reserva_id:rid,orden:GM.miembros.length+1});
- if(q.error)return msg('No se pudo agregar la reserva. Puede que ya pertenezca a otro grupo: '+errTxt(q.error),1);
- const g=GM.grupos.find(x=>x.id===id);const prop=await sb.from('reservas').update({canal:g?.canal||'directo',referencia_externa:g?.codigo_externo||null}).eq('id',rid);if(prop.error)return msg('La reserva quedó vinculada, pero no se pudo propagar el canal global: '+errTxt(prop.error),1);
- await gmCargarGrupos(id);msg('Reserva agregada al grupo.');
-}
-async function gmQuitarReserva(id,rid){
- if(!confirm('¿Desvincular esta reserva? No se eliminará la reserva ni sus pagos individuales.'))return;
- const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id).eq('reserva_id',rid);
- if(q.error)return msg('No se pudo desvincular: '+errTxt(q.error),1);await gmCargarGrupos(id);msg('Reserva desvinculada.');
-}
-async function gmEliminarGrupo(id){
- if(!confirm('¿Eliminar este grupo? Las reservas individuales se conservarán.'))return;
- const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id);if(q.error)return msg('No se pudieron desvincular las reservas: '+errTxt(q.error),1);
- const d=await sb.from('reserva_grupos').delete().eq('id',id);if(d.error)return msg('No se pudo eliminar el grupo: '+errTxt(d.error),1);
- GM.seleccion=null;await gmCargarGrupos();msg('Grupo eliminado; las reservas se conservaron.');
-}
-function gmPagoMonedaCambio(){const c=$('#gmPagoCambio');if(c)c.disabled=$('#gmPagoMoneda')?.value!=='USD'}
-async function gmRegistrarPago(id){
- if(!GM.miembros.length)return msg('Agrega al menos una reserva antes de registrar un pago.',1);
- const moneda=$('#gmPagoMoneda').value,monto=Number($('#gmPagoMonto').value)||0,cambio=Number($('#gmPagoCambio').value)||0;
- if(monto<=0)return msg('El monto debe ser mayor que cero.',1);if(moneda==='USD'&&cambio<=0)return msg('Indica un tipo de cambio válido.',1);
- const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),n=GM.miembros.length,base=Math.floor(total/n),rem=total-base*n;
- if(base<=0)return msg('El monto es demasiado bajo para distribuirlo entre las reservas.',1);
- const distribucion=GM.miembros.map((m,i)=>({reserva_id:m.reserva_id,monto_clp:base+(i<rem?1:0),motivo:'estadia'}));
- const q=await sb.rpc('registrar_pago_compartido_grupo',{p_grupo_id:id,p_metodo:$('#gmPagoMetodo').value,p_moneda:moneda,p_monto_original:monto,p_tipo_cambio:moneda==='USD'?cambio:null,p_id_transaccion:$('#gmPagoTx').value.trim()||null,p_referencia:$('#gmPagoRef').value.trim()||null,p_distribucion:distribucion});
- if(q.error)return msg('No se registró el pago: '+errTxt(q.error)+'. Comprueba que ejecutaste la migración de SQL.txt.',1);
- await gmAbrirGrupo(id);msg('Pago compartido registrado y distribuido entre las reservas.');
-}
 
 // ---------- Nueva reserva / bloqueo ----------
 let N={h:null,c:[],lista:false,plan:[],reacomodacion:null};
