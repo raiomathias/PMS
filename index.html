@@ -4251,9 +4251,21 @@ async function gmAbrirGrupo(id){
  const l=await sb.from('reserva_grupo_miembros').select('id,reserva_id,orden').eq('grupo_id',id).order('orden');
  if(l.error){out.innerHTML='<div class="al r">'+esc(errTxt(l.error))+'</div>';return}
  const ids=(l.data||[]).map(x=>x.reserva_id);
- const rq=ids.length?await sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,estado,huesped_nombre_copia,huesped_telefono_copia').in('id',ids):{data:[],error:null};
+ const rq=ids.length?await sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,estado,huesped_nombre_copia,huesped_telefono_copia,tarifa_noche').in('id',ids):{data:[],error:null};
  if(rq.error){out.innerHTML='<div class="al r">'+esc(errTxt(rq.error))+'</div>';return}
  GM.miembros=(l.data||[]).map(x=>({...x,reserva:(rq.data||[]).find(r=>r.id===x.reserva_id)})).filter(x=>x.reserva);
+ const finIds=GM.miembros.map(x=>x.reserva_id);
+ const [cq,payq]=finIds.length?await Promise.all([
+   sb.from('cargos').select('reserva_id,total,cantidad,monto_unitario,tipo').in('reserva_id',finIds),
+   sb.from('pagos').select('reserva_id,monto_clp,motivo').in('reserva_id',finIds)
+ ]):[{data:[],error:null},{data:[],error:null}];
+ GM.miembros=GM.miembros.map(m=>{
+   const r=m.reserva,ms=Math.max(0,Math.round((new Date(r.fecha_salida+'T00:00:00')-new Date(r.fecha_entrada+'T00:00:00'))/86400000));
+   const cargos=(cq.data||[]).filter(x=>x.reserva_id===m.reserva_id).reduce((a,x)=>a+Number(x.total??(Number(x.cantidad||1)*Number(x.monto_unitario||0))),0);
+   const pagado=(payq.data||[]).filter(x=>x.reserva_id===m.reserva_id).reduce((a,x)=>a+Number(x.monto_clp||0),0);
+   const estadia=Math.max(0,Number(r.tarifa_noche||0)*ms+cargos);
+   return {...m,totalEstadia:estadia,pagado,saldo:Math.max(0,estadia-pagado)};
+ });
  const pq=await sb.from('pagos_compartidos').select('id,metodo,moneda,monto_original,monto_clp,referencia,id_transaccion,pagado_en').eq('grupo_id',id).order('pagado_en',{ascending:false});
  GM.pagos=pq.error?[]:(pq.data||[]);
  const rsv=(S.res||[]).filter(r=>!GM.miembros.some(m=>m.reserva_id===r.id));
@@ -4263,7 +4275,7 @@ async function gmAbrirGrupo(id){
  out.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0">'+esc(g.nombre||'Reserva grupal')+'</h3><span class="mu">'+GM.miembros.length+' reserva(s) · '+esc(g.estado||'activo')+'</span></div><button class="r" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarGrupo(this.dataset.id))">Eliminar grupo</button></div>'+
  '<div class="sec c3" style="margin-top:12px"><h4 class="st">Datos globales del grupo</h4><div class="g2"><label>Nombre<input id="gmNombre" value="'+esc(g.nombre||'')+'"></label><label>Estado<select id="gmEstado">'+[['activo','Activo'],['cerrado','Cerrado'],['cancelado','Cancelado']].map(x=>'<option value="'+x[0]+'" '+((g.estado||'activo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Canal global<select id="gmCanal">'+[['directo','Directo'],['booking','Booking.com'],['expedia','Expedia'],['airbnb','Airbnb'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+((g.canal||'directo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Código externo global<input id="gmCodigo" value="'+esc(g.codigo_externo||'')+'" placeholder="Compartido por todas las reservas"></label></div><label>Observaciones del grupo<textarea id="gmObs" rows="2">'+esc(g.observaciones||'')+'</textarea></label><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmGuardarDatos(this.dataset.id))">Guardar datos globales</button></div><p class="mu">El canal y código se propagan a todas las reservas vinculadas.</p></div>'+
  '<div class="sec c3"><h4 class="st">Reservas del grupo</h4><div style="overflow:auto"><table class="gm-members"><thead><tr><th>Unidad</th><th>Huésped</th><th>Estadía / estado</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:8px;margin-top:10px;align-items:center"><select id="gmAddReserva" style="flex:1;min-width:0"><option value="">Seleccionar reserva existente</option>'+opts+'</select><button data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmAgregarReserva(this.dataset.id))">＋ Agregar</button></div></div>'+
- '<div class="sec c3"><h4 class="st">Registrar pago compartido</h4><div class="g2"><label>Método<select id="gmPagoMetodo">'+[['efectivo','Efectivo'],['transferencia','Transferencia'],['webpay','Webpay'],['tarjeta_debito','Tarjeta débito'],['tarjeta_credito','Tarjeta crédito']].map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></label><label>Moneda<select id="gmPagoMoneda" onchange="gmPagoMonedaCambio()"><option value="CLP">CLP</option><option value="USD">USD</option></select></label><label>Monto recibido<input id="gmPagoMonto" type="number" min="0" value="0"></label><label>Tipo de cambio CLP/USD<input id="gmPagoCambio" type="number" min="0" step="0.01" value="900"></label><label>ID transacción<input id="gmPagoTx"></label><label>Referencia<input id="gmPagoRef"></label></div><p class="mu">Se distribuye automáticamente en partes iguales en CLP entre las reservas vinculadas.</p><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmRegistrarPago(this.dataset.id))">Registrar pago al grupo</button></div>'+gmCargoUi(id)+'<div class="sec c3"><h4 class="st">Historial de pagos compartidos</h4>'+pays+'</div>';
+ '<div class="sec c3"><h4 class="st">Registrar pago compartido</h4><div class="g2"><label>Método<select id="gmPagoMetodo">'+[['efectivo','Efectivo'],['transferencia','Transferencia'],['webpay','Webpay'],['tarjeta_debito','Tarjeta débito'],['tarjeta_credito','Tarjeta crédito']].map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></label><label>Moneda<select id="gmPagoMoneda" onchange="gmPagoMonedaCambio()"><option value="CLP">CLP</option><option value="USD">USD</option></select></label><label>Monto recibido<input id="gmPagoMonto" type="number" min="1" step="1" value="0" oninput="gmActualizarDistribucion()"></label><label>Tipo de cambio CLP/USD<input id="gmPagoCambio" type="number" min="0" step="0.01" value="900" oninput="gmActualizarDistribucion()"></label><label>ID transacción<input id="gmPagoTx"></label><label>Referencia<input id="gmPagoRef"></label></div><div id="gmPagoResumen" style="margin-top:10px"></div><p class="mu">La propuesta se calcula proporcionalmente al saldo pendiente de cada estadía. Puedes editar cada importe antes de confirmar.</p><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmRegistrarPago(this.dataset.id))">Revisar y registrar pago</button></div>'+gmCargoUi(id)+'<div class="sec c3"><h4 class="st">Historial de pagos compartidos</h4>'+pays+'</div>';
  await gmCargarCargos(id);gmCargoSeleccionCambio();
 }
 
@@ -4301,17 +4313,72 @@ async function gmEliminarGrupo(id){
  const d=await sb.from('reserva_grupos').delete().eq('id',id);if(d.error)return msg('No se pudo eliminar el grupo: '+errTxt(d.error),1);
  GM.seleccion=null;await gmCargarGrupos();msg('Grupo eliminado; las reservas se conservaron.');
 }
-function gmPagoMonedaCambio(){const c=$('#gmPagoCambio');if(c)c.disabled=$('#gmPagoMoneda')?.value!=='USD'}
+function gmPagoMonedaCambio(){const c=$('#gmPagoCambio');if(c)c.disabled=$('#gmPagoMoneda')?.value!=='USD';gmActualizarDistribucion()}
+function gmMontoFmt(n){return '
+
+
+
+/* Exponer explícitamente los handlers usados por onclick en el HTML */
+window.abrirGestionGrupos = abrirGestionGrupos;
+window.gmFiltrarLista = gmFiltrarLista;
+window.gmCrearGrupoVacio = gmCrearGrupoVacio;
+window.gmAbrirGrupo = gmAbrirGrupo;
+window.gmGuardarDatos = gmGuardarDatos;
+window.gmAgregarReserva = gmAgregarReserva;
+window.gmQuitarReserva = gmQuitarReserva;
+window.gmEliminarGrupo = gmEliminarGrupo;
+window.gmPagoMonedaCambio = gmPagoMonedaCambio;
+window.gmActualizarDistribucion = gmActualizarDistribucion;
+window.gmPagoTotales = gmPagoTotales;
+window.gmRegistrarPago = gmRegistrarPago;
+window.gmCalcularCargo = gmCalcularCargo;
+window.gmCargoSeleccionCambio = gmCargoSeleccionCambio;
+window.gmAgregarCargo = gmAgregarCargo;
+window.gmEliminarCargo = gmEliminarCargo;
+window.gmEliminarPagoCompartido = gmEliminarPagoCompartido;
+window.gmCargoUi = gmCargoUi;
+window.bloquearBotonGuardado = bloquearBotonGuardado;
+window.gmPuedeGestionarFinanzas = gmPuedeGestionarFinanzas;
+</script></body></html>
++Math.round(Number(n)||0).toLocaleString('es-CL')+' CLP'}
+function gmDistribucionPropuesta(){
+ const moneda=$('#gmPagoMoneda')?.value||'CLP',monto=Number($('#gmPagoMonto')?.value)||0,cambio=Number($('#gmPagoCambio')?.value)||0,total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto);
+ const rows=GM.miembros, pesos=rows.map(m=>Math.max(0,Number(m.saldo)||0)),suma=pesos.reduce((a,b)=>a+b,0);
+ const basePesos=suma>0?pesos:rows.map(m=>Math.max(0,Number(m.totalEstadia)||0));
+ const denom=basePesos.reduce((a,b)=>a+b,0);
+ let asignados=0;
+ return rows.map((m,i)=>{let v=i===rows.length-1?total-asignados:(denom>0?Math.floor(total*basePesos[i]/denom):Math.floor(total/Math.max(1,rows.length)));asignados+=v;return {reserva_id:m.reserva_id,monto_clp:Math.max(0,v),motivo:'estadia'}});
+}
+function gmActualizarDistribucion(){
+ const out=$('#gmPagoResumen');if(!out)return;
+ const monto=Number($('#gmPagoMonto')?.value)||0,moneda=$('#gmPagoMoneda')?.value||'CLP',cambio=Number($('#gmPagoCambio')?.value)||0,total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto);
+ const distrib=gmDistribucionPropuesta();
+ const inputs=GM.miembros.map((m,i)=>{const r=m.reserva,u=S.unidades.find(x=>x.id===r.unidad_id);return '<div style="display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)"><div><b>'+esc(r.huesped_nombre_copia||'Huésped')+'</b><div class="mu">'+esc(u?.edificios?.nombre||'Edificio')+' · '+esc(u?.codigo||'Unidad')+' · '+esc(r.fecha_entrada)+' → '+esc(r.fecha_salida)+'</div><div class="mu">Estadía y cargos: '+gmMontoFmt(m.totalEstadia)+' · Pagado: '+gmMontoFmt(m.pagado)+' · Saldo: '+gmMontoFmt(m.saldo)+'</div></div><label>Asignar (CLP)<input class="gmPagoAsignacion" data-reserva="'+m.reserva_id+'" type="number" min="0" step="1" value="'+(document.querySelector('.gmPagoAsignacion[data-reserva="'+m.reserva_id+'"]')?.value??distrib[i].monto_clp)+'" oninput="gmPagoTotales()"></label></div>'}).join('');
+ const suma=GM.miembros.reduce((a,m)=>a+Number(m.totalEstadia||0),0);
+ out.innerHTML='<div style="border:1px solid var(--bd);border-radius:9px;padding:12px;background:var(--pn)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>Vista previa de distribución</b><span>Total estadías del grupo: <b>'+gmMontoFmt(suma)+'</b></span></div><div class="mu" style="margin:5px 0 8px">Pago ingresado: '+gmMontoFmt(total)+' · Criterio sugerido: saldo pendiente; si no hay saldo, valor de la estadía.</div>'+inputs+'<div id="gmPagoTotales" style="margin-top:10px"></div></div>';
+ gmPagoTotales();
+}
+function gmPagoTotales(){
+ const out=$('#gmPagoTotales');if(!out)return;
+ const total=(($('#gmPagoMoneda')?.value||'CLP')==='USD'?Math.round((Number($('#gmPagoMonto')?.value)||0)*(Number($('#gmPagoCambio')?.value)||0)):Math.round(Number($('#gmPagoMonto')?.value)||0));
+ const asignado=[...document.querySelectorAll('.gmPagoAsignacion')].reduce((a,x)=>a+Math.max(0,Math.round(Number(x.value)||0)),0),delta=total-asignado;
+ out.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Distribuido: <b>'+gmMontoFmt(asignado)+'</b></span><span>Por asignar: <b style="color:'+(delta===0?'#16a34a':'#dc2626')+'">'+gmMontoFmt(delta)+'</b></span></div>'+(delta<0?'<div class="al r">La distribución supera el monto recibido.</div>':delta>0?'<div class="al">Faltan '+gmMontoFmt(delta)+' por asignar.</div>':'<div class="al" style="background:rgba(22,163,74,.1);color:#166534">La distribución coincide con el pago recibido.</div>');
+}
 async function gmRegistrarPago(id){
  if(!GM.miembros.length)return msg('Agrega al menos una reserva antes de registrar un pago.',1);
  const moneda=$('#gmPagoMoneda').value,monto=Number($('#gmPagoMonto').value)||0,cambio=Number($('#gmPagoCambio').value)||0;
  if(monto<=0)return msg('El monto debe ser mayor que cero.',1);if(moneda==='USD'&&cambio<=0)return msg('Indica un tipo de cambio válido.',1);
- const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),n=GM.miembros.length,base=Math.floor(total/n),rem=total-base*n;
- if(base<=0)return msg('El monto es demasiado bajo para distribuirlo entre las reservas.',1);
- const distribucion=GM.miembros.map((m,i)=>({reserva_id:m.reserva_id,monto_clp:base+(i<rem?1:0),motivo:'estadia'}));
+ const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto);
+ const campos=[...document.querySelectorAll('.gmPagoAsignacion')];
+ const distribucion=campos.map(x=>({reserva_id:x.dataset.reserva,monto_clp:Math.round(Number(x.value)||0),motivo:'estadia'})).filter(x=>x.monto_clp>0);
+ const asignado=distribucion.reduce((a,x)=>a+x.monto_clp,0);
+ if(asignado!==total)return msg('La suma asignada ('+gmMontoFmt(asignado)+') debe coincidir exactamente con el pago ('+gmMontoFmt(total)+').',1);
+ if(distribucion.length===0)return msg('Asigna el pago a por lo menos una reserva.',1);
+ const detalle=distribucion.map(x=>{const m=GM.miembros.find(y=>y.reserva_id===x.reserva_id);return (m?.reserva?.huesped_nombre_copia||'Huésped')+': '+gmMontoFmt(x.monto_clp)}).join('\n');
+ if(!confirm('Confirma el registro del pago grupal de '+gmMontoFmt(total)+'.\n\n'+detalle+'\n\nSe crearán pagos individuales en las reservas indicadas. ¿Continuar?'))return;
  const q=await sb.rpc('registrar_pago_compartido_grupo',{p_grupo_id:id,p_metodo:$('#gmPagoMetodo').value,p_moneda:moneda,p_monto_original:monto,p_tipo_cambio:moneda==='USD'?cambio:null,p_id_transaccion:$('#gmPagoTx').value.trim()||null,p_referencia:$('#gmPagoRef').value.trim()||null,p_distribucion:distribucion});
  if(q.error)return msg('No se registró el pago: '+errTxt(q.error)+'. Comprueba que ejecutaste la migración de SQL.txt.',1);
- await gmAbrirGrupo(id);msg('Pago compartido registrado y distribuido entre las reservas.');
+ await gmAbrirGrupo(id);msg('Pago compartido registrado y distribuido según la confirmación.');
 }
 
 
