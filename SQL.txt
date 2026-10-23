@@ -8949,8 +8949,22 @@ CREATE INDEX IF NOT EXISTS cargos_cargo_grupal_idx
 
 ALTER TABLE public.cargos_grupales ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "PMS usuarios autenticados cargos grupales" ON public.cargos_grupales;
-CREATE POLICY "PMS usuarios autenticados cargos grupales"
+DROP POLICY IF EXISTS "PMS lectura cargos grupales" ON public.cargos_grupales;
+DROP POLICY IF EXISTS "PMS gestion cargos grupales gerencia" ON public.cargos_grupales;
+CREATE POLICY "PMS lectura cargos grupales"
+  ON public.cargos_grupales FOR SELECT TO authenticated
+  USING (true);
+CREATE POLICY "PMS gestion cargos grupales gerencia"
   ON public.cargos_grupales FOR ALL TO authenticated
-  USING (true) WITH CHECK (true);
+  USING (EXISTS (
+    SELECT 1 FROM public.perfiles p
+    WHERE p.id = auth.uid()
+      AND p.rol::text IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.perfiles p
+    WHERE p.id = auth.uid()
+      AND p.rol::text IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+  ));
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cargos_grupales TO authenticated;
 
