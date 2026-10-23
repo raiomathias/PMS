@@ -4314,10 +4314,7 @@ async function gmEliminarGrupo(id){
  GM.seleccion=null;await gmCargarGrupos();msg('Grupo eliminado; las reservas se conservaron.');
 }
 function gmPagoMonedaCambio(){const c=$('#gmPagoCambio');if(c)c.disabled=$('#gmPagoMoneda')?.value!=='USD';gmActualizarDistribucion()}
-function gmMontoFmt(n){return '
-
-
-
+function gmMontoFmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CL')+' CLP'}
 /* Exponer explícitamente los handlers usados por onclick en el HTML */
 window.abrirGestionGrupos = abrirGestionGrupos;
 window.gmFiltrarLista = gmFiltrarLista;
