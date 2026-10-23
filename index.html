@@ -465,6 +465,49 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 .gm-members th,.gm-members td{padding:8px 6px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
 .gm-footer{padding:12px 18px;background:#fff;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none}
 @media(max-width:760px){#grupoManager{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.gm-body{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(120px,30%) minmax(0,70%);overflow:hidden}.gm-list{min-height:0}.gm-head,.gm-footer{padding:10px}.gm-members{font-size:11px}}
+
+/* Gestión de grupos: modal amplio y coherente con los paneles del PMS.
+   #mo>div define width:560px; esta regla más específica evita que reduzca el gestor. */
+#mo:has(> #grupoManager){padding:3vh 3vw!important;box-sizing:border-box;place-items:center!important;background:rgba(15,23,42,.58)!important;backdrop-filter:blur(3px)}
+#mo>div#grupoManager{box-sizing:border-box!important;width:94vw!important;max-width:1480px!important;height:88vh!important;max-height:920px!important;min-height:620px!important;padding:0!important;margin:0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;background:var(--pn,#fff)!important;color:var(--tx,#1c2430)!important;border:1px solid var(--bd,#dbe2ea)!important;border-radius:16px!important;box-shadow:0 24px 80px rgba(15,23,42,.28)!important}
+#grupoManager .gm-head{box-sizing:border-box;min-height:82px;padding:18px 24px!important;background:var(--pn,#fff)!important;color:var(--tx,#1c2430)!important;border-bottom:1px solid var(--bd,#dbe2ea)!important}
+#grupoManager .gm-head h3{font-size:21px;letter-spacing:-.35px}
+#grupoManager .gm-head .mu{font-size:13px;line-height:1.45}
+#grupoManager .gm-body{box-sizing:border-box;grid-template-columns:minmax(290px,30%) minmax(0,70%)!important;gap:18px!important;padding:18px 20px!important;min-height:0!important;overflow:hidden!important;background:var(--bg,#f4f5f7)!important}
+#grupoManager .gm-body>aside{min-width:0;min-height:0;display:flex;flex-direction:column}
+#grupoManager #gmSearch{height:42px;padding:10px 12px!important;border:1px solid var(--bd,#dbe2ea)!important;border-radius:9px!important;background:var(--pn,#fff)!important;font-size:13px!important}
+#grupoManager .gm-list{flex:1;min-height:0;overflow:auto;background:var(--pn,#fff)!important;border:1px solid var(--bd,#dbe2ea)!important;border-radius:12px!important;padding:8px!important;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+#grupoManager .gm-item{box-sizing:border-box;width:100%;padding:13px 12px!important;margin:0 0 7px!important;border:1px solid transparent!important;border-radius:9px!important;background:var(--pn,#fff)!important;color:var(--tx,#1c2430)!important;transition:background .15s,border-color .15s}
+#grupoManager .gm-item:hover{background:var(--bg,#f4f5f7)!important;border-color:var(--bd,#dbe2ea)!important}
+#grupoManager .gm-item.active{background:#eff6ff!important;border-color:#93c5fd!important;color:#1d4ed8!important}
+#grupoManager .gm-item .mu{font-size:12px;margin-top:4px}
+#grupoManager .gm-body>aside>button{flex:none;min-height:40px;border-radius:9px!important}
+#grupoManager .gm-detail{box-sizing:border-box;min-width:0;min-height:0;padding:0 4px 12px 0!important;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+#grupoManager .gm-detail h3{font-size:20px;letter-spacing:-.3px}
+#grupoManager .gm-detail .sec{box-sizing:border-box;background:var(--pn,#fff)!important;border:1px solid var(--bd,#dbe2ea)!important;border-radius:12px!important;padding:16px!important;margin:0 0 14px!important;box-shadow:0 2px 7px rgba(15,23,42,.035)}
+#grupoManager .gm-detail .st{font-size:14px;font-weight:700;margin:0 0 12px!important;color:var(--tx,#1c2430)!important}
+#grupoManager .gm-detail label{font-size:12px;gap:5px}
+#grupoManager .gm-detail input,#grupoManager .gm-detail select,#grupoManager .gm-detail textarea{box-sizing:border-box;min-width:0;min-height:38px;border:1px solid var(--bd,#dbe2ea)!important;border-radius:8px!important;padding:8px 10px!important;background:var(--pn,#fff)!important;color:var(--tx,#1c2430)!important;font:inherit}
+#grupoManager .gm-detail textarea{width:100%;resize:vertical}
+#grupoManager .gm-detail button,#grupoManager .gm-head button,#grupoManager .gm-footer button{border-radius:8px!important;font-weight:650}
+#grupoManager .gm-members{font-size:13px!important}
+#grupoManager .gm-members th{background:var(--bg,#f4f5f7);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu,#64748b);white-space:nowrap}
+#grupoManager .gm-members td{padding:11px 8px!important}
+#grupoManager .gm-footer{box-sizing:border-box;min-height:60px;padding:12px 24px!important;background:var(--pn,#fff)!important;color:var(--tx,#1c2430)!important;border-top:1px solid var(--bd,#dbe2ea)!important}
+#grupoManager .gm-footer .mu{font-size:12px}
+#grupoManager .gm-head .p,#grupoManager .gm-detail .p{background:#2563eb!important;color:white!important;border-color:#2563eb!important}
+#grupoManager .gm-detail .al{padding:12px;border-radius:9px}
+@media(max-width:900px){
+ #mo:has(> #grupoManager){padding:0!important}
+ #mo>div#grupoManager{width:100vw!important;max-width:none!important;height:100dvh!important;max-height:none!important;min-height:0!important;border-radius:0!important}
+ #grupoManager .gm-head{padding:12px 14px!important;min-height:72px}
+ #grupoManager .gm-body{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(145px,32%) minmax(0,68%)!important;gap:10px!important;padding:10px!important}
+ #grupoManager .gm-body>aside{min-height:0}
+ #grupoManager .gm-list{display:flex;gap:7px;overflow:auto;flex:none;min-height:0;max-height:100%;padding:6px!important}
+ #grupoManager .gm-item{min-width:190px;max-width:240px;align-self:stretch}
+ #grupoManager .gm-body>aside>button{margin-top:6px!important}
+ #grupoManager .gm-footer{padding:10px 14px!important}
+}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button></div>
 <div id="app" style="display:none">
@@ -4176,6 +4219,7 @@ async function abrirGestionGrupos(){
  $('#mo').innerHTML='<div id="grupoManager"><header class="gm-head"><div><h3 style="margin:0">👥 Gestionar Grupos</h3><p class="mu" style="margin:4px 0 0">Administra grupos, reservas vinculadas, canal global y pagos compartidos.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="p" onclick="cerrar();abrirReservaMultiple()">＋ Crear reserva grupal</button><button onclick="cerrar()">✕ Cerrar</button></div></header><div class="gm-body"><aside><input id="gmSearch" placeholder="Buscar grupos…" style="width:100%;box-sizing:border-box;margin-bottom:8px" oninput="gmDibujarLista()"><div id="gmList" class="gm-list">Cargando grupos…</div><button style="width:100%;margin-top:8px" onclick="gmCrearGrupoVacio()">＋ Crear grupo vacío</button></aside><section id="gmDetail" class="gm-detail"><div class="al">Selecciona un grupo.</div></section></div><footer class="gm-footer"><span id="gmStatus" class="mu">Las reservas individuales no se eliminan al quitar un grupo.</span><button onclick="cerrar()">Cerrar</button></footer></div>';
  $('#mo').style.display='grid';await gmCargarGrupos();
 }
+window.abrirGestionGrupos=abrirGestionGrupos;
 async function gmCargarGrupos(sel){
  const q=await sb.from('reserva_grupos').select('id,nombre,estado,observaciones,creado_en,canal,codigo_externo').order('creado_en',{ascending:false}).limit(300);
  if(q.error){if($('#gmList'))$('#gmList').innerHTML='<div class="al r">No se pudieron cargar los grupos: '+esc(errTxt(q.error))+'<br>Si menciona canal o codigo_externo, ejecuta la migración incluida en SQL.txt.</div>';return}
