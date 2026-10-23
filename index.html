@@ -510,7 +510,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 }
 .gm-busy,.gm-busy:disabled{background:#d1d5db!important;border-color:#9ca3af!important;color:#4b5563!important;cursor:wait!important;opacity:1!important;filter:grayscale(1)}
 
-/* ===== Ayuda / FAQ v2.9.8 ===== */
+/* ===== Ayuda / FAQ v3.0 ===== */
 #mo:has(.faq-shell){padding:2vh 2vw;align-items:center;justify-items:center;overflow:auto}
 .faq-shell{width:min(96vw,1600px);height:94vh;max-height:94vh;display:flex;flex-direction:column;background:var(--card,#fff);color:var(--text,#172033);border:1px solid var(--border,#dbe1ea);border-radius:20px;box-shadow:0 24px 80px #0f172a38;overflow:hidden;text-align:left}
 .faq-head{padding:22px 26px 18px;background:linear-gradient(125deg,#102a43,#1d4ed8);color:white;display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex:none}
@@ -570,7 +570,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><div id="mobileHeaderTools"><button type="button" onclick="mover(-7)" aria-label="Semana anterior">‹</button><button type="button" onclick="mover(0)">Hoy</button><input id="mobileDate" type="date" aria-label="Fecha inicial de la vista móvil" onchange="mobileIrFecha(this.value)"><button type="button" class="mobile-menu-trigger" onclick="toggleMobileMenu()" aria-label="Abrir todos los menús">☰</button></div><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirGestionGrupos()">👥 Gestionar Grupos</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button><button onclick="cerrarMenus();abrirHuespedes()">👥 Huéspedes</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAdmin()">⚙ Panel Administrativo</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button><button onclick="cerrarMenus();abrirFAQ()">❔ Ayuda</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v2.9.9</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v3.0</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div><nav id="mobileBottomNav" aria-label="Navegación móvil"><button type="button" onclick="mobileIrInicio()"><span>▦</span><span>Grid</span></button><button type="button" onclick="mobileNuevaReserva()"><span>＋</span><span>Reserva</span></button><button type="button" onclick="mobileBuscar()"><span>⌕</span><span>Buscar</span></button><button type="button" onclick="toggleMobileMenu()"><span>☰</span><span>Menú</span></button></nav><div id="mobileMenuSheet" onclick="if(event.target===this)toggleMobileMenu(false)" aria-hidden="true"><section class="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label="Menú principal"><div class="mobile-sheet-grabber"></div><div class="mobile-sheet-head"><div><h3>MMassisT PMS</h3><div id="mobileMenuUser" class="mu"></div></div><button type="button" onclick="toggleMobileMenu(false)" aria-label="Cerrar menú">✕</button></div><div id="mobileMenuContent"></div></section></div>
 <script>
@@ -4497,7 +4497,7 @@ window.gmCargoUi = gmCargoUi;
 window.bloquearBotonGuardado = bloquearBotonGuardado;
 window.gmPuedeGestionarFinanzas = gmPuedeGestionarFinanzas;
 
-/* ===== Centro de Ayuda / FAQ PMS v2.9.8 ===== */
+/* ===== Centro de Ayuda / FAQ PMS v3.0 ===== */
 const FAQ_PMS = [
  {cat:'Primeros pasos',icon:'🧭',items:[
   ['¿Qué es el PMS y qué puedo gestionar aquí?','Es el sistema de gestión hotelera para administrar reservas, huéspedes, grupos, pagos, cargos adicionales, estacionamiento, limpieza y tareas administrativas. Las opciones visibles dependen de tu rol y de los edificios que tengas autorizados.'],
@@ -4591,36 +4591,97 @@ function faqFormatAnswer(txt){
  const safe=faqEscape(txt);
  return safe.split('\n').map(line=>line.trim()).filter(Boolean).map(line=>'<p>'+line+'</p>').join('');
 }
-let FAQ_PMS_STATE={category:'Todos',query:''};
-function abrirFAQ(){
- const host=$('#mo');if(!host)return;
- FAQ_PMS_STATE={category:'Todos',query:''};
- host.innerHTML='<section class="faq-shell" role="dialog" aria-modal="true" aria-label="Ayuda, FAQ y soporte"><header class="faq-head"><div><h2>❔ Ayuda y soporte</h2><p>Preguntas frecuentes para usar el PMS, resolver dudas operativas y conocer los procedimientos de reservas, grupos, pagos y limpieza.</p></div><button class="faq-close" type="button" onclick="cerrarFAQ()" aria-label="Cerrar ayuda">✕</button></header><div class="faq-tools"><div class="faq-search-wrap"><span class="faq-search-icon">⌕</span><input id="faqSearch" type="search" placeholder="Buscar por palabra, función o problema…" autocomplete="off" oninput="faqRender()"></div><span class="faq-count" id="faqCount"></span></div><div class="faq-layout"><nav class="faq-index" id="faqIndex" aria-label="Índice de preguntas frecuentes"></nav><main class="faq-content" id="faqContent"></main></div><footer class="faq-footer"><p><b>¿No encontraste la respuesta?</b><br>Contacta soporte para consultas o para informar un error del sistema.</p><a class="faq-contact" href="tel:+56945832337"><span>📞</span><span><small>CONSULTAS Y SOPORTE</small>+56 9 4583 2337</span></a></footer></section>';
- host.style.display='grid';
- faqRender();
- const search=$('#faqSearch');if(search)search.focus();
+var FAQ_PMS_STATE = { category: 'Todos', query: '' };
+
+function abrirFAQ() {
+  var host = document.getElementById('mo');
+  if (!host) return;
+  FAQ_PMS_STATE = { category: 'Todos', query: '' };
+  host.innerHTML = '<section class="faq-shell" role="dialog" aria-modal="true" aria-label="Ayuda y soporte">' +
+    '<header class="faq-head"><div><h2>❔ Ayuda y soporte</h2><p>Guía práctica del PMS: reservas, huéspedes, grupos, pagos, limpieza y solución de dudas.</p></div>' +
+    '<button class="faq-close" id="faqClose" type="button" aria-label="Cerrar ayuda">✕</button></header>' +
+    '<div class="faq-tools"><div class="faq-search-wrap"><span class="faq-search-icon">⌕</span>' +
+    '<input id="faqSearch" type="search" placeholder="Buscar por palabra, función o problema…" autocomplete="off" aria-label="Buscar en preguntas frecuentes"></div>' +
+    '<span class="faq-count" id="faqCount" aria-live="polite"></span></div>' +
+    '<div class="faq-layout"><nav class="faq-index" id="faqIndex" aria-label="Índice de contenidos"></nav>' +
+    '<main class="faq-content" id="faqContent" tabindex="0"></main></div>' +
+    '<footer class="faq-footer"><p><b>¿Necesitas más ayuda?</b><br>Contacta al equipo de soporte e indica qué estabas haciendo y qué mensaje apareció.</p>' +
+    '<a class="faq-contact" href="tel:+56945832337"><span>📞</span><span><small>CONSULTAS Y SOPORTE</small>+56 9 4583 2337</span></a></footer></section>';
+  host.style.display = 'grid';
+  var close = document.getElementById('faqClose');
+  var search = document.getElementById('faqSearch');
+  var nav = document.getElementById('faqIndex');
+  if (close) close.addEventListener('click', cerrarFAQ);
+  if (search) search.addEventListener('input', function () { faqRender(); });
+  if (nav) nav.addEventListener('click', function (event) {
+    var button = event.target.closest('button[data-category]');
+    if (!button || !nav.contains(button)) return;
+    faqSeleccionarCategoria(button.getAttribute('data-category'));
+  });
+  faqRender();
+  if (search) search.focus();
 }
-function cerrarFAQ(){const host=$('#mo');if(host){host.style.display='none';host.innerHTML=''}}
-function faqSeleccionarCategoria(cat){
- FAQ_PMS_STATE.category=cat;faqRender();
- const content=$('#faqContent');if(content)content.scrollTop=0;
+function cerrarFAQ() {
+  var host = document.getElementById('mo');
+  if (host) { host.style.display = 'none'; host.innerHTML = ''; }
 }
-function faqRender(){
- const nav=$('#faqIndex'),content=$('#faqContent'),search=$('#faqSearch'),count=$('#faqCount');
- if(!nav||!content)return;
- const q=(search?.value||FAQ_PMS_STATE.query||'').trim().toLocaleLowerCase('es');
- FAQ_PMS_STATE.query=q;
- const total=FAQ_PMS.reduce((n,c)=>n+c.items.length,0);
- nav.innerHTML='<div class="faq-index-title">Índice de contenidos</div>'+[['Todos','☷',total],...FAQ_PMS.map(c=>[c.cat,c.icon,c.items.length])].map(([cat,icon,n])=>'<button type="button" class="'+(FAQ_PMS_STATE.category===cat?'active':'')+'" onclick="faqSeleccionarCategoria('+JSON.stringify(cat).replace(/</g,'\\u003c')+')"><span class="faq-nav-num">'+n+'</span><span>'+icon+' '+faqEscape(cat)+'</span></button>').join('');
- const visible=FAQ_PMS.map((c,ci)=>({...c,ci,items:c.items.map((it,ii)=>({...{q:it[0],a:it[1]},ii})).filter(it=>(FAQ_PMS_STATE.category==='Todos'||FAQ_PMS_STATE.category===c.cat)&&(!q||(c.cat+' '+it.q+' '+it.a).toLocaleLowerCase('es').includes(q)))})).filter(c=>c.items.length);
- const found=visible.reduce((n,c)=>n+c.items.length,0);
- if(count)count.textContent=found+' de '+total+' preguntas';
- content.innerHTML='<div class="faq-welcome"><span class="faq-welcome-icon">💡</span><div><strong>Encuentra una respuesta rápidamente</strong><p>Usa el índice para ir a una categoría o escribe una palabra en el buscador. Abre cada pregunta para leer su respuesta. Si una operación afecta pagos o varias reservas, verifica siempre el resultado antes de repetirla.</p></div></div>'+(!visible.length?'<div class="faq-empty"><div style="font-size:30px;margin-bottom:8px">🔎</div><b>No encontramos coincidencias</b><p>Prueba con otro término o selecciona «Todos» en el índice.</p></div>':visible.map(c=>'<section class="faq-category" id="faq-cat-'+c.ci+'"><h3><span>'+c.icon+'</span>'+faqEscape(c.cat)+'</h3>'+c.items.map(it=>'<details class="faq-item"><summary><span class="faq-qnum">'+(it.ii+1)+'</span><span>'+faqEscape(it.q)+'</span></summary><div class="faq-answer">'+faqFormatAnswer(it.a)+'</div></details>').join('')+'</section>').join(''));
+function faqSeleccionarCategoria(cat) {
+  FAQ_PMS_STATE.category = String(cat || 'Todos');
+  faqRender();
+  var content = document.getElementById('faqContent');
+  if (content) content.scrollTop = 0;
 }
-window.abrirFAQ=abrirFAQ;
-window.cerrarFAQ=cerrarFAQ;
-window.faqRender=faqRender;
-window.faqSeleccionarCategoria=faqSeleccionarCategoria;
+function faqRender() {
+  var nav = document.getElementById('faqIndex');
+  var content = document.getElementById('faqContent');
+  var search = document.getElementById('faqSearch');
+  var count = document.getElementById('faqCount');
+  if (!nav || !content) return;
+
+  var q = String(search ? search.value : FAQ_PMS_STATE.query || '').trim().toLocaleLowerCase('es');
+  FAQ_PMS_STATE.query = q;
+  var total = FAQ_PMS.reduce(function (n, c) { return n + c.items.length; }, 0);
+  var categories = [['Todos', '☷', total]].concat(FAQ_PMS.map(function (c) {
+    return [c.cat, c.icon, c.items.length];
+  }));
+  nav.innerHTML = '<div class="faq-index-title">Índice de contenidos</div>' + categories.map(function (item) {
+    var cat = item[0], icon = item[1], n = item[2];
+    return '<button type="button" data-category="' + faqEscape(cat) + '" class="' +
+      (FAQ_PMS_STATE.category === cat ? 'active' : '') + '" aria-pressed="' +
+      (FAQ_PMS_STATE.category === cat ? 'true' : 'false') + '">' +
+      '<span class="faq-nav-num">' + n + '</span><span>' + icon + ' ' + faqEscape(cat) + '</span></button>';
+  }).join('');
+
+  var visible = FAQ_PMS.map(function (c, ci) {
+    var items = c.items.map(function (it, ii) { return { q: it[0], a: it[1], ii: ii }; }).filter(function (it) {
+      var matchesCategory = FAQ_PMS_STATE.category === 'Todos' || FAQ_PMS_STATE.category === c.cat;
+      var haystack = (c.cat + ' ' + it.q + ' ' + it.a).toLocaleLowerCase('es');
+      return matchesCategory && (!q || haystack.indexOf(q) !== -1);
+    });
+    return { cat: c.cat, icon: c.icon, ci: ci, items: items };
+  }).filter(function (c) { return c.items.length > 0; });
+
+  var found = visible.reduce(function (n, c) { return n + c.items.length; }, 0);
+  if (count) count.textContent = found + ' de ' + total + ' preguntas';
+  var welcome = '<div class="faq-welcome"><span class="faq-welcome-icon">💡</span><div>' +
+    '<strong>Encuentra una respuesta rápidamente</strong><p>Selecciona una categoría en el índice o busca una palabra. Abre una pregunta para consultar la respuesta.</p></div></div>';
+  var empty = '<div class="faq-empty"><div style="font-size:30px;margin-bottom:8px">🔎</div>' +
+    '<b>No encontramos coincidencias</b><p>Prueba otro término o selecciona «Todos» en el índice.</p></div>';
+  var sections = visible.map(function (c) {
+    var questions = c.items.map(function (it) {
+      return '<details class="faq-item"><summary><span class="faq-qnum">' + (it.ii + 1) +
+        '</span><span>' + faqEscape(it.q) + '</span></summary><div class="faq-answer">' +
+        faqFormatAnswer(it.a) + '</div></details>';
+    }).join('');
+    return '<section class="faq-category" id="faq-cat-' + c.ci + '"><h3><span>' + c.icon +
+      '</span>' + faqEscape(c.cat) + '</h3>' + questions + '</section>';
+  }).join('');
+  content.innerHTML = welcome + (found ? sections : empty);
+}
+window.abrirFAQ = abrirFAQ;
+window.cerrarFAQ = cerrarFAQ;
+window.faqRender = faqRender;
+window.faqSeleccionarCategoria = faqSeleccionarCategoria;
 /* ===== Fin Centro de Ayuda ===== */
 
 </script></body></html>
