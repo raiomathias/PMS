@@ -4343,8 +4343,9 @@ window.gmPuedeGestionarFinanzas = gmPuedeGestionarFinanzas;
 +Math.round(Number(n)||0).toLocaleString('es-CL')+' CLP'}
 function gmDistribucionPropuesta(){
  const moneda=$('#gmPagoMoneda')?.value||'CLP',monto=Number($('#gmPagoMonto')?.value)||0,cambio=Number($('#gmPagoCambio')?.value)||0,total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto);
- const rows=GM.miembros, pesos=rows.map(m=>Math.max(0,Number(m.saldo)||0)),suma=pesos.reduce((a,b)=>a+b,0);
- const basePesos=suma>0?pesos:rows.map(m=>Math.max(0,Number(m.totalEstadia)||0));
+ const rows=GM.miembros, pesosSaldo=rows.map(m=>Math.max(0,Number(m.saldo)||0)),sumaSaldo=pesosSaldo.reduce((a,b)=>a+b,0);
+ const pesosTotal=rows.map(m=>Math.max(0,Number(m.totalEstadia)||0)),sumaTotal=pesosTotal.reduce((a,b)=>a+b,0);
+ const basePesos=sumaSaldo>0&&total<=sumaSaldo?pesosSaldo:pesosTotal;
  const denom=basePesos.reduce((a,b)=>a+b,0);
  let asignados=0;
  return rows.map((m,i)=>{let v=i===rows.length-1?total-asignados:(denom>0?Math.floor(total*basePesos[i]/denom):Math.floor(total/Math.max(1,rows.length)));asignados+=v;return {reserva_id:m.reserva_id,monto_clp:Math.max(0,v),motivo:'estadia'}});
