@@ -8802,7 +8802,7 @@ END;
 $function$;
 
 -- ============================================================
--- PMS v2.9.6 · Gestión centralizada de grupos y pagos grupales
+-- PMS v3.1 · Gestión centralizada de grupos y pagos grupales con motivos separados
 -- Mantiene la versión pública 2.9.6; migración incremental.
 -- ============================================================
 ALTER TABLE public.reserva_grupos
@@ -8816,103 +8816,46 @@ CREATE INDEX IF NOT EXISTS pagos_compartidos_grupo_idx
   ON public.pagos_compartidos(grupo_id);
 
 CREATE OR REPLACE FUNCTION public.registrar_pago_compartido_grupo(
-  p_grupo_id uuid,
-  p_metodo text,
-  p_moneda char(3),
-  p_monto_original numeric,
-  p_tipo_cambio numeric DEFAULT NULL,
-  p_id_transaccion text DEFAULT NULL,
-  p_referencia text DEFAULT NULL,
-  p_distribucion jsonb DEFAULT '[]'::jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = public
-AS $$
+  p_grupo_id uuid, p_metodo text, p_moneda char(3), p_monto_original numeric,
+  p_tipo_cambio numeric DEFAULT NULL, p_id_transaccion text DEFAULT NULL,
+  p_referencia text DEFAULT NULL, p_distribucion jsonb DEFAULT '[]'::jsonb
+) RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
 DECLARE
-  v_pago_id uuid;
-  v_pago_fila uuid;
-  v_metodo metodo_pago;
-  v_moneda char(3);
-  v_total integer;
-  v_asignado integer;
-  v_item jsonb;
-  v_reserva uuid;
-  v_monto integer;
-  v_cambio numeric;
-  v_count integer := 0;
+  v_pago_id uuid; v_pago_fila uuid; v_metodo metodo_pago; v_moneda char(3);
+  v_total integer; v_asignado integer; v_item jsonb; v_reserva uuid;
+  v_monto integer; v_motivo text; v_cambio numeric; v_count integer := 0;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Debes iniciar sesión para registrar pagos grupales';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.reserva_grupos WHERE id = p_grupo_id) THEN
-    RAISE EXCEPTION 'Grupo no encontrado';
-  END IF;
-  IF jsonb_typeof(p_distribucion) <> 'array' OR jsonb_array_length(p_distribucion) < 1 THEN
-    RAISE EXCEPTION 'Selecciona al menos una reserva para distribuir el pago';
-  END IF;
-  IF p_monto_original IS NULL OR p_monto_original <= 0 THEN
-    RAISE EXCEPTION 'El monto del pago debe ser mayor que cero';
-  END IF;
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión para registrar pagos grupales'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.reserva_grupos WHERE id = p_grupo_id) THEN RAISE EXCEPTION 'Grupo no encontrado'; END IF;
+  IF jsonb_typeof(p_distribucion) <> 'array' OR jsonb_array_length(p_distribucion) < 1 THEN RAISE EXCEPTION 'Selecciona al menos un concepto para distribuir el pago'; END IF;
+  IF p_monto_original IS NULL OR p_monto_original <= 0 THEN RAISE EXCEPTION 'El monto del pago debe ser mayor que cero'; END IF;
   v_moneda := COALESCE(NULLIF(trim(p_moneda::text), ''), 'CLP')::char(3);
   v_cambio := p_tipo_cambio;
-  IF v_moneda NOT IN ('CLP','USD') THEN
-    RAISE EXCEPTION 'Moneda no admitida';
-  END IF;
-  IF v_moneda = 'USD' AND (v_cambio IS NULL OR v_cambio <= 0) THEN
-    RAISE EXCEPTION 'Indica un tipo de cambio válido para pagos en USD';
-  END IF;
+  IF v_moneda NOT IN ('CLP','USD') THEN RAISE EXCEPTION 'Moneda no admitida'; END IF;
+  IF v_moneda = 'USD' AND (v_cambio IS NULL OR v_cambio <= 0) THEN RAISE EXCEPTION 'Indica un tipo de cambio válido para pagos en USD'; END IF;
   v_total := CASE WHEN v_moneda = 'USD' THEN round(p_monto_original * v_cambio)::integer ELSE round(p_monto_original)::integer END;
   IF v_total <= 0 THEN RAISE EXCEPTION 'El monto convertido debe ser mayor que cero'; END IF;
-  SELECT COALESCE(sum((value->>'monto_clp')::integer),0)
-    INTO v_asignado FROM jsonb_array_elements(p_distribucion);
-  IF v_asignado <> v_total THEN
-    RAISE EXCEPTION 'La distribución suma % CLP, pero el pago equivale a % CLP', v_asignado, v_total;
-  END IF;
+  SELECT COALESCE(sum((value->>'monto_clp')::integer),0) INTO v_asignado FROM jsonb_array_elements(p_distribucion);
+  IF v_asignado <> v_total THEN RAISE EXCEPTION 'La distribución suma % CLP, pero el pago equivale a % CLP', v_asignado, v_total; END IF;
   v_metodo := p_metodo::metodo_pago;
-  INSERT INTO public.pagos_compartidos(
-    grupo_id, metodo, moneda, monto_original, tipo_cambio, monto_clp,
-    id_transaccion, referencia, creado_por
-  ) VALUES (
-    p_grupo_id, v_metodo::text, v_moneda, p_monto_original,
-    CASE WHEN v_moneda='USD' THEN v_cambio ELSE NULL END, v_total,
-    NULLIF(p_id_transaccion,''), NULLIF(p_referencia,''), auth.uid()
-  ) RETURNING id INTO v_pago_id;
-
+  INSERT INTO public.pagos_compartidos(grupo_id,metodo,moneda,monto_original,tipo_cambio,monto_clp,id_transaccion,referencia,creado_por)
+  VALUES(p_grupo_id,v_metodo::text,v_moneda,p_monto_original,CASE WHEN v_moneda='USD' THEN v_cambio ELSE NULL END,v_total,NULLIF(p_id_transaccion,''),NULLIF(p_referencia,''),auth.uid())
+  RETURNING id INTO v_pago_id;
   FOR v_item IN SELECT value FROM jsonb_array_elements(p_distribucion) LOOP
     v_reserva := NULLIF(v_item->>'reserva_id','')::uuid;
     v_monto := COALESCE((v_item->>'monto_clp')::integer,0);
-    IF v_reserva IS NULL OR v_monto <= 0 THEN
-      RAISE EXCEPTION 'Cada asignación debe incluir una reserva y un monto positivo';
-    END IF;
-    IF NOT EXISTS (
-      SELECT 1 FROM public.reserva_grupo_miembros
-      WHERE grupo_id=p_grupo_id AND reserva_id=v_reserva
-    ) THEN
-      RAISE EXCEPTION 'La reserva % no pertenece al grupo seleccionado', v_reserva;
-    END IF;
-    INSERT INTO public.pagos(
-      reserva_id, metodo, moneda, monto_original, tipo_cambio, monto_clp,
-      referencia, anticipado, motivo, id_transaccion, creado_por
-    ) VALUES (
-      v_reserva, v_metodo, v_moneda,
-      CASE WHEN v_moneda='USD' THEN round(v_monto / v_cambio,2) ELSE v_monto END,
-      CASE WHEN v_moneda='USD' THEN v_cambio ELSE NULL END,
-      v_monto, NULLIF(p_referencia,''), false, 'estadia',
-      NULLIF(p_id_transaccion,''), auth.uid()
-    ) RETURNING id INTO v_pago_fila;
-    INSERT INTO public.pagos_compartidos_distribucion(
-      pago_compartido_id, reserva_id, pago_id, motivo, monto_clp
-    ) VALUES (v_pago_id, v_reserva, v_pago_fila,
-      COALESCE(NULLIF(v_item->>'motivo',''),'estadia'), v_monto);
+    v_motivo := COALESCE(NULLIF(v_item->>'motivo',''),'estadia');
+    IF v_reserva IS NULL OR v_monto <= 0 THEN RAISE EXCEPTION 'Cada concepto debe incluir una reserva y un monto positivo'; END IF;
+    IF v_motivo NOT IN ('estadia','estacionamiento','horario_extra','penalizacion','consumos','garantia','otro') THEN RAISE EXCEPTION 'Motivo de pago no válido: %', v_motivo; END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.reserva_grupo_miembros WHERE grupo_id=p_grupo_id AND reserva_id=v_reserva) THEN RAISE EXCEPTION 'La reserva % no pertenece al grupo seleccionado', v_reserva; END IF;
+    INSERT INTO public.pagos(reserva_id,metodo,moneda,monto_original,tipo_cambio,monto_clp,referencia,anticipado,motivo,id_transaccion,creado_por)
+    VALUES(v_reserva,v_metodo,v_moneda,CASE WHEN v_moneda='USD' THEN round(v_monto/v_cambio,2) ELSE v_monto END,CASE WHEN v_moneda='USD' THEN v_cambio ELSE NULL END,v_monto,NULLIF(p_referencia,''),false,v_motivo,NULLIF(p_id_transaccion,''),auth.uid())
+    RETURNING id INTO v_pago_fila;
+    INSERT INTO public.pagos_compartidos_distribucion(pago_compartido_id,reserva_id,pago_id,motivo,monto_clp)
+    VALUES(v_pago_id,v_reserva,v_pago_fila,v_motivo,v_monto);
     v_count := v_count + 1;
   END LOOP;
-
-  RETURN jsonb_build_object(
-    'pago_compartido_id', v_pago_id,
-    'monto_clp', v_total,
-    'reservas_distribuidas', v_count
-  );
+  RETURN jsonb_build_object('pago_compartido_id',v_pago_id,'monto_clp',v_total,'conceptos_distribuidos',v_count);
 END;
 $$;
 
