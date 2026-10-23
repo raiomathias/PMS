@@ -4375,12 +4375,316 @@ async function gmAbrirGrupo(id){
    return {...m,totalEstadia:estadia,pagado,saldo:Math.max(0,estadia-pagado)};
  });
  const pq=await sb.from('pagos_compartidos').select('id,metodo,moneda,monto_original,monto_clp,referencia,id_transaccion,pagado_en').eq('grupo_id',id).order('pagado_en',{ascending:false});
- GM.pagos=pq.error?[]:(pq.data||[]);
+ GM.pagos=pq.error?[]:(pq.data||[]);const pids=GM.pagos.map(p=>p.id);const pdq=pids.length?await sb.from('pagos_compartidos_distribucion').select('pago_compartido_id,motivo,monto_clp').in('pago_compartido_id',pids):{data:[],error:null};GM.pagos=GM.pagos.map(p=>({...p,conceptos:pdq.error?[]:(pdq.data||[]).filter(d=>d.pago_compartido_id===p.id)}));
  const rsv=(S.res||[]).filter(r=>!GM.miembros.some(m=>m.reserva_id===r.id));
  const opts=rsv.map(r=>{const u=S.unidades.find(x=>x.id===r.unidad_id);return '<option value="'+esc(r.id)+'">'+esc((u?.edificios?.nombre||'Edificio')+' · '+(u?.codigo||'Unidad')+' · '+(r.huesped_nombre_copia||'Huésped')+' · '+r.fecha_entrada+' → '+r.fecha_salida)+'</option>'}).join('');
  const groupActions='<div class="sec c3" style="margin-top:12px"><h4 class="st">Acciones para todo el grupo</h4><p class="mu">La acción se aplica a reservas compatibles con su estado y se verifica después de guardar.</p><div class="g2"><label>Acción<select id="gmAccionTipo"><option value="in">Check-in grupal</option><option value="out">Check-out grupal</option><option value="can">Cancelar reservas</option><option value="ns">No-show</option></select></label><label>Motivo / nota<textarea id="gmAccionNota" rows="2" placeholder="Motivo de cancelación o nota de no-show"></textarea></label><label>Observaciones del grupo<textarea id="gmAccionObs" rows="2" placeholder="Se agregan a cada reserva"></textarea></label><label>Reclamo / sugerencia<textarea id="gmAccionReclamo" rows="2" placeholder="Se registra en cada reserva"></textarea></label></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Procesando...&#39;,()=>gmEjecutarAccionGrupo(this.dataset.id))">▶ Aplicar al grupo</button><button data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmGuardarNotasGrupo(this.dataset.id))">📝 Guardar observaciones y reclamo</button></div><p class="mu">Check-in: confirmadas · Check-out: en casa · Cancelación: tentativas/confirmadas · No-show: tentativas/confirmadas con llegada vigente o pasada.</p></div>';
  const rows=GM.miembros.map(m=>{const r=m.reserva,u=S.unidades.find(x=>x.id===r.unidad_id);return '<tr><td><b>'+esc(u?.edificios?.nombre||'Edificio')+' · '+esc(u?.codigo||'Unidad')+'</b><div class="mu">'+esc(r.uid_reserva||r.id)+'</div></td><td>'+esc(r.huesped_nombre_copia||'Huésped')+'<div class="mu">'+esc(r.huesped_telefono_copia||'')+'</div></td><td>'+esc(r.fecha_entrada)+' → '+esc(r.fecha_salida)+'<div class="mu">'+esc(r.estado||'')+'</div></td><td><button data-reserva="'+r.id+'" onclick="abrirDr(this.dataset.reserva)">Abrir</button> <button data-group="'+id+'" data-reserva="'+r.id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmQuitarReserva(this.dataset.group,this.dataset.reserva))">Desvincular</button></td></tr>'}).join('');
- const pays=GM.pagos.map(p=>'<div class="cat"><b>$'+Number(p.monto_clp||0).toLocaleString('es-CL')+' CLP</b> · '+esc(p.metodo)+' · '+esc(p.moneda)+' '+esc(p.monto_original)+'<div class="mu">'+esc(p.pagado_en||'')+' '+esc(p.referencia||'')+' '+esc(p.id_transaccion||'')+'</div>'+(gmPuedeGestionarFinanzas()?'<button class="r" data-pago="'+p.id+'" data-grupo="'+GM.seleccion+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarPagoCompartido(this.dataset.grupo,this.dataset.pago))">🗑 Eliminar pago</button>':'')+'</div>').join('')||'<p class="mu">Todavía no hay pagos compartidos.</p>';
+ const pays=GM.pagos.map(p=>'<div class="cat"><b>$'+Number(p.monto_clp||0).toLocaleString('es-CL')+' CLP</b> · '+esc(p.metodo)+' · '+esc(p.moneda)+' '+esc(p.monto_original)+'<div class="mu">'+esc(p.pagado_en||'')+' '+esc(p.referencia||'')+' '+esc(p.id_transaccion||'')+'</div><div style="margin-top:6px"><b>Motivos:</b> '+((p.conceptos||[]).map(c=>({estadia:'Estadía',estacionamiento:'Estacionamiento',horario_extra:'Horario extra',penalizacion:'Penalización',consumos:'Consumos',garantia:'Garantía',otro:'Otro'}[c.motivo]||c.motivo)+': +(gmPuedeGestionarFinanzas()?'<button class="r" data-pago="'+p.id+'" data-grupo="'+GM.seleccion+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarPagoCompartido(this.dataset.grupo,this.dataset.pago))">🗑 Eliminar pago</button>':'')+'</div>').join('')||'<p class="mu">Todavía no hay pagos compartidos.</p>';
+ out.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0">'+esc(g.nombre||'Reserva grupal')+'</h3><span class="mu">'+GM.miembros.length+' reserva(s) · '+esc(g.estado||'activo')+'</span></div><button class="r" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarGrupo(this.dataset.id))">Eliminar grupo</button></div>'+
+ '<div class="sec c3" style="margin-top:12px"><h4 class="st">Datos globales del grupo</h4><div class="g2"><label>Nombre<input id="gmNombre" value="'+esc(g.nombre||'')+'"></label><label>Estado<select id="gmEstado">'+[['activo','Activo'],['cerrado','Cerrado'],['cancelado','Cancelado']].map(x=>'<option value="'+x[0]+'" '+((g.estado||'activo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Canal global<select id="gmCanal">'+[['directo','Directo'],['booking','Booking.com'],['expedia','Expedia'],['airbnb','Airbnb'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+((g.canal||'directo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Código externo global<input id="gmCodigo" value="'+esc(g.codigo_externo||'')+'" placeholder="Compartido por todas las reservas"></label></div><label>Observaciones del grupo<textarea id="gmObs" rows="2">'+esc(g.observaciones||'')+'</textarea></label><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmGuardarDatos(this.dataset.id))">Guardar datos globales</button></div><p class="mu">El canal y código se propagan a todas las reservas vinculadas.</p></div>'+
+ '<div class="sec c3"><h4 class="st">Reservas del grupo</h4><div style="overflow:auto"><table class="gm-members"><thead><tr><th>Unidad</th><th>Huésped</th><th>Estadía / estado</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:8px;margin-top:10px;align-items:center"><select id="gmAddReserva" style="flex:1;min-width:0"><option value="">Seleccionar reserva existente</option>'+opts+'</select><button data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmAgregarReserva(this.dataset.id))">＋ Agregar</button></div></div>'+
+ '<div class="sec c3"><h4 class="st">Registrar pago compartido</h4><div class="g2"><label>Método<select id="gmPagoMetodo">'+[['efectivo','Efectivo'],['transferencia','Transferencia'],['webpay','Webpay'],['tarjeta_debito','Tarjeta débito'],['tarjeta_credito','Tarjeta crédito']].map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></label><label>Moneda<select id="gmPagoMoneda" onchange="gmPagoMonedaCambio()"><option value="CLP">CLP</option><option value="USD">USD</option></select></label><label>Monto recibido<input id="gmPagoMonto" type="number" min="1" step="1" value="0" oninput="gmActualizarDistribucion()"></label><label>Tipo de cambio CLP/USD<input id="gmPagoCambio" type="number" min="0" step="0.01" value="900" oninput="gmActualizarDistribucion()"></label><label>ID transacción<input id="gmPagoTx"></label><label>Referencia<input id="gmPagoRef"></label></div><div id="gmPagoResumen" style="margin-top:10px"></div><p class="mu">Asigna el pago a cada reserva y agrega excepciones por motivo (estacionamiento, consumos, etc.). El resto se contabiliza como estadía.</p><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmRegistrarPago(this.dataset.id))">Revisar y registrar pago</button></div>'+gmCargoUi(id)+'<div class="sec c3"><h4 class="st">Historial de pagos compartidos</h4>'+pays+'</div>';
+ out.insertAdjacentHTML('afterbegin',groupActions);
+ await gmCargarCargos(id);gmCargoSeleccionCambio();gmActualizarDistribucion();
+}
+
+function gmCargoSeleccionCambio(){const box=$('#gmCargoSelecciones');if(box)box.style.display=$('#gmCargoTodas')?.checked?'none':'block';gmCalcularCargo()}
+function gmCalcularCargo(){const n=$('#gmCargoTodas')?.checked?GM.miembros.length:document.querySelectorAll('.gmCargoReserva:checked').length,q=Number($('#gmCargoCantidad')?.value)||0,m=Number($('#gmCargoMonto')?.value)||0,total=Math.round(n*q*m),out=$('#gmCargoTotal');if(out)out.textContent='Total calculado: $'+total.toLocaleString('es-CL')+' CLP ('+n+' reservas × '+q+' × $'+m.toLocaleString('es-CL')+')'}
+async function gmCargarCargos(id){const out=$('#gmCargosLista');if(!out)return;const q=await sb.from('cargos_grupales').select('id,tipo,descripcion,cantidad_por_reserva,monto_unitario,cantidad_reservas,total,reservas_ids,creado_en').eq('grupo_id',id).order('creado_en',{ascending:false});if(q.error){out.innerHTML='<p class="mu">No se pudieron cargar cargos grupales. Ejecuta la migración de SQL.txt. '+esc(errTxt(q.error))+'</p>';return}out.innerHTML=(q.data||[]).map(c=>'<div class="cat"><b>'+esc(c.descripcion||c.tipo)+'</b><div class="mu">'+esc(c.tipo)+' · '+c.cantidad_reservas+' reservas × '+c.cantidad_por_reserva+' × $'+Number(c.monto_unitario||0).toLocaleString('es-CL')+' = <b>$'+Number(c.total||0).toLocaleString('es-CL')+' CLP</b></div>'+(gmPuedeGestionarFinanzas()?'<button class="r" data-id="'+c.id+'" data-grupo="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarCargo(this.dataset.grupo,this.dataset.id))">🗑 Eliminar cargo</button>':'')+'</div>').join('')||'<p class="mu">Sin cargos grupales.</p>'}
+async function gmAgregarCargo(id){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden gestionar cargos grupales.',1);const cantidad=Number($('#gmCargoCantidad')?.value)||0,monto=Number($('#gmCargoMonto')?.value)||0,tipo=$('#gmCargoTipo')?.value,desc=$('#gmCargoDesc')?.value.trim()||null,reservas=$('#gmCargoTodas')?.checked?GM.miembros.map(m=>m.reserva_id):[...document.querySelectorAll('.gmCargoReserva:checked')].map(x=>x.value);if(!reservas.length)return msg('Selecciona al menos una reserva.',1);if(cantidad<=0||monto<=0)return msg('Cantidad y monto unitario deben ser mayores que cero.',1);const total=Math.round(cantidad*monto*reservas.length),head=await sb.from('cargos_grupales').insert({grupo_id:id,tipo,descripcion:desc,cantidad_por_reserva:cantidad,monto_unitario:Math.round(monto),cantidad_reservas:reservas.length,total,reservas_ids:reservas}).select('id').single();if(head.error)return msg('No se pudo crear el cargo grupal: '+errTxt(head.error)+'. Ejecuta la migración SQL.txt.',1);const rows=reservas.map(reserva_id=>({reserva_id,tipo,descripcion:desc||'Cargo grupal',cantidad,monto_unitario:Math.round(monto),cargo_grupal_id:head.data.id})),ins=await sb.from('cargos').insert(rows);if(ins.error){await sb.from('cargos').delete().eq('cargo_grupal_id',head.data.id);await sb.from('cargos_grupales').delete().eq('id',head.data.id);return msg('No se pudo aplicar el cargo a las reservas: '+errTxt(ins.error),1)}await gmCargarCargos(id);msg('Cargo agregado: $'+total.toLocaleString('es-CL')+' CLP en '+reservas.length+' reserva(s).')}
+async function gmEliminarCargo(id,cargoId){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden eliminar cargos.',1);if(!confirm('¿Eliminar este cargo grupal de todas las reservas seleccionadas?'))return;const a=await sb.from('cargos').delete().eq('cargo_grupal_id',cargoId);if(a.error)return msg('No se pudieron eliminar los cargos asociados: '+errTxt(a.error),1);const b=await sb.from('cargos_grupales').delete().eq('id',cargoId);if(b.error)return msg('Se eliminaron los cargos individuales, pero no el registro grupal: '+errTxt(b.error),1);await gmCargarCargos(id);msg('Cargo grupal eliminado.')}
+async function gmEliminarPagoCompartido(id,pagoId){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden eliminar pagos compartidos.',1);if(!confirm('¿Eliminar este pago compartido y los pagos individuales que generó? Esta acción no se puede deshacer.'))return;const d=await sb.from('pagos_compartidos_distribucion').select('pago_id').eq('pago_compartido_id',pagoId);if(d.error)return msg('No se pudieron consultar las asignaciones: '+errTxt(d.error),1);const ids=[...new Set((d.data||[]).map(x=>x.pago_id).filter(Boolean))];if(ids.length){const p=await sb.from('pagos').delete().in('id',ids);if(p.error)return msg('No se pudieron eliminar los pagos individuales: '+errTxt(p.error),1)}const q=await sb.from('pagos_compartidos').delete().eq('id',pagoId);if(q.error)return msg('No se pudo eliminar el pago compartido: '+errTxt(q.error),1);await gmAbrirGrupo(id);msg('Pago compartido y sus asignaciones eliminados.')}
+
+function gmCargoUi(id){const checks=GM.miembros.map((m,i)=>'<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" class="gmCargoReserva" value="'+m.reserva_id+'" checked onchange="gmCalcularCargo()"> Reserva '+(i+1)+' · '+esc(m.reserva?.uid_reserva||m.reserva_id)+' · '+esc(m.reserva?.huesped_nombre_copia||'Huésped')+'</label>').join('');return '<div class="sec c3"><h4 class="st">Cargos para el grupo</h4><p class="mu">Selecciona las reservas afectadas. El total se calcula como cantidad por reserva × monto unitario × número de reservas.</p><div class="g2"><label>Tipo de cargo<select id="gmCargoTipo">'+['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'].map(x=>'<option value="'+x+'">'+x.replace(/_/g,' ')+'</option>').join('')+'</select></label><label>Descripción<input id="gmCargoDesc" placeholder="Ej. Estacionamiento por noche"></label><label>Cantidad por reserva<input id="gmCargoCantidad" type="number" min="0.01" step="0.01" value="1" oninput="gmCalcularCargo()"></label><label>Monto unitario (CLP)<input id="gmCargoMonto" type="number" min="1" step="1" value="0" oninput="gmCalcularCargo()"></label></div><div style="padding:10px;border:1px solid var(--bd);border-radius:9px;margin:10px 0"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gmCargoTodas" checked onchange="gmCargoSeleccionCambio()"> Aplicar a todas las reservas</label><div id="gmCargoSelecciones" style="display:none;margin-top:8px">'+checks+'</div></div><div id="gmCargoTotal" class="al">Total calculado: $0 CLP</div>'+(gmPuedeGestionarFinanzas()?'<button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmAgregarCargo(this.dataset.id))">＋ Agregar cargo al grupo</button>':'<p class="mu">Solo gerencia y administración pueden agregar o eliminar cargos.</p>')+'<h4 class="st" style="margin-top:14px">Cargos registrados</h4><div id="gmCargosLista">Cargando cargos…</div></div>'}
+async function gmGuardarNotasGrupo(id){
+ const miembros=GM.miembros.filter(m=>m.reserva?.id),obs=$('#gmAccionObs')?.value.trim()||'',reclamo=$('#gmAccionReclamo')?.value.trim()||'';
+ if(!obs&&!reclamo)return msg('Escribe una observación o reclamo antes de guardar.',1);
+ if(!miembros.length)return msg('El grupo no tiene reservas vinculadas.',1);
+ if(!confirm('Se guardarán los textos en las '+miembros.length+' reservas vinculadas. ¿Continuar?'))return;
+ const fallos=[];
+ for(const m of miembros){const r=m.reserva;
+  if(obs){const anterior=String(r.observaciones||'').trim(),nuevo=anterior?anterior+'\n\n[Observación de grupo · '+new Date().toLocaleString('es-CL')+'] '+obs:obs;const q=await sb.from('reservas').update({observaciones:nuevo}).eq('id',r.id);if(q.error){fallos.push((r.uid_reserva||r.id)+': '+q.error.message);continue}r.observaciones=nuevo}
+  if(reclamo){const q=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id||null,contenido:reclamo},{onConflict:'reserva_id'});if(q.error)fallos.push((r.uid_reserva||r.id)+': '+q.error.message)}
+ }
+ await gmCargarGrupos(id);
+ if(fallos.length)msg('Hubo '+fallos.length+' error(es): '+fallos.slice(0,5).join(' | '),1);else msg('Observaciones y reclamo/sugerencia sincronizados con todas las reservas del grupo.');
+}
+async function gmEjecutarAccionGrupo(id){
+ const tipo=$('#gmAccionTipo')?.value,nota=$('#gmAccionNota')?.value.trim()||'',obs=$('#gmAccionObs')?.value.trim()||'',reclamo=$('#gmAccionReclamo')?.value.trim()||'';
+ const estados={in:['confirmada'],out:['en_casa'],can:['tentativa','confirmada'],ns:['tentativa','confirmada']};
+ if(!estados[tipo])return msg('Selecciona una acción válida.',1);
+ if(tipo==='can'&&!nota)return msg('Debes indicar el motivo de cancelación.',1);
+ const hoy=typeof hoyStr==='function'?hoyStr():new Date().toISOString().slice(0,10);
+ const candidatos=GM.miembros.filter(m=>m.reserva&&estados[tipo].includes(m.reserva.estado)&&(tipo!=='ns'||m.reserva.fecha_entrada<=hoy));
+ if(!candidatos.length)return msg('No hay reservas compatibles con esta acción.',1);
+ const nombres={in:'hacer check-in',out:'hacer check-out',can:'cancelar',ns:'marcar no-show'};
+ if(!confirm('Vas a '+nombres[tipo]+' '+candidatos.length+' de '+GM.miembros.length+' reservas. Las demás se omitirán por su estado. ¿Continuar?'))return;
+ const fallos=[],ok=[];
+ for(const m of candidatos){const r=m.reserva;
+  try{
+   if(tipo==='in'){
+    const q=await sb.rpc('hacer_check_in',{p_reserva_id:r.id});
+    if(q.error&&/reserva no (está|esta) confirmada/i.test(q.error.message||'')){const fb=await sb.from('reservas').update({estado:'en_casa',entrada_real:new Date().toISOString()}).eq('id',r.id).eq('estado','confirmada').select('id').maybeSingle();if(fb.error||!fb.data)throw new Error(fb.error?.message||'El estado cambió durante la operación')}else if(q.error)throw q.error;
+   }else if(tipo==='out'){
+    if(reclamo){const rq=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id||null,contenido:reclamo},{onConflict:'reserva_id'});if(rq.error)throw rq.error}
+    const q=await sb.rpc('hacer_check_out',{p_reserva_id:r.id,p_nota:nota||null,p_obs_limpieza:obs||null});if(q.error)throw q.error;
+   }else if(tipo==='can'){
+    const q=await sb.rpc('cancelar_reserva',{p_reserva_id:r.id,p_motivo:nota});if(q.error){const fb=await cancelarReservaFallbackPMS(r,nota);if(!fb.ok)throw fb.error}
+   }else if(tipo==='ns'){const q=await sb.rpc('marcar_no_show',{p_reserva_id:r.id,p_nota:nota||null});if(q.error)throw q.error}
+   if(tipo!=='out'&&obs){const anterior=String(r.observaciones||'').trim(),nuevo=anterior?anterior+'\n\n[Observación de grupo · '+new Date().toLocaleString('es-CL')+'] '+obs:obs;const q=await sb.from('reservas').update({observaciones:nuevo}).eq('id',r.id);if(q.error)throw q.error}
+   if(tipo!=='out'&&reclamo){const q=await sb.from('reclamos_sugerencias').upsert({reserva_id:r.id,huesped_id:r.huesped_id||null,contenido:reclamo},{onConflict:'reserva_id'});if(q.error)throw q.error}
+   const expected={in:'en_casa',out:'check_out',can:'cancelada',ns:'no_show'}[tipo],v=await sb.from('reservas').select('id,estado').eq('id',r.id).maybeSingle();
+   if(v.error||v.data?.estado!==expected)throw new Error(v.error?.message||'Estado final no coincide: '+(v.data?.estado||'sin registro'));
+   ok.push(r.uid_reserva||r.id);if((tipo==='in'||tipo==='out')&&typeof notificarLimpiezaPush==='function')notificarLimpiezaPush(r.id).catch(()=>{});
+  }catch(e){fallos.push((r.uid_reserva||r.id)+': '+errTxt(e))}
+ }
+ await cargar();await gmCargarGrupos(id);
+ msg('Acción grupal terminada: '+ok.length+' correcta(s), '+fallos.length+' error(es).'+(fallos.length?' '+fallos.slice(0,4).join(' | '):''),fallos.length?1:0);
+}
+async function gmGuardarDatos(id){
+ const nombre=$('#gmNombre')?.value.trim(),canal=$('#gmCanal')?.value||'directo',ref=$('#gmCodigo')?.value.trim()||null;
+ if(!nombre)return msg('El nombre del grupo es obligatorio.',1);if(['booking','airbnb'].includes(canal)&&!ref)return msg('El código externo es obligatorio para este canal.',1);
+ const q=await sb.from('reserva_grupos').update({nombre,estado:$('#gmEstado').value,canal,codigo_externo:ref,observaciones:$('#gmObs').value.trim()||null}).eq('id',id);
+ if(q.error)return msg('No se pudieron guardar los datos: '+errTxt(q.error),1);
+ const ids=GM.miembros.map(x=>x.reserva_id);if(ids.length){const u=await sb.from('reservas').update({canal,referencia_externa:ref}).in('id',ids);if(u.error)return msg('Se guardó el grupo, pero falló la propagación: '+errTxt(u.error),1)}
+ await gmCargarGrupos(id);msg('Datos globales guardados y propagados.');
+}
+async function gmAgregarReserva(id){
+ const rid=$('#gmAddReserva')?.value;if(!rid)return msg('Selecciona una reserva existente.',1);
+ const q=await sb.from('reserva_grupo_miembros').insert({grupo_id:id,reserva_id:rid,orden:GM.miembros.length+1});
+ if(q.error)return msg('No se pudo agregar la reserva. Puede que ya pertenezca a otro grupo: '+errTxt(q.error),1);
+ const g=GM.grupos.find(x=>x.id===id);const prop=await sb.from('reservas').update({canal:g?.canal||'directo',referencia_externa:g?.codigo_externo||null}).eq('id',rid);if(prop.error)return msg('La reserva quedó vinculada, pero no se pudo propagar el canal global: '+errTxt(prop.error),1);
+ await gmCargarGrupos(id);msg('Reserva agregada al grupo.');
+}
+async function gmQuitarReserva(id,rid){
+ if(!confirm('¿Desvincular esta reserva? No se eliminará la reserva ni sus pagos individuales.'))return;
+ const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id).eq('reserva_id',rid);
+ if(q.error)return msg('No se pudo desvincular: '+errTxt(q.error),1);await gmCargarGrupos(id);msg('Reserva desvinculada.');
+}
+async function gmEliminarGrupo(id){
+ if(!confirm('¿Eliminar este grupo? Las reservas individuales se conservarán.'))return;
+ const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id);if(q.error)return msg('No se pudieron desvincular las reservas: '+errTxt(q.error),1);
+ const d=await sb.from('reserva_grupos').delete().eq('id',id);if(d.error)return msg('No se pudo eliminar el grupo: '+errTxt(d.error),1);
+ GM.seleccion=null;await gmCargarGrupos();msg('Grupo eliminado; las reservas se conservaron.');
+}
+function gmPagoMonedaCambio(){const c=$('#gmPagoCambio');if(c)c.disabled=$('#gmPagoMoneda')?.value!=='USD';gmActualizarDistribucion()}
+function gmMontoFmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CL')+' CLP'}
+function gmDistribucionPropuesta(){const moneda=$('#gmPagoMoneda')?.value||'CLP',monto=Number($('#gmPagoMonto')?.value)||0,cambio=Number($('#gmPagoCambio')?.value)||0,total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),rows=GM.miembros,saldos=rows.map(m=>Math.max(0,Number(m.saldo)||0)),totales=rows.map(m=>Math.max(0,Number(m.totalEstadia)||0)),sumaSaldo=saldos.reduce((a,b)=>a+b,0),pesos=sumaSaldo>0&&total<=sumaSaldo?saldos:totales,denom=pesos.reduce((a,b)=>a+b,0);let usado=0;return rows.map((m,i)=>{const v=i===rows.length-1?total-usado:(denom?Math.floor(total*pesos[i]/denom):Math.floor(total/Math.max(1,rows.length)));usado+=v;return {reserva_id:m.reserva_id,monto_clp:Math.max(0,v)}})}
+function gmActualizarDistribucion(){const out=$('#gmPagoResumen');if(!out)return;const propuesta=gmDistribucionPropuesta(),prev=[...document.querySelectorAll('.gmPagoAsignacion')],prevExceptions=[...document.querySelectorAll('.gmPagoExcepcion')].map(x=>({reserva:x.dataset.reserva,motivo:x.querySelector('.gmPagoMotivo')?.value||'estacionamiento',monto:x.querySelector('.gmPagoExcepcionMonto')?.value||''}));out.innerHTML='<div style="border:1px solid var(--bd);border-radius:9px;padding:12px"><b>Distribución por reserva y motivo</b><p class="mu">El importe asignado a cada reserva incluye todos sus motivos. Las excepciones se descuentan de estadía; la suma de todos los conceptos debe coincidir con el pago recibido.</p>'+GM.miembros.map((m,i)=>{const prevVal=prev.find(x=>x.dataset.reserva===m.reserva_id)?.value,asignado=prevVal!==undefined?prevVal:propuesta[i].monto_clp,ex=prevExceptions.filter(x=>x.reserva===m.reserva_id);return '<div style="padding:10px 0;border-bottom:1px solid var(--bd)"><div style="display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:10px;align-items:start"><div><b>'+esc(m.reserva.huesped_nombre_copia||'Huésped')+'</b><div class="mu">Estadía y cargos: '+gmMontoFmt(m.totalEstadia)+' · Pagado: '+gmMontoFmt(m.pagado)+' · Saldo: '+gmMontoFmt(m.saldo)+'</div></div><label>Total asignado (CLP)<input class="gmPagoAsignacion" data-reserva="'+m.reserva_id+'" type="number" min="0" step="1" value="'+esc(asignado)+'" oninput="gmPagoTotales()"></label></div><div class="gmPagoExcepciones" data-reserva="'+m.reserva_id+'" style="margin:8px 0 0 8px">'+ex.map(x=>gmPagoExcepcionHtml(m.reserva_id,x.motivo,x.monto)).join('')+'</div><button type="button" style="margin-top:5px" onclick="gmAgregarMotivoGrupo(\''+m.reserva_id+'\')">＋ Excepción de motivo</button><div class="mu" style="margin-top:4px">El monto restante se registra como estadía.</div></div>'}).join('')+'<div id="gmPagoTotales" style="margin-top:10px"></div></div>';gmPagoTotales()}
+function gmPagoExcepcionHtml(reservaId,motivo='estacionamiento',monto=''){return '<div class="gmPagoExcepcion" data-reserva="'+reservaId+'" style="display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:6px;align-items:end;margin:6px 0"><label>Motivo<select class="gmPagoMotivo" onchange="gmPagoTotales()">'+[['estacionamiento','Estacionamiento'],['horario_extra','Horario extra'],['penalizacion','Penalización'],['consumos','Consumos'],['garantia','Garantía'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+(motivo===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Monto (CLP)<input class="gmPagoExcepcionMonto" type="number" min="1" step="1" value="'+esc(monto)+'" oninput="gmPagoTotales()"></label><button type="button" aria-label="Quitar excepción" onclick="gmEliminarMotivoGrupo(this)">✕</button></div>'}function gmAgregarMotivoGrupo(reservaId){const box=[...document.querySelectorAll('.gmPagoExcepciones')].find(x=>x.dataset.reserva===reservaId);if(!box)return;box.insertAdjacentHTML('beforeend',gmPagoExcepcionHtml(reservaId,'estacionamiento',''));gmPagoTotales()}function gmEliminarMotivoGrupo(btn){btn.closest('.gmPagoExcepcion')?.remove();gmPagoTotales()}function gmPagoTotales(){const out=$('#gmPagoTotales');if(!out)return;const moneda=$('#gmPagoMoneda')?.value||'CLP',total=moneda==='USD'?Math.round((Number($('#gmPagoMonto')?.value)||0)*(Number($('#gmPagoCambio')?.value)||0)):Math.round(Number($('#gmPagoMonto')?.value)||0),asignaciones=[...document.querySelectorAll('.gmPagoAsignacion')],asignado=asignaciones.reduce((a,x)=>a+Math.max(0,Math.round(Number(x.value)||0)),0),delta=total-asignado,errores=[];for(const a of asignaciones){const ex=[...document.querySelectorAll('.gmPagoExcepcion')].filter(x=>x.dataset.reserva===a.dataset.reserva),suma=ex.reduce((n,x)=>n+Math.max(0,Math.round(Number(x.querySelector('.gmPagoExcepcionMonto')?.value)||0)),0);if(suma>Math.max(0,Math.round(Number(a.value)||0)))errores.push('Las excepciones superan el total asignado a una reserva.')}out.innerHTML='Distribuido: <b>'+gmMontoFmt(asignado)+'</b> · Por asignar: <b style="color:'+(delta===0?'#16a34a':'#dc2626')+'">'+gmMontoFmt(delta)+'</b>'+(delta===0?' · Distribución completa':' · Ajusta los importes para cuadrar el pago')+(errores.length?'<div style="color:#dc2626;margin-top:6px">'+errores.map(esc).join('<br>')+'</div>':'')}
+async function gmRegistrarPago(id){if(!GM.miembros.length)return msg('Agrega al menos una reserva antes de registrar un pago.',1);const moneda=$('#gmPagoMoneda').value,monto=Number($('#gmPagoMonto').value)||0,cambio=Number($('#gmPagoCambio').value)||0;if(monto<=0)return msg('El monto debe ser mayor que cero.',1);if(moneda==='USD'&&cambio<=0)return msg('Indica un tipo de cambio válido.',1);const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),asignaciones=[...document.querySelectorAll('.gmPagoAsignacion')],asignado=asignaciones.reduce((a,x)=>a+Math.max(0,Math.round(Number(x.value)||0)),0);if(asignado!==total)return msg('La suma asignada ('+gmMontoFmt(asignado)+') debe coincidir con el pago ('+gmMontoFmt(total)+').',1);const distribucion=[];for(const a of asignaciones){const reserva_id=a.dataset.reserva,bruto=Math.max(0,Math.round(Number(a.value)||0)),ex=[...document.querySelectorAll('.gmPagoExcepcion')].filter(x=>x.dataset.reserva===reserva_id).map(x=>({motivo:x.querySelector('.gmPagoMotivo')?.value||'estacionamiento',monto_clp:Math.round(Number(x.querySelector('.gmPagoExcepcionMonto')?.value)||0)}));if(ex.some(x=>!Number.isFinite(x.monto_clp)||x.monto_clp<=0))return msg('Cada excepción debe tener un monto mayor que cero.',1);const excepciones=ex.reduce((n,x)=>n+x.monto_clp,0);if(excepciones>bruto)return msg('Las excepciones de motivo no pueden superar el total asignado a su reserva.',1);const estadia=bruto-excepciones;if(estadia>0)distribucion.push({reserva_id,monto_clp:estadia,motivo:'estadia'});for(const x of ex)if(x.monto_clp>0)distribucion.push({reserva_id,monto_clp:x.monto_clp,motivo:x.motivo})}if(!distribucion.length)return msg('Asigna el pago a por lo menos una reserva.',1);const detalle=GM.miembros.map(m=>{const conceptos=distribucion.filter(x=>x.reserva_id===m.reserva_id).map(x=>({motivo:x.motivo,monto:x.monto_clp}));return (m.reserva?.huesped_nombre_copia||'Huésped')+': '+conceptos.map(x=>(x.motivo==='estadia'?'Estadía':x.motivo==='estacionamiento'?'Estacionamiento':x.motivo.replace(/_/g,' '))+' '+gmMontoFmt(x.monto)).join(', ')}).filter(x=>!x.endsWith(': ')).join('\\n');if(!confirm('Confirma el pago grupal de '+gmMontoFmt(total)+'.\\n\\n'+detalle+'\\n\\n¿Registrar los pagos individuales con estos motivos?'))return;const q=await sb.rpc('registrar_pago_compartido_grupo',{p_grupo_id:id,p_metodo:$('#gmPagoMetodo').value,p_moneda:moneda,p_monto_original:monto,p_tipo_cambio:moneda==='USD'?cambio:null,p_id_transaccion:$('#gmPagoTx').value.trim()||null,p_referencia:$('#gmPagoRef').value.trim()||null,p_distribucion:distribucion});if(q.error)return msg('No se registró el pago: '+errTxt(q.error)+'. Comprueba la migración v3.1 de SQL.txt.',1);await gmAbrirGrupo(id);msg('Pago compartido registrado con sus motivos y distribución confirmados.')}
+
+/* Exponer explícitamente los handlers usados por onclick en el HTML */
+window.abrirGestionGrupos = abrirGestionGrupos;
+window.gmFiltrarLista = gmFiltrarLista;
+window.gmCrearGrupoVacio = gmCrearGrupoVacio;
+window.gmAbrirGrupo = gmAbrirGrupo;
+window.gmGuardarDatos = gmGuardarDatos;
+window.gmAgregarReserva = gmAgregarReserva;
+window.gmQuitarReserva = gmQuitarReserva;
+window.gmEliminarGrupo = gmEliminarGrupo;
+window.gmPagoMonedaCambio = gmPagoMonedaCambio;
+window.gmActualizarDistribucion = gmActualizarDistribucion;
+window.gmPagoTotales = gmPagoTotales;
+window.gmRegistrarPago = gmRegistrarPago;
+window.gmCalcularCargo = gmCalcularCargo;
+window.gmCargoSeleccionCambio = gmCargoSeleccionCambio;
+window.gmAgregarCargo = gmAgregarCargo;
+window.gmEliminarCargo = gmEliminarCargo;
+window.gmEliminarPagoCompartido = gmEliminarPagoCompartido;
+window.gmCargoUi = gmCargoUi;
+window.bloquearBotonGuardado = bloquearBotonGuardado;
+window.gmPuedeGestionarFinanzas = gmPuedeGestionarFinanzas;
+
+/* ===== Centro de Ayuda / FAQ PMS v3.1 ===== */
+const FAQ_PMS = [
+ {cat:'Primeros pasos',icon:'🧭',items:[
+  ['¿Qué es el PMS y qué puedo gestionar aquí?','Es el sistema de gestión hotelera para administrar reservas, huéspedes, grupos, pagos, cargos adicionales, estacionamiento, limpieza y tareas administrativas. Las opciones visibles dependen de tu rol y de los edificios que tengas autorizados.'],
+  ['¿Qué significan los colores de la planilla?','En las reservas, azul indica confirmada; verde indica huésped en casa; gris indica check-out; naranjo indica tentativa; gris oscuro identifica bloqueos y rojo puede indicar garantía pendiente. En limpieza: verde es limpia, azul es en proceso, rojo es sucia y amarillo es defectuosa. Además, una reserva de huésped que está en casa y mantiene saldo pendiente puede destacarse en amarillo: revisa el saldo en la ficha, porque ese amarillo es una advertencia de pago, no el estado de limpieza.'],
+  ['¿Qué significa que una operación se esté guardando?','El PMS está intentando registrar los cambios. Espera a que termine y no pulses repetidamente el botón. Después, verifica que el cambio aparezca en la ficha; si tarda o falla, comprueba el resultado antes de volver a intentar.'],
+  ['¿Debo recargar la página después de cada operación?','No debería ser necesario en el uso normal. Espera unos segundos y comprueba la vista o vuelve a abrir el registro. Si solo se actualiza después de recargar, informa el problema: puede ser una falla de sincronización visual.']
+ ]},
+ {cat:'Reservas y disponibilidad',icon:'🛏️',items:[
+  ['¿Cómo creo una reserva individual o grupal?','Desde «＋ Reservas» elige «Nueva Reserva» para una estadía individual o «Gestionar Grupos» para crear reservas vinculadas bajo un mismo nombre. En el flujo grupal puedes ingresar datos comunes, añadir unidades y duplicar una reserva para crear otras más rápido. Revisa siempre los datos individuales antes de guardar cada una.'],
+  ['¿Qué debo revisar antes de guardar una reserva?','Confirma nombre y datos del huésped, edificio y unidad, fechas y horas, tarifa, cantidad de personas, canal, estacionamiento y observaciones. Verifica que la unidad esté disponible durante toda la estadía y que el precio corresponda al acuerdo con el huésped.'],
+  ['¿Puedo modificar una reserva después de crearla?','Sí, según tu rol y el estado de la reserva. Abre la ficha, cambia los campos autorizados y pulsa «Guardar Cambios». Luego vuelve a comprobar las fechas, la tarifa y los demás datos importantes.'],
+  ['¿Cómo extiendo una estadía?','Abre la ficha de la reserva y utiliza «Extender estadía» cuando el huésped solicite quedarse más noches. Indica la nueva fecha de salida y revisa la disponibilidad posterior, el importe adicional y si hay otra reserva que ocupe esa unidad. Si la unidad no está disponible para todo el período, no fuerces la extensión: evalúa el botón «Cambiar unidad» o la reacomodación inteligente. Verifica que la nueva fecha haya quedado guardada.'],
+  ['¿Qué significan tentativa, confirmada, en casa y check-out?','«Tentativa» es una reserva aún no confirmada; «confirmada» significa que la estadía está confirmada; «en casa» indica que se registró el check-in y el huésped está alojado; «check-out» indica que la salida fue registrada. La confirmación no significa que la reserva esté pagada por completo.'],
+  ['¿Qué diferencia hay entre cancelar y marcar no-show?','Cancelar registra que la reserva no se realizará. No-show corresponde a cuando el huésped no se presenta según lo previsto y se debe registrar esa ausencia. Usa el estado que refleje lo ocurrido y agrega el motivo cuando corresponda.'],
+  ['¿Puedo borrar una reserva en vez de cancelarla?','No son lo mismo. Cancelar conserva el registro de la operación y es lo habitual cuando la estadía no se realizará. La eliminación puede retirar información y debe reservarse para casos autorizados por Administración o Gerencia.'],
+  ['¿Cómo cambio una reserva de unidad?','Abre la ficha y utiliza el botón «Cambiar unidad» cuando esté disponible. Revisa que la unidad de destino tenga disponibilidad para todo el período. Si no existe una unidad libre que resuelva el caso, utiliza «Reacomodación inteligente» desde la búsqueda de disponibilidad para revisar alternativas y los movimientos que propone. No confirmes un cambio sin comprobar el plan, las unidades afectadas y los permisos del edificio.'],
+  ['¿Qué es la reacomodación inteligente?','Es una alternativa de disponibilidad que propone mover una o más reservas entre unidades para liberar la unidad o el período solicitado. Revisa cada movimiento sugerido, las fechas y los edificios implicados antes de aplicarlo. No significa que el cambio ya esté realizado: verifica el resultado final y deriva a Administración si el edificio está fuera de tus permisos.'],
+  ['¿Puedo ejecutar check-in, check-out, cancelación o no-show para un grupo?','Sí, desde la gestión del grupo puedes seleccionar una acción grupal y aplicarla a las reservas elegibles. Algunas reservas podrían no cumplir las condiciones; revisa el resumen de resultados y comprueba individualmente las que no se procesaron.']
+ ]},
+ {cat:'Huéspedes y acompañantes',icon:'👥',items:[
+  ['¿Qué diferencia hay entre huésped y reserva?','El huésped es la persona; la reserva representa una estadía concreta, con sus propias fechas, unidad, tarifa y estado. Una persona puede tener más de una reserva.'],
+  ['¿Qué hago si dos huéspedes tienen el mismo nombre?','No asumas que son la misma persona. Comprueba documento u otros datos identificadores y busca el registro existente antes de crear uno nuevo, para evitar duplicados.'],
+  ['¿Quién puede editar los datos maestros desde «Huéspedes»?','La edición directa está habilitada para Administración, Gerencia y SysAdmin. Recepción debe utilizar los campos que tenga disponibles en la reserva y puede registrar observaciones desde ella.'],
+  ['¿Cómo agrego acompañantes?','En la ficha de la reserva utiliza la sección «Acompañantes», completa los datos solicitados y marca si corresponde a un menor. Comprueba que las personas queden vinculadas a la reserva correcta y que la cantidad coincida con la estadía.']
+ ]},
+ {cat:'Grupos y reservas múltiples',icon:'🧑‍🤝‍🧑',items:[
+  ['¿Qué es un grupo de reservas?','Permite vincular varias reservas bajo un mismo nombre, por ejemplo, una familia, empresa o delegación. Cada reserva conserva sus propios datos, fechas, unidad, tarifa y estado.'],
+  ['¿Cómo creo un grupo?','Entra a «＋ Reservas» → «Gestionar Grupos» y crea un grupo con el nombre que permita identificarlo fácilmente. Desde el flujo grupal puedes añadir unidades y completar los datos compartidos que correspondan.'],
+  ['¿Cómo agrego una reserva existente a un grupo?','Abre la información de la reserva, pulsa «Agregar a grupo» y selecciona un grupo existente o crea uno nuevo. Después comprueba que la reserva aparezca en la gestión del grupo.'],
+  ['¿Cómo creo varias reservas más rápido?','Dentro del flujo de reservas grupales, crea una reserva y utiliza la opción de duplicarla para añadir otras. Antes de guardar cada copia, revisa huésped, unidad, fechas, tarifa, ocupación y cualquier campo que deba ser distinto.'],
+  ['¿Duplicar una reserva hace que todas tengan el mismo precio?','No necesariamente. Cada reserva mantiene su tarifa individual; duplicar solo acelera la creación y no sustituye la revisión de los datos de cada unidad.'],
+  ['¿Todas las reservas del grupo deben tener las mismas fechas?','No. Puedes tener estadías distintas. Usa «fechas comunes» solo cuando realmente corresponda a todas las reservas y comprueba las fechas individuales antes de guardar.'],
+  ['¿Todas las reservas deben pertenecer a la misma categoría?','No. Un grupo puede incluir unidades y categorías diferentes, con precios distintos. La disponibilidad debe verificarse para cada unidad y período.'],
+  ['¿Qué puedo gestionar desde el grupo?','Puedes revisar las reservas vinculadas, realizar acciones grupales disponibles, administrar pagos y cargos compartidos según tus permisos y guardar observaciones o reclamos. Comprueba siempre qué reservas y movimientos quedan afectados.'],
+  ['¿Cómo registro un pago para todo el grupo?','Cuando un pago cubra varias reservas del mismo grupo, debes registrarlo como «pago grupal» desde la gestión del grupo. No lo dividas artificialmente en varios pagos individuales: registra una sola operación por el importe realmente recibido y verifica su distribución y los saldos resultantes.'],
+  ['¿Pueden tener tarifas diferentes y compartir un pago?','Sí. Mantén las tarifas de cada reserva como corresponden y registra el abono conjunto mediante pago grupal. Después verifica que el importe recibido y los saldos pendientes sean correctos.'],
+  ['¿Qué hago si solo algunas reservas del grupo completaron el check-in?','Revisa el resultado de cada reserva. Las que no cumplan las condiciones deben permanecer en su estado correspondiente; pertenecer al grupo no significa que automáticamente estén alojadas.'],
+  ['¿Puedo registrar observaciones y reclamos para el grupo?','Sí, utiliza los campos de observaciones y reclamos de la gestión grupal para información común. Para una circunstancia que afecte solo a una persona o unidad, registra también la nota en la reserva individual y verifica dónde quedó guardada.']
+ ]},
+ {cat:'Pagos y saldos',icon:'💳',items:[
+  ['¿Cómo registro un pago?','Abre la reserva y utiliza la sección de pagos. Ingresa el importe real, la moneda y el medio de pago que corresponda. Comprueba que el movimiento se haya guardado en la reserva correcta y que el saldo se actualice.'],
+  ['¿Cuál es la diferencia entre precio, pago y saldo?','El precio es lo que se cobra por el alojamiento; el pago es el dinero registrado como recibido; el saldo pendiente es lo que falta por cubrir, considerando los conceptos incluidos en el cálculo. Una reserva confirmada puede tener saldo pendiente.'],
+  ['¿Puedo registrar varios pagos para una reserva?','Sí, si el huésped paga en varios abonos. Cada movimiento debe representar un pago real. No registres el mismo abono dos veces.'],
+  ['¿Cuándo debo utilizar pago grupal?','Siempre que un pago corresponda a varias reservas del mismo grupo, regístralo como pago grupal. Es el procedimiento que se debe seguir de ahora en adelante para mantener correctamente la relación del pago y los saldos.'],
+  ['¿Qué pasa si el pago grupal no cubre todo el importe?','Registra solo el importe realmente recibido. Comprueba el saldo pendiente del grupo y de las reservas involucradas; no registres dinero que no se haya recibido para dejar el saldo en cero.'],
+  ['¿Qué hago si el pago se registró en la reserva equivocada?','Comprueba el movimiento y las dos reservas afectadas. No agregues otro pago para compensarlo. Si tienes permiso, corrige o elimina el movimiento según el procedimiento autorizado y verifica los saldos resultantes.'],
+  ['¿Qué hago si un pago parece duplicado?','Compara fecha, importe, moneda y medio de pago. Si ambos movimientos representan el mismo abono real, solicita o realiza la corrección autorizada. No borres dos pagos solo porque tienen el mismo importe: podrían ser legítimos.'],
+  ['¿Por qué el saldo no cambia después de registrar un pago?','Vuelve a abrir la ficha y comprueba que el movimiento se haya guardado, que esté asociado a la reserva correcta y que la moneda e importe sean correctos. No registres un segundo pago hasta verificar el primero.']
+ ]},
+ {cat:'Cargos adicionales',icon:'🧾',items:[
+  ['¿Qué es un cargo adicional y cómo lo agrego?','Es un importe por un concepto separado del precio base del alojamiento. Abre la reserva, utiliza «Cargos extra», ingresa el concepto y el importe y guarda. Comprueba que el cargo quedó en la reserva correcta.'],
+  ['¿Cómo agrego un cargo para todo un grupo?','Desde la gestión del grupo utiliza la herramienta de cargos grupales. Revisa el concepto, el importe total y cómo se distribuirá antes de guardar.'],
+  ['¿Qué significa calcular un cargo por cantidad de reservas?','El importe se multiplica por el número de reservas que correspondan. Por ejemplo, $5.000 por reserva para cuatro reservas equivale a $20.000. Comprueba si el concepto se cobra por cada reserva o una sola vez por grupo.'],
+  ['¿Qué diferencia hay entre cargo grupal y pago grupal?','Un cargo registra un importe que debe cobrarse; un pago registra dinero recibido. No son intercambiables: uno representa una deuda o concepto por cobrar y el otro un abono real.'],
+  ['¿Por qué no debo incluir cargos extra dentro de la tarifa de alojamiento?','Porque son conceptos distintos. Mantenerlos separados facilita revisar el precio de la estadía, los cargos adicionales y los saldos sin confundir los importes.']
+ ]},
+ {cat:'Estacionamiento',icon:'🚗',items:[
+  ['¿Cómo activo el estacionamiento en una reserva?','En la ficha activa «Usa estacionamiento» y completa los datos del vehículo que solicite el sistema, como modelo y patente. Revisa también las fechas específicas de uso.'],
+  ['¿Por qué me pide modelo y patente?','El sistema necesita identificar el vehículo asociado al estacionamiento. Completa los datos obligatorios antes de guardar y comprueba que correspondan al huésped correcto.'],
+  ['¿El estacionamiento debe tener las mismas fechas que el alojamiento?','No necesariamente. Registra las fechas reales de uso si el estacionamiento empieza antes o termina después de la estadía. Revisa las fechas específicas para no reservar el servicio durante noches innecesarias.'],
+  ['¿Puedo usar estacionamiento solo una parte de la estadía?','Sí, cuando el formulario de fechas específicas lo permite. Activa el servicio y registra el período acordado, sin asumir que debe abarcar toda la estadía.']
+ ]},
+ {cat:'Limpieza y unidades',icon:'🧹',items:[
+  ['¿Dónde consulto el estado de limpieza?','En las vistas de limpieza disponibles para cada edificio, por ejemplo, Limpieza Egaña o Limpieza Huasco, según los permisos y asignaciones de tu usuario.'],
+  ['¿Qué significan los colores de limpieza?','Verde significa limpia; azul, en proceso; rojo, sucia; amarillo, defectuosa. El estado de limpieza es independiente del estado de la reserva.'],
+  ['¿Cómo marco una unidad como sucia o actualizo su limpieza?','Utiliza la acción correspondiente en la vista de limpieza. Para iniciar o terminar el proceso, usa las opciones habilitadas y verifica que la unidad correcta cambie de estado.'],
+  ['¿Qué hago si el estado de limpieza no se actualiza?','Espera unos segundos y comprueba de nuevo. Si el cambio solo aparece al recargar la página, informa qué unidad y qué acción utilizaste, porque podría ser un problema de actualización en tiempo real.'],
+  ['¿Puedo dejar instrucciones para limpieza desde una reserva?','Sí, cuando esté disponible el campo de observaciones de limpieza. Escribe instrucciones concretas y pertinentes para preparar o revisar la unidad.']
+ ]},
+ {cat:'Buzón, seguridad y soporte',icon:'🛟',items:[
+  ['¿Para qué sirve el Buzón?','Permite la comunicación interna en los chats habilitados para equipos y áreas. Úsalo para coordinar tareas, comunicar pendientes y transmitir información operativa a quienes corresponda.'],
+  ['¿Qué información conviene enviar por el Buzón?','Mensajes operativos claros, avisos para limpieza y coordinación entre turnos. Evita compartir contraseñas o datos personales innecesarios y comprueba que el chat sea el adecuado.'],
+  ['¿Qué hago si no se guarda un cambio o aparece un error?','No repitas inmediatamente la operación. Vuelve a abrir el registro y comprueba qué se guardó. Si persiste, anota la sección, los pasos realizados y el mensaje exacto, y comunícalo a soporte.'],
+  ['¿Qué información debo incluir al informar un error?','Indica la sección, la acción que realizaste, el resultado esperado y el obtenido, el mensaje de error exacto y la reserva, grupo o unidad afectada. No envíes contraseñas ni datos personales innecesarios.'],
+  ['¿Puedo usar la cuenta de otro trabajador?','No. Cada persona debe utilizar su propia cuenta para mantener los permisos y la trazabilidad de las operaciones. Si necesitas acceso adicional, solicita que te asignen el permiso correspondiente.'],
+  ['¿Debo registrar un pago antes de recibir el dinero?','No. Registra únicamente pagos reales recibidos o confirmados conforme al procedimiento del establecimiento. No registres pagos ficticios para que una reserva aparezca como pagada.'],
+  ['¿Qué debo dejar listo al terminar mi turno?','Registra las operaciones realizadas y deja observaciones claras sobre pendientes para el siguiente turno. Revisa llegadas y salidas pendientes, pagos sin verificar, reclamos abiertos y unidades que requieren atención.'],
+  ['¿Cómo debo redactar las observaciones?','Describe hechos concretos y útiles para el equipo, con lenguaje respetuoso. Evita opiniones personales, comentarios ofensivos o información que no sea necesaria para gestionar la reserva.']
+ ]},
+ {cat:'Casos prácticos y reglas fundamentales',icon:'✅',items:[
+  ['Una empresa paga una sola transferencia para tres reservas. ¿Cómo se registra?','Vincula las reservas al mismo grupo y registra la transferencia como un único pago grupal desde la gestión del grupo. Comprueba el importe, su distribución y los saldos pendientes; no crees tres pagos individuales duplicando el mismo ingreso.'],
+  ['Dos reservas cuestan $180.000 y $160.000, pero el grupo paga $200.000. ¿Qué hago?','Mantén las tarifas originales de $180.000 y $160.000 y registra el pago grupal real de $200.000. Verifica la distribución y los saldos que quedan pendientes; no marques el grupo como completamente pagado si aún debe dinero.'],
+  ['El grupo tiene cinco reservas, pero solo tres huéspedes llegaron. ¿Puedo hacer check-in grupal?','Puedes iniciar la acción grupal, pero revisa el resultado de cada reserva. Solo las reservas que efectivamente hayan completado el check-in deben quedar como «en casa».'],
+  ['El huésped pagó el alojamiento, pero mantiene un cargo extra pendiente. ¿Está todo pagado?','No necesariamente. Comprueba por separado el precio del alojamiento, los cargos extra y los pagos registrados. El saldo final depende de todos los conceptos pendientes.'],
+  ['¿Qué hago si la unidad está ocupada y necesito extender otra reserva?','Comprueba la disponibilidad para las nuevas fechas. Utiliza «Extender estadía» si la unidad sigue disponible; si existe un conflicto, evalúa «Cambiar unidad» y la reacomodación inteligente, revisando cada movimiento antes de confirmarlo.'],
+  ['¿Qué reglas fundamentales debo recordar?','1) Verifica antes de guardar huéspedes, fechas, unidades, tarifas y pagos. 2) Registra como pago grupal todo pago que cubra varias reservas del mismo grupo. 3) No confundas cargos con pagos. 4) Las tarifas individuales se mantienen. 5) Comprueba el resultado de las acciones grupales. 6) No repitas operaciones por impaciencia: verifica primero si ya se guardaron. 7) Respeta los permisos y conserva la trazabilidad. 8) Ante una discrepancia, detén los cambios que puedan agravarla y solicita revisión con los detalles del caso.']
+ ]}
+];
+function faqEscape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function faqFormatAnswer(txt){
+ const safe=faqEscape(txt);
+ return safe.split('\n').map(line=>line.trim()).filter(Boolean).map(line=>'<p>'+line+'</p>').join('');
+}
+var FAQ_PMS_STATE = { category: 'Todos', query: '' };
+
+function abrirFAQ() {
+  var host = document.getElementById('mo');
+  if (!host) return;
+  FAQ_PMS_STATE = { category: 'Todos', query: '' };
+  host.innerHTML = '<section class="faq-shell" role="dialog" aria-modal="true" aria-label="Ayuda y soporte">' +
+    '<header class="faq-head"><div><h2>❔ Ayuda y soporte</h2><p>Guía práctica del PMS: reservas, huéspedes, grupos, pagos, limpieza y solución de dudas.</p></div>' +
+    '<button class="faq-close" id="faqClose" type="button" aria-label="Cerrar ayuda">✕</button></header>' +
+    '<div class="faq-tools"><div class="faq-search-wrap"><span class="faq-search-icon">⌕</span>' +
+    '<input id="faqSearch" type="search" placeholder="Buscar por palabra, función o problema…" autocomplete="off" aria-label="Buscar en preguntas frecuentes"></div>' +
+    '<span class="faq-count" id="faqCount" aria-live="polite"></span></div>' +
+    '<div class="faq-layout"><nav class="faq-index" id="faqIndex" aria-label="Índice de contenidos"></nav>' +
+    '<main class="faq-content" id="faqContent" tabindex="0"></main></div>' +
+    '<footer class="faq-footer"><p><b>¿Necesitas más ayuda?</b><br>Contacta al equipo de soporte e indica qué estabas haciendo y qué mensaje apareció.</p>' +
+    '<a class="faq-contact" href="tel:+56945832337"><span>📞</span><span><small>CONSULTAS Y SOPORTE</small>+56 9 4583 2337</span></a></footer></section>';
+  host.style.display = 'grid';
+  var close = document.getElementById('faqClose');
+  var search = document.getElementById('faqSearch');
+  var nav = document.getElementById('faqIndex');
+  if (close) close.addEventListener('click', cerrarFAQ);
+  if (search) search.addEventListener('input', function () { faqRender(); });
+  if (nav) nav.addEventListener('click', function (event) {
+    var button = event.target.closest('button[data-category]');
+    if (!button || !nav.contains(button)) return;
+    faqSeleccionarCategoria(button.getAttribute('data-category'));
+  });
+  faqRender();
+  if (search) search.focus();
+}
+function cerrarFAQ() {
+  var host = document.getElementById('mo');
+  if (host) { host.style.display = 'none'; host.innerHTML = ''; }
+}
+function faqSeleccionarCategoria(cat) {
+  FAQ_PMS_STATE.category = String(cat || 'Todos');
+  faqRender();
+  var content = document.getElementById('faqContent');
+  if (content) content.scrollTop = 0;
+}
+function faqRender() {
+  var nav = document.getElementById('faqIndex');
+  var content = document.getElementById('faqContent');
+  var search = document.getElementById('faqSearch');
+  var count = document.getElementById('faqCount');
+  if (!nav || !content) return;
+
+  var q = String(search ? search.value : FAQ_PMS_STATE.query || '').trim().toLocaleLowerCase('es');
+  FAQ_PMS_STATE.query = q;
+  var total = FAQ_PMS.reduce(function (n, c) { return n + c.items.length; }, 0);
+  var categories = [['Todos', '☷', total]].concat(FAQ_PMS.map(function (c) {
+    return [c.cat, c.icon, c.items.length];
+  }));
+  nav.innerHTML = '<div class="faq-index-title">Índice de contenidos</div>' + categories.map(function (item) {
+    var cat = item[0], icon = item[1], n = item[2];
+    return '<button type="button" data-category="' + faqEscape(cat) + '" class="' +
+      (FAQ_PMS_STATE.category === cat ? 'active' : '') + '" aria-pressed="' +
+      (FAQ_PMS_STATE.category === cat ? 'true' : 'false') + '">' +
+      '<span class="faq-nav-num">' + n + '</span><span>' + icon + ' ' + faqEscape(cat) + '</span></button>';
+  }).join('');
+
+  var visible = FAQ_PMS.map(function (c, ci) {
+    var items = c.items.map(function (it, ii) { return { q: it[0], a: it[1], ii: ii }; }).filter(function (it) {
+      var matchesCategory = FAQ_PMS_STATE.category === 'Todos' || FAQ_PMS_STATE.category === c.cat;
+      var haystack = (c.cat + ' ' + it.q + ' ' + it.a).toLocaleLowerCase('es');
+      return matchesCategory && (!q || haystack.indexOf(q) !== -1);
+    });
+    return { cat: c.cat, icon: c.icon, ci: ci, items: items };
+  }).filter(function (c) { return c.items.length > 0; });
+
+  var found = visible.reduce(function (n, c) { return n + c.items.length; }, 0);
+  if (count) count.textContent = found + ' de ' + total + ' preguntas';
+  var welcome = '<div class="faq-welcome"><span class="faq-welcome-icon">💡</span><div>' +
+    '<strong>Encuentra una respuesta rápidamente</strong><p>Selecciona una categoría en el índice o busca una palabra. Abre una pregunta para consultar la respuesta.</p></div></div>';
+  var empty = '<div class="faq-empty"><div style="font-size:30px;margin-bottom:8px">🔎</div>' +
+    '<b>No encontramos coincidencias</b><p>Prueba otro término o selecciona «Todos» en el índice.</p></div>';
+  var sections = visible.map(function (c) {
+    var questions = c.items.map(function (it) {
+      return '<details class="faq-item"><summary><span class="faq-qnum">' + (it.ii + 1) +
+        '</span><span>' + faqEscape(it.q) + '</span></summary><div class="faq-answer">' +
+        faqFormatAnswer(it.a) + '</div></details>';
+    }).join('');
+    return '<section class="faq-category" id="faq-cat-' + c.ci + '"><h3><span>' + c.icon +
+      '</span>' + faqEscape(c.cat) + '</h3>' + questions + '</section>';
+  }).join('');
+  content.innerHTML = welcome + (found ? sections : empty);
+}
+window.abrirFAQ = abrirFAQ;
+window.cerrarFAQ = cerrarFAQ;
+window.faqRender = faqRender;
+window.faqSeleccionarCategoria = faqSeleccionarCategoria;
+/* ===== Fin Centro de Ayuda ===== */
+
+</script></body></html>+Number(c.monto_clp||0).toLocaleString('es-CL')).join(' · ')||'Sin desglose disponible')+'</div>'+(gmPuedeGestionarFinanzas()?'<button class="r" data-pago="'+p.id+'" data-grupo="'+GM.seleccion+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarPagoCompartido(this.dataset.grupo,this.dataset.pago))">🗑 Eliminar pago</button>':'')+'</div>').join('')||'<p class="mu">Todavía no hay pagos compartidos.</p>';
  out.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0">'+esc(g.nombre||'Reserva grupal')+'</h3><span class="mu">'+GM.miembros.length+' reserva(s) · '+esc(g.estado||'activo')+'</span></div><button class="r" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarGrupo(this.dataset.id))">Eliminar grupo</button></div>'+
  '<div class="sec c3" style="margin-top:12px"><h4 class="st">Datos globales del grupo</h4><div class="g2"><label>Nombre<input id="gmNombre" value="'+esc(g.nombre||'')+'"></label><label>Estado<select id="gmEstado">'+[['activo','Activo'],['cerrado','Cerrado'],['cancelado','Cancelado']].map(x=>'<option value="'+x[0]+'" '+((g.estado||'activo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Canal global<select id="gmCanal">'+[['directo','Directo'],['booking','Booking.com'],['expedia','Expedia'],['airbnb','Airbnb'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+((g.canal||'directo')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Código externo global<input id="gmCodigo" value="'+esc(g.codigo_externo||'')+'" placeholder="Compartido por todas las reservas"></label></div><label>Observaciones del grupo<textarea id="gmObs" rows="2">'+esc(g.observaciones||'')+'</textarea></label><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmGuardarDatos(this.dataset.id))">Guardar datos globales</button></div><p class="mu">El canal y código se propagan a todas las reservas vinculadas.</p></div>'+
  '<div class="sec c3"><h4 class="st">Reservas del grupo</h4><div style="overflow:auto"><table class="gm-members"><thead><tr><th>Unidad</th><th>Huésped</th><th>Estadía / estado</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:8px;margin-top:10px;align-items:center"><select id="gmAddReserva" style="flex:1;min-width:0"><option value="">Seleccionar reserva existente</option>'+opts+'</select><button data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmAgregarReserva(this.dataset.id))">＋ Agregar</button></div></div>'+
