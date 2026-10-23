@@ -513,7 +513,7 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><div id="mobileHeaderTools"><button type="button" onclick="mover(-7)" aria-label="Semana anterior">‹</button><button type="button" onclick="mover(0)">Hoy</button><input id="mobileDate" type="date" aria-label="Fecha inicial de la vista móvil" onchange="mobileIrFecha(this.value)"><button type="button" class="mobile-menu-trigger" onclick="toggleMobileMenu()" aria-label="Abrir todos los menús">☰</button></div><button id="btnMoverAtras" onclick="mover(-15)">◀</button><button onclick="mover(0)">Hoy</button><button onclick="mover(15)">▶</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirGestionGrupos()">👥 Gestionar Grupos</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">✓ Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">🔍 Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">🏨 In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">🏨 Catálogo</button><button onclick="cerrarMenus();abrirEst()">🅿 Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">🏠 Hospedados</button><button onclick="cerrarMenus();abrirHuespedes()">👥 Huéspedes</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">⚙ Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAdmin()">⚙ Panel Administrativo</button><button onclick="cerrarMenus();abrirReclamos()">💬 Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">📊 Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">👤 Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">👤 Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">🔑 Restablecer contraseña</button></div></div><button onclick="tema()">🌓</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v2.9.6</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v2.9.7</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón">🔔<span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div><nav id="mobileBottomNav" aria-label="Navegación móvil"><button type="button" onclick="mobileIrInicio()"><span>▦</span><span>Grid</span></button><button type="button" onclick="mobileNuevaReserva()"><span>＋</span><span>Reserva</span></button><button type="button" onclick="mobileBuscar()"><span>⌕</span><span>Buscar</span></button><button type="button" onclick="toggleMobileMenu()"><span>☰</span><span>Menú</span></button></nav><div id="mobileMenuSheet" onclick="if(event.target===this)toggleMobileMenu(false)" aria-hidden="true"><section class="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label="Menú principal"><div class="mobile-sheet-grabber"></div><div class="mobile-sheet-head"><div><h3>MMassisT PMS</h3><div id="mobileMenuUser" class="mu"></div></div><button type="button" onclick="toggleMobileMenu(false)" aria-label="Cerrar menú">✕</button></div><div id="mobileMenuContent"></div></section></div>
 <script>
@@ -1933,14 +1933,16 @@ async function abrirDr(id){
  const {data:pmRows,error:pmError}=pagoIds.length?await sb.from('pagos_motivos').select('*').in('pago_id',pagoIds):{data:[],error:null};
  if(pmError)msg('No se pudieron cargar los motivos de los pagos: '+errTxt(pmError),1);
  let grupoHtml='';
- const {data:gm}=await sb.from('reserva_grupo_miembros').select('grupo_id,orden').eq('reserva_id',id).maybeSingle();
- if(gm){
-  const [gr,mi]=await Promise.all([sb.from('reserva_grupos').select('nombre,estado').eq('id',gm.grupo_id).maybeSingle(),sb.from('reserva_grupo_miembros').select('reserva_id,orden').eq('grupo_id',gm.grupo_id).order('orden')]);
-  const ids=(mi.data||[]).map(x=>x.reserva_id);
-  const {data:rrg}=ids.length?await sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,huesped_nombre_copia').in('id',ids):{data:[]};
-  grupoHtml='<div class="sec c3" style="margin:8px 0"><b>▦ Grupo: '+esc(gr.data?.nombre||'Reserva grupal')+'</b> · '+(mi.data||[]).length+' reservas vinculadas'+(gr.data?.estado?' · '+esc(gr.data.estado):'')+'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">'+(rrg||[]).map(x=>{const uu=S.unidades.find(z=>z.id===x.unidad_id);return '<button '+(x.id===id?'disabled':'')+' onclick="abrirDr(\''+x.id+'\')">'+esc(uu?.edificios?.nombre||'Edificio')+' · '+esc(uu?.codigo||'Unidad')+' · '+esc(x.huesped_nombre_copia||'Huésped')+' · '+esc(x.fecha_entrada)+' → '+esc(x.fecha_salida)+'</button>'}).join('')+'</div></div>';
- }
- const G=g.data||{},sa=s.data||{},pmL=pmRows||[],parkDates=fechasParkingReserva(r,pd.data||[]);r._parkingDates=parkDates.slice();const dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
+  const {data:gm}=await sb.from('reserva_grupo_miembros').select('grupo_id,orden').eq('reserva_id',id).maybeSingle();
+  if(gm){
+   const [gr,mi]=await Promise.all([sb.from('reserva_grupos').select('nombre,estado').eq('id',gm.grupo_id).maybeSingle(),sb.from('reserva_grupo_miembros').select('reserva_id,orden').eq('grupo_id',gm.grupo_id).order('orden')]);
+   const ids=(mi.data||[]).map(x=>x.reserva_id);
+   const {data:rrg}=ids.length?await sb.from('reservas').select('id,uid_reserva,unidad_id,fecha_entrada,fecha_salida,huesped_nombre_copia').in('id',ids):{data:[]};
+   grupoHtml='<div class="sec c3" style="margin:8px 0"><div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>▦ Grupo: '+esc(gr.data?.nombre||'Reserva grupal')+'</b> · '+(mi.data||[]).length+' reservas vinculadas'+(gr.data?.estado?' · '+esc(gr.data.estado):'')+'</div><button class="p" type="button" onclick="abrirGestionGrupoDesdeReserva(\''+gm.grupo_id+'\')">↗ Revisar grupo</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">'+(rrg||[]).map(x=>{const uu=S.unidades.find(z=>z.id===x.unidad_id);return '<button '+(x.id===id?'disabled':'')+' onclick="abrirDr(\''+x.id+'\')">'+esc(uu?.edificios?.nombre||'Edificio')+' · '+esc(uu?.codigo||'Unidad')+' · '+esc(x.huesped_nombre_copia||'Huésped')+' · '+esc(x.fecha_entrada)+' → '+esc(x.fecha_salida)+'</button>'}).join('')+'</div></div>';
+  }else{
+   grupoHtml='<div class="sec c3" style="margin:8px 0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><b>▦ Esta reserva no pertenece a un grupo</b><div class="mu" style="margin-top:3px">Puedes vincularla a un grupo activo o crear uno nuevo.</div></div><button class="p" type="button" onclick="abrirAgregarReservaGrupo()">＋ Agregar a grupo</button></div>';
+  }
+  const G=g.data||{},sa=s.data||{},pmL=pmRows||[],parkDates=fechasParkingReserva(r,pd.data||[]);r._parkingDates=parkDates.slice();const dead=['cancelada','no_show'].includes(r.estado),cgs=c.data||[],esCar=x=>['cancelacion','no_show'].includes(x.tipo),cargoCan=cgs.filter(esCar).reduce((a,x)=>a+(+x.total||0),0),totOrig=(r.noches||0)*(r.tarifa_noche||0)+cgs.filter(x=>!esCar(x)).reduce((a,x)=>a+(+x.total||0),0),pagado=dead?(p.data||[]).reduce((a,x)=>a+(+x.monto_clp||0),0):(sa.total_pagado||0),total=dead?totOrig:(sa.total_a_pagar||0),pend=dead?Math.max(0,cargoCan-pagado):Math.max(0,total-pagado);
  const faltaCargoParking=!!r.usa_estacionamiento&&!cgs.some(x=>x.tipo==='estacionamiento');
   const nsOK=r.fecha_entrada<=hoyStr(),B=({confirmada:[['in','Check-in','p'],['ns','No-show',''],['can','Cancelar','r']],tentativa:[['conf','Confirmar','p'],['ns','No-show',''],['can','Cancelar','r']],en_casa:[['out','Check-out','p']]}[r.estado]||[]).filter(b=>b[0]!=='ns'||nsOK),
  gv=gq.data,aviso=antec(hq.data||[]),
@@ -4224,12 +4226,60 @@ function gmPuedeGestionarFinanzas(){return typeof esAdminPlus==='function'&&esAd
 
 /* ---------- Gestión centralizada de grupos ---------- */
 let GM={grupos:[],seleccion:null,miembros:[],pagos:[]};
-async function abrirGestionGrupos(){
+async function abrirGestionGrupos(seleccionInicial=null){
  GM={grupos:[],seleccion:null,miembros:[],pagos:[]};
  $('#mo').innerHTML='<div id="grupoManager"><header class="gm-head"><div><h3 style="margin:0">👥 Gestionar Grupos</h3><p class="mu" style="margin:4px 0 0">Administra grupos, reservas vinculadas, canal global y pagos compartidos.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="p" onclick="cerrar();abrirReservaMultiple()">＋ Crear reserva grupal</button><button onclick="cerrar()">✕ Cerrar</button></div></header><div class="gm-body"><aside><input id="gmSearch" placeholder="Buscar grupos…" style="width:100%;box-sizing:border-box;margin-bottom:8px" oninput="gmDibujarLista()"><div id="gmList" class="gm-list">Cargando grupos…</div><button style="width:100%;margin-top:8px" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmCrearGrupoVacio())">＋ Crear grupo vacío</button></aside><section id="gmDetail" class="gm-detail"><div class="al">Selecciona un grupo.</div></section></div><footer class="gm-footer"><span id="gmStatus" class="mu">Las reservas individuales no se eliminan al quitar un grupo.</span><button onclick="cerrar()">Cerrar</button></footer></div>';
- $('#mo').style.display='grid';await gmCargarGrupos();
+ $('#mo').style.display='grid';await gmCargarGrupos(seleccionInicial);
 }
 window.abrirGestionGrupos=abrirGestionGrupos;
+
+async function abrirGestionGrupoDesdeReserva(grupoId){await abrirGestionGrupos(grupoId)}
+let AGRES={reservaId:null,grupos:[]};
+async function abrirAgregarReservaGrupo(){
+ const r=S.cur;if(!r?.id)return msg('No se encontró la reserva que quieres agregar.',1);
+ AGRES={reservaId:r.id,grupos:[]};
+ $('#mo').innerHTML='<div style="width:min(860px,95vw);max-height:90vh;overflow:auto;background:var(--pn);border:1px solid var(--bd);border-radius:16px;padding:20px;box-sizing:border-box"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div><h3 style="margin:0">＋ Agregar reserva a grupo</h3><p class="mu" style="margin:5px 0 0">Selecciona un grupo activo o crea uno nuevo para esta reserva.</p></div><button type="button" onclick="cerrar()">✕ Cerrar</button></div><div id="agGrupoLista" style="display:grid;gap:8px;margin-top:16px"><div class="al">Cargando grupos activos…</div></div><div style="border-top:1px solid var(--bd);margin-top:18px;padding-top:16px"><h4 style="margin:0 0 10px">Crear nuevo grupo</h4><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="agGrupoNuevoNombre" placeholder="Nombre del grupo" maxlength="120" style="flex:1;min-width:220px"><button class="p" type="button" onclick="bloquearBotonGuardado(this,&#39;Creando...&#39;,()=>crearGrupoDesdeReserva())">＋ Crear y agregar reserva</button></div></div></div>';
+ $('#mo').style.display='grid';
+ const q=await sb.from('reserva_grupos').select('id,nombre,estado,canal,codigo_externo,creado_en').eq('estado','activo').order('creado_en',{ascending:false}).limit(300);
+ if(q.error){$('#agGrupoLista').innerHTML='<div class="al r">No se pudieron cargar los grupos activos: '+esc(errTxt(q.error))+'</div>';return}
+ AGRES.grupos=q.data||[];
+ const list=$('#agGrupoLista');
+ if(!AGRES.grupos.length){list.innerHTML='<div class="al">No hay grupos activos todavía. Puedes crear uno nuevo en esta misma pantalla.</div>';return}
+ list.innerHTML=AGRES.grupos.map(g=>'<button type="button" class="gm-item" style="text-align:left;padding:14px" data-id="'+esc(g.id)+'" onclick="bloquearBotonGuardado(this,&#39;Agregando...&#39;,()=>agregarReservaAGrupoSeleccionado(this.dataset.id))"><b>'+esc(g.nombre||'Reserva grupal')+'</b><div class="mu" style="margin-top:4px">Estado: '+esc(g.estado||'activo')+' · Canal: '+esc(g.canal||'directo')+'</div><div class="mu">'+esc(g.codigo_externo||'Sin código externo')+'</div></button>').join('');
+}
+async function agregarReservaAGrupoSeleccionado(grupoId){
+ const rid=AGRES.reservaId;if(!rid)return msg('Se perdió la referencia de la reserva. Cierra esta ventana y vuelve a intentarlo.',1);
+ const [g,actual]=await Promise.all([sb.from('reserva_grupos').select('id,nombre,estado,canal,codigo_externo').eq('id',grupoId).maybeSingle(),sb.from('reserva_grupo_miembros').select('grupo_id').eq('reserva_id',rid).maybeSingle()]);
+ if(g.error||!g.data)return msg('No se pudo verificar el grupo seleccionado: '+errTxt(g.error||'Grupo no encontrado'),1);
+ if(String(g.data.estado||'').toLowerCase()!=='activo')return msg('Este grupo ya no está activo. Actualiza la lista y selecciona otro.',1);
+ if(actual.error)return msg('No se pudo verificar si la reserva ya pertenece a un grupo: '+errTxt(actual.error),1);
+ if(actual.data)return msg('Esta reserva ya pertenece a un grupo. Abre la gestión del grupo actual para revisarla.',1);
+ const members=await sb.from('reserva_grupo_miembros').select('orden').eq('grupo_id',grupoId).order('orden',{ascending:false}).limit(1);
+ if(members.error)return msg('No se pudo consultar el orden de las reservas: '+errTxt(members.error),1);
+ const ins=await sb.from('reserva_grupo_miembros').insert({grupo_id:grupoId,reserva_id:rid,orden:(members.data?.[0]?.orden||0)+1});
+ if(ins.error)return msg('No se pudo agregar la reserva al grupo: '+errTxt(ins.error),1);
+ const upd=await sb.from('reservas').update({canal:g.data.canal||'directo',referencia_externa:g.data.codigo_externo||null}).eq('id',rid);
+ $('#mo').style.display='none';await abrirDr(rid);
+ if(upd.error)msg('La reserva se agregó al grupo, pero no se pudo sincronizar el canal/código externo: '+errTxt(upd.error),1);
+ else msg('Reserva agregada al grupo «'+(g.data.nombre||'Reserva grupal')+'».');
+}
+async function crearGrupoDesdeReserva(){
+ const rid=AGRES.reservaId,nombre=$('#agGrupoNuevoNombre')?.value?.trim();
+ if(!rid)return msg('Se perdió la referencia de la reserva.',1);
+ if(!nombre)return msg('Escribe un nombre para el nuevo grupo.',1);
+ const exists=await sb.from('reserva_grupo_miembros').select('grupo_id').eq('reserva_id',rid).maybeSingle();
+ if(exists.error)return msg('No se pudo comprobar la reserva: '+errTxt(exists.error),1);
+ if(exists.data)return msg('Esta reserva ya pertenece a un grupo.',1);
+ const g=await sb.from('reserva_grupos').insert({nombre,estado:'activo',canal:'directo'}).select('id,nombre,estado,canal,codigo_externo').single();
+ if(g.error)return msg('No se pudo crear el grupo: '+errTxt(g.error),1);
+ const m=await sb.from('reserva_grupo_miembros').insert({grupo_id:g.data.id,reserva_id:rid,orden:1});
+ if(m.error){await sb.from('reserva_grupos').delete().eq('id',g.data.id);return msg('No se pudo vincular la reserva al grupo; se intentó revertir la creación: '+errTxt(m.error),1)}
+ const upd=await sb.from('reservas').update({canal:g.data.canal||'directo',referencia_externa:g.data.codigo_externo||null}).eq('id',rid);
+ $('#mo').style.display='none';await abrirDr(rid);
+ if(upd.error)msg('Grupo creado y reserva vinculada, pero falló la sincronización del canal: '+errTxt(upd.error),1);
+ else msg('Grupo creado y reserva agregada correctamente.');
+}
+
 async function gmCargarGrupos(sel){
  const q=await sb.from('reserva_grupos').select('id,nombre,estado,observaciones,creado_en,canal,codigo_externo').order('creado_en',{ascending:false}).limit(300);
  if(q.error){if($('#gmList'))$('#gmList').innerHTML='<div class="al r">No se pudieron cargar los grupos: '+esc(errTxt(q.error))+'<br>Si menciona canal o codigo_externo, ejecuta la migración incluida en SQL.txt.</div>';return}
