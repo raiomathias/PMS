@@ -1917,9 +1917,9 @@ let bt;function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
  const {data:hs}=N.c.length?await sb.from('reservas').select('huesped_id,estado').in('huesped_id',N.c.map(x=>x.id)).in('estado',['cancelada','no_show']):{data:[]};
  $('#nl').innerHTML=N.c.map(g=>{const s=(rs||[]).find(x=>x.huesped_id===g.id)||{},hc=(hs||[]).filter(x=>x.huesped_id===g.id),nc=hc.filter(x=>x.estado==='cancelada').length,nn=hc.length-nc;return`<div class="cand" data-h="${g.id}" onclick="elegirH('${g.id}')"><b>${esc(g.nombre_completo)}</b> <span class="mu">${esc(g.uid_huesped)}</span><br><span class="mu">${esc(g.ciudad_origen||'sin ciudad')} · ${esc(g.telefono||'sin teléfono')} · doc …${esc((g.numero_documento||'').slice(-4)||'—')} · ${s.estadias||0} estadías, ${nc} cancel., ${nn} no-show</span>${nc||nn?' <span class="tg">⚠ antecedentes</span>':''}</div>`}).join('')+`<div class="cand" onclick="nuevoH()">＋ Es otra persona: crear huésped nuevo</div>`},300)}
 function llenarH(g){$('#hn').value=g.nombre_completo||'';$('#hd').value=g.tipo_documento||'rut';$('#hx').value=g.numero_documento||'';$('#ht').value=g.telefono||'';$('#hna').value=g.nacionalidad||'';$('#hc').value=g.ciudad_origen||''}
-function nuevoH(){N.h=null;N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));llenarH({});$('#hn').value=$('#nq').value}
+function nuevoH(){N.h=null;N.modoHuesped='nuevo';N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));llenarH({});$('#hn').value=$('#nq').value}
 async function elegirH(id){
- N.h=id;document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
+ N.modoHuesped='existente';N.h=id;document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
  const g=N.c.find(x=>x.id===id);$('#nf').style.display='block';llenarH(g);
  const [n,l,hh]=await Promise.all([sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),sb.rpc('revisar_lista_negra',{p_documento:g.numero_documento,p_nombre:g.nombre_completo}),sb.from('reservas').select('estado').eq('huesped_id',id).in('estado',['cancelada','no_show'])]);
  N.lista=!!l.data?.length;
