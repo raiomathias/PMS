@@ -38,17 +38,17 @@ header b{margin-right:auto}
 #mo.individual-reservation>.ir-modal{width:1050px;max-width:90vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;padding:0;box-sizing:border-box;background:var(--pn);border-radius:14px}
 #mo .ir-header{position:sticky;top:0;z-index:50;flex:none;background:var(--pn);border-bottom:1px solid var(--bd);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 #mo .ir-body{display:flex;gap:24px;padding:24px;overflow:hidden;flex:1;min-height:0}
-#mo .ir-guest{flex:0 0 40%;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+#mo .ir-guest{flex:0 0 calc(40% - 12px);min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:8px}
 #mo .ir-booking{flex:1 1 60%;min-width:0;overflow-y:auto;overflow-x:hidden;padding-right:8px;overscroll-behavior:contain}
 #mo .ir-footer{position:sticky;bottom:0;z-index:50;flex:none;background:var(--pn);border-top:1px solid var(--bd);padding:16px 24px;display:flex;justify-content:flex-end;gap:12px}
 #mo .ir-results{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;min-height:0}
 #mo .ir-results .cand{width:100%;text-align:left;background:var(--pn);color:var(--tx);cursor:pointer;box-sizing:border-box}
 #mo .ir-results .cand.sel{border-color:#2563eb;background:#dbeafe;color:#1e3a8a}
 #mo .ir-guest input,#mo .ir-guest select{width:100%;box-sizing:border-box}
-#mo .ir-guest .g2{grid-template-columns:1fr;gap:6px}
+#mo .ir-guest .g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
 #mo .ir-summary{border:1px solid var(--bd);border-radius:8px;padding:9px;font-size:12px;display:grid;gap:4px}
 #mo .ir-readonly{opacity:.82;background:var(--bg)!important}
-@media(max-width:760px){#mo.individual-reservation>.ir-modal{width:100%;max-width:100%;max-height:94dvh}#mo .ir-body{flex-direction:column;gap:12px;padding:12px;overflow:hidden}#mo .ir-guest{flex:0 0 auto;max-height:42%;overflow:hidden}#mo .ir-booking{flex:1 1 auto;min-height:0}#mo .ir-header,#mo .ir-footer{padding:12px}}
+@media(max-width:760px){#mo.individual-reservation>.ir-modal{width:100%;max-width:100%;max-height:94dvh}#mo .ir-body{flex-direction:column;gap:12px;padding:12px;overflow-y:auto;overflow-x:hidden}#mo .ir-guest{flex:0 0 auto;max-height:none;overflow:visible}#mo .ir-booking{flex:0 0 auto;min-height:0;overflow:visible}#mo .ir-header,#mo .ir-footer{padding:12px}#mo .ir-guest .g2{grid-template-columns:1fr 1fr}}
 
 #mo>div{background:var(--pn);border-radius:12px;padding:20px;width:560px;max-width:95vw;max-height:92vh;overflow:auto}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
