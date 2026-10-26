@@ -1925,10 +1925,11 @@ let bt;function bloquearDatosHuesped(b){
  // Los datos del huésped siempre quedan editables, incluso al seleccionar uno existente.
  ['hn','hd','hx','ht','hemail','hna','hc'].forEach(id=>{const el=$('#'+id);if(el){el.readOnly=false;el.disabled=false;el.classList.remove('ir-readonly')}});
 }
-function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
+function buscarH(){clearTimeout(bt);const actual=$('#nq').value.trim();if(actual.length>=2){N.h=null;N.modoHuesped='buscando';$('#nf').style.display='none';$('#na').innerHTML='';$('#irGuestStatus').textContent='Buscando huéspedes…'}bt=setTimeout(async()=>{
  const q=$('#nq').value.trim();if(q.length<2){$('#nl').innerHTML='';return}
  const qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();let f='nombre_completo.ilike.%'+q.replace(/[,()%]/g,' ')+'%';if(qd.length>=4)f+=',documento_normalizado.ilike.%'+qd+'%';
  const {data,error}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,correo,nacionalidad,ciudad_origen').or(f).limit(6);
+ if($('#nq').value.trim()!==q)return;
  if(error){$('#nl').innerHTML='<div class="al r">No se pudo buscar huéspedes. Intenta nuevamente.</div>';return}
  N.c=data||[];
  const {data:rs}=N.c.length?await sb.from('resumen_huesped').select('*').in('huesped_id',N.c.map(x=>x.id)):{data:[]};
@@ -1936,7 +1937,7 @@ function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
  $('#nl').innerHTML=N.c.length?N.c.map(g=>{const su=(rs||[]).find(x=>x.huesped_id===g.id)||{},hc=(hs||[]).filter(x=>x.huesped_id===g.id),nc=hc.filter(x=>x.estado==='cancelada').length,nn=hc.length-nc;return `<button type="button" class="cand" data-h="${g.id}" onclick="elegirH('${g.id}')"><b>${esc(g.nombre_completo)}</b><br><span class="mu">${esc(g.numero_documento||'Sin documento')} · ${esc(g.telefono||'Sin teléfono')} · ${su.estadias||0} estadías, ${nc} cancel., ${nn} no-show</span>${nc||nn?' ⚠ antecedentes':''}</button>`}).join(''):'<div class="mu" style="font-size:12px">No se encontraron huéspedes.</div>';
 },300)}
 function llenarH(g){$('#hn').value=g.nombre_completo||'';$('#hd').value=g.tipo_documento||'rut';$('#hx').value=g.numero_documento||'';$('#ht').value=g.telefono||'';$('#hemail').value=g.correo||'';$('#hna').value=g.nacionalidad||'';$('#hc').value=g.ciudad_origen||''}
-function nuevoH(){N.h=null;N.modoHuesped='nuevo';N.lista=false;$('#nf').style.display='block';$('#irGuestMode').textContent='Datos del huésped nuevo';$('#irGuestStatus').textContent='Completa los datos para registrar al huésped.';$('#na').innerHTML='';$('#nl').innerHTML='';bloquearDatosHuesped(false);llenarH({});$('#nq').value='';$('#hn').value=''}
+function nuevoH(){const q=$('#nq').value.trim();N.h=null;N.modoHuesped='nuevo';N.lista=false;$('#nf').style.display='block';$('#irGuestMode').textContent='Datos del huésped nuevo';$('#irGuestStatus').textContent='Completa los datos para registrar al huésped.';$('#na').innerHTML='';$('#nl').innerHTML='';bloquearDatosHuesped(false);llenarH({});$('#hn').value=q;$('#nq').value=''}
 async function elegirH(id){
  const g=(N.c||[]).find(x=>x.id===id);if(!g)return;
  N.modoHuesped='existente';N.h=id;N.lista=false;document.querySelectorAll('#nl .cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
