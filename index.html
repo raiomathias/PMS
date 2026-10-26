@@ -1523,7 +1523,7 @@ function revisarBordeCalendario(){
 // Shift+Wheel, deltaX de trackpad y scroll horizontal del mouse pasan directamente al compositor.
 $('#gw').addEventListener('scroll',programarRevisionBorde,{passive:true});
 $('#mo').onclick=e=>{if(e.target.id==='mo')cerrar()};
-const cerrar=()=>{$('#mo').classList.remove('stats-full','admin-full');$('#mo').style.display='none';if(PT){const f=PT;PT=null;f(null)}if(A.open){A.open=false;cargar()}};
+const cerrar=()=>{$('#mo').classList.remove('stats-full','admin-full','individual-reservation');$('#mo').style.display='none';if(PT){const f=PT;PT=null;f(null)}if(A.open){A.open=false;cargar()}};
 let RESERVA_FORM_BASELINE_ID=null,RESERVA_FORM_BASELINE=null;
 function firmaFormularioReserva(){
  return JSON.stringify([...document.querySelectorAll('#dr input,#dr select,#dr textarea')].map((el,i)=>({
@@ -1623,17 +1623,23 @@ const {data,error}=await sb.rpc('crear_reserva_grupal_completa',{p_nombre_grupo:
 // ---------- Nueva reserva / bloqueo ----------
 let N={h:null,c:[],lista:false,plan:[],reacomodacion:null};
 function abrirNueva(p={}){
- N={h:null,c:[],lista:false,plan:[],reacomodacion:null};const ent=p.entrada||hoyStr(),tk=Object.entries(S.tipos),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))];
- const pu=S.unidades.find(u=>u.id===p.unidad),pt=p.tipo!==undefined?p.tipo:pu?(pu.tipo_unidad_id||''):tk[0]?.[0],pe=p.edificio||(pu?pu.edificio_id:'');
- $('#mo').innerHTML=`<div><h3>Nuevo <select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></h3>
- <div class="sec c3"><h4 class="st">🏠 Unidad y fechas</h4><div class="g2"><label>Edificio<select id="ned" onchange="filU()"><option value="">Seleccionar edificio</option>${ed.map(([id,n])=>`<option value="${id}" ${pe===id?'selected':''}>${esc(n)}</option>`).join('')}</select></label><label>Categoría<select id="nca" onchange="filU()"></select></label>
- <label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>${F('ne','Entrada',ent,'date')}${F('ns','Salida',p.salida||addD(ent,1),'date')}${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo').replace('<select','<select onchange="syncBookingRef()"')}${F('nx','Código externo del canal')}</div></div>
- <div id="nb" class="sec c5" style="display:none"><h4 class="st">🔒 Bloqueo</h4>${F('nm','Motivo del bloqueo')}</div>
- <div id="nr"><div class="sec c1"><h4 class="st">👤 Huésped</h4><input id="nq" style="width:100%;box-sizing:border-box" placeholder="Buscar por nombre o documento" oninput="buscarH()"><div id="nl"></div><div id="na"></div>
- <div id="nf"><div class="g2">${F('hn','Nombre completo')}${SEL('hd','Tipo doc.',['rut','pasaporte','dni','otro'],'rut')}${F('hx','N° documento')}${F('ht','Teléfono')}${F('hna','Nacionalidad')}${F('hc','Ciudad de origen')}</div></div>
- </div><div class="sec c3"><h4 class="st">🛏 Reserva</h4><div class="g2">${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}${F('ntotal','Total de la reserva',0,'number').replace('<label>','<label class="dinero">')}${F('notro','Otro total',0,'number').replace('<label>','<label class="dinero">')}${F('nad','Adultos',1,'number')}${F('nme','Menores',0,'number')}${F('nhe','Hora aproximada de llegada','','text').replace('<input','<input maxlength="5" inputmode="numeric" placeholder="HH:MM" oninput="rmHora(this)"')}${F('nhs','Hora aproximada de salida','','text').replace('<input','<input maxlength="5" inputmode="numeric" placeholder="HH:MM" oninput="rmHora(this)"')}</div>
- <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk" onchange="toggleNochesEst()"> Usa estacionamiento</label><label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nnm"> No mover de esta unidad automáticamente</label><div id="nparkrow" style="margin-top:8px;display:none"><div class="mu" style="margin-bottom:5px">Selecciona las fechas exactas en que se usará estacionamiento:</div><div id="npdates" class="ns"></div><div class="al" role="status" style="margin-top:8px">🚗 Recordatorio: marcar «Usa estacionamiento» no registra el cobro automáticamente. Después de crear la reserva, recuerda agregar y revisar el cargo de estacionamiento en «Cargos extra».</div></div><div class="g2">${F('nv','Modelo del vehículo')}${F('np','Patente')}</div></div></div>
- <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button onclick="cerrar()">Cancelar</button><button class="p" onclick="guardarNueva()">Guardar</button></div></div>`;
+ N={h:null,c:[],lista:false,plan:[],reacomodacion:null,modoHuesped:'ninguno'};
+ const ent=p.entrada||hoyStr(),ed=[...new Map(S.unidades.map(u=>[u.edificio_id,u.edificios.nombre]))],pu=S.unidades.find(u=>u.id===p.unidad),pe=p.edificio||(pu?pu.edificio_id:'');
+ $('#mo').classList.add('individual-reservation');
+ $('#mo').innerHTML=\`<div class="ir-modal">
+ <header class="ir-header"><div><h3 style="margin:0">Nueva reserva individual</h3><div class="mu" style="font-size:12px">Selecciona un huésped o crea uno nuevo</div></div><label style="min-width:120px">Tipo<select id="nt" onchange="$('#nr').style.display=this.value==='r'?'block':'none';$('#nb').style.display=this.value==='b'?'block':'none'"><option value="r">Reserva</option><option value="b">Bloqueo</option></select></label><button type="button" onclick="cerrar()">✕</button></header>
+ <div class="ir-body"><section class="ir-guest"><h4 style="margin:0">👤 Huésped</h4>
+ <label>Buscar por nombre o RUT/documento<input id="nq" autocomplete="off" placeholder="Nombre o documento…" oninput="buscarH()"></label>
+ <div id="nl" class="ir-results" aria-live="polite"></div><button type="button" onclick="nuevoH()">＋ Crear nuevo huésped</button>
+ <div id="irGuestStatus" class="mu" style="font-size:12px">Selecciona un huésped o crea uno nuevo.</div><div id="na"></div>
+ <div id="nf" style="display:none"><div class="ir-summary"><b id="irGuestMode">Datos del huésped nuevo</b><span class="mu">Completa los datos del registro nuevo.</span></div>
+ <div class="g2">\${F('hn','Nombre completo')}\${SEL('hd','Tipo de documento',['rut','pasaporte','dni','otro'],'rut')}\${F('hx','N° documento')}\${F('ht','Teléfono')}\${F('hemail','Correo electrónico')}\${F('hna','Nacionalidad')}\${F('hc','Ciudad de origen')}</div></div>
+ </section><section class="ir-booking">
+ <div id="nb" class="sec c5" style="display:none"><h4>🔒 Bloqueo</h4>\${F('nm','Motivo del bloqueo')}</div><div id="nr">
+ <div class="sec c3"><h4 style="margin-top:0">🏠 Unidad y fechas</h4><div class="g2"><label>Edificio<select id="ned" onchange="filU()"><option value="">Seleccionar edificio</option>\${ed.map(([id,n])=>\`<option value="\${id}" \${pe===id?'selected':''}>\${esc(n)}</option>\`).join('')}</select></label><label>Categoría<select id="nca" onchange="filU()"></select></label><label>Unidad (opcional)<select id="nu" onchange="tarU()"></select></label>\${F('ne','Entrada',ent,'date')}\${F('ns','Salida',p.salida||addD(ent,1),'date')}\${SEL('nc','Canal',['directo','booking','expedia','airbnb','otro'],'directo').replace('<select','<select onchange="syncBookingRef()"')}\${F('nx','Código externo del canal')}</div></div>
+ <div class="sec c3"><h4>🛏 Detalles de la reserva</h4><div class="g2">\${F('nta','Tarifa por noche',0,'number').replace('<label>','<label class="dinero">')}\${F('ntotal','Total de la reserva',0,'number').replace('<label>','<label class="dinero">')}\${F('notro','Otro total',0,'number').replace('<label>','<label class="dinero">')}\${F('nad','Adultos',1,'number')}\${F('nme','Menores',0,'number')}\${F('nhe','Hora aproximada de llegada','','text').replace('<input','<input maxlength="5" inputmode="numeric" placeholder="HH:MM" oninput="rmHora(this)"')}\${F('nhs','Hora aproximada de salida','','text').replace('<input','<input maxlength="5" inputmode="numeric" placeholder="HH:MM" oninput="rmHora(this)"')}</div>
+ <label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nk" onchange="toggleNochesEst()"> Usa estacionamiento</label><label style="display:flex;gap:6px;margin-top:8px;flex-direction:row"><input type="checkbox" id="nnm"> No mover de esta unidad automáticamente</label><div id="nparkrow" style="margin-top:8px;display:none"><div class="mu">Selecciona las fechas exactas de estacionamiento:</div><div id="npdates" class="ns"></div><div class="al">🚗 El estacionamiento no agrega el cobro automáticamente; revisa «Cargos extra» después de guardar.</div></div><div class="g2">\${F('nv','Modelo del vehículo')}\${F('np','Patente')}</div></div></div></section></div>
+ <footer class="ir-footer"><button type="button" onclick="cerrar()">Cancelar</button><button type="button" class="p" onclick="guardarNueva()">Guardar reserva</button></footer></div>\`;
  $('#mo').style.display='grid';filU(p.unidad);instalarSincronizacionPrecios('ntotal','nta','ne','ns');sincronizarPrecio('ntotal','nta','ne','ns','tarifa');renderParkingDates(true);$('#ne').onchange=()=>{renderParkingDates(true);sincronizarPrecio('ntotal','nta','ne','ns','tarifa')};$('#ns').onchange=()=>renderParkingDates(true);toggleNochesEst();syncBookingRef();
  if(p.bloqueo){$('#nt').value='b';$('#nt').dispatchEvent(new Event('change'))}
 }
@@ -1909,67 +1915,29 @@ async function marcarLimpiaSeleccionada(){const q=S.sel;if(!q)return;const [a,z]
 function desdeSel(b){const [a,z]=ord(S.sel);abrirNueva({unidad:S.sel.u,entrada:a,salida:addD(z,1),bloqueo:b})}
 function selHtml(id){const q=S.sel;if(!q||q.u!==id)return'';const [a,z]=ord(q),i=Math.max(diff(S.ini,a),0),j=Math.min(diff(S.ini,z)+1,ND);return j>i?`<div class="sl" style="left:${i*W}px;width:${(j-i)*W}px"></div>`:''}
 
-let bt;function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
+let bt;function bloquearDatosHuesped(b){
+ ['hn','hd','hx','ht','hemail','hna','hc'].forEach(id=>{const el=$('#'+id);if(el){el.readOnly=!!b;el.disabled=false;el.classList.toggle('ir-readonly',!!b)}});
+}
+function buscarH(){clearTimeout(bt);bt=setTimeout(async()=>{
  const q=$('#nq').value.trim();if(q.length<2){$('#nl').innerHTML='';return}
  const qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();let f='nombre_completo.ilike.%'+q.replace(/[,()%]/g,' ')+'%';if(qd.length>=4)f+=',documento_normalizado.ilike.%'+qd+'%';
- const {data}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,nacionalidad,ciudad_origen').or(f).limit(6);N.c=data||[];
+ const {data,error}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,correo,nacionalidad,ciudad_origen').or(f).limit(6);
+ if(error){$('#nl').innerHTML='<div class="al r">No se pudo buscar huéspedes. Intenta nuevamente.</div>';return}
+ N.c=data||[];
  const {data:rs}=N.c.length?await sb.from('resumen_huesped').select('*').in('huesped_id',N.c.map(x=>x.id)):{data:[]};
  const {data:hs}=N.c.length?await sb.from('reservas').select('huesped_id,estado').in('huesped_id',N.c.map(x=>x.id)).in('estado',['cancelada','no_show']):{data:[]};
- $('#nl').innerHTML=N.c.map(g=>{const s=(rs||[]).find(x=>x.huesped_id===g.id)||{},hc=(hs||[]).filter(x=>x.huesped_id===g.id),nc=hc.filter(x=>x.estado==='cancelada').length,nn=hc.length-nc;return`<div class="cand" data-h="${g.id}" onclick="elegirH('${g.id}')"><b>${esc(g.nombre_completo)}</b> <span class="mu">${esc(g.uid_huesped)}</span><br><span class="mu">${esc(g.ciudad_origen||'sin ciudad')} · ${esc(g.telefono||'sin teléfono')} · doc …${esc((g.numero_documento||'').slice(-4)||'—')} · ${s.estadias||0} estadías, ${nc} cancel., ${nn} no-show</span>${nc||nn?' <span class="tg">⚠ antecedentes</span>':''}</div>`}).join('')+`<div class="cand" onclick="nuevoH()">＋ Es otra persona: crear huésped nuevo</div>`},300)}
-function llenarH(g){$('#hn').value=g.nombre_completo||'';$('#hd').value=g.tipo_documento||'rut';$('#hx').value=g.numero_documento||'';$('#ht').value=g.telefono||'';$('#hna').value=g.nacionalidad||'';$('#hc').value=g.ciudad_origen||''}
-function nuevoH(){N.h=null;N.modoHuesped='nuevo';N.lista=false;$('#nf').style.display='block';$('#na').innerHTML='';document.querySelectorAll('.cand').forEach(c=>c.classList.remove('sel'));llenarH({});$('#hn').value=$('#nq').value}
+ $('#nl').innerHTML=N.c.length?N.c.map(g=>{const su=(rs||[]).find(x=>x.huesped_id===g.id)||{},hc=(hs||[]).filter(x=>x.huesped_id===g.id),nc=hc.filter(x=>x.estado==='cancelada').length,nn=hc.length-nc;return \`<button type="button" class="cand" data-h="\${g.id}" onclick="elegirH('\${g.id}')"><b>\${esc(g.nombre_completo)}</b><br><span class="mu">\${esc(g.numero_documento||'Sin documento')} · \${esc(g.telefono||'Sin teléfono')} · \${su.estadias||0} estadías, \${nc} cancel., \${nn} no-show</span>\${nc||nn?' ⚠ antecedentes':''}</button>\`}).join(''):'<div class="mu" style="font-size:12px">No se encontraron huéspedes.</div>';
+},300)}
+function llenarH(g){$('#hn').value=g.nombre_completo||'';$('#hd').value=g.tipo_documento||'rut';$('#hx').value=g.numero_documento||'';$('#ht').value=g.telefono||'';$('#hemail').value=g.correo||'';$('#hna').value=g.nacionalidad||'';$('#hc').value=g.ciudad_origen||''}
+function nuevoH(){N.h=null;N.modoHuesped='nuevo';N.lista=false;$('#nf').style.display='block';$('#irGuestMode').textContent='Datos del huésped nuevo';$('#irGuestStatus').textContent='Completa los datos para registrar al huésped.';$('#na').innerHTML='';$('#nl').innerHTML='';bloquearDatosHuesped(false);llenarH({});$('#nq').value='';$('#hn').value=''}
 async function elegirH(id){
- N.modoHuesped='existente';N.h=id;document.querySelectorAll('.cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
- const g=N.c.find(x=>x.id===id);$('#nf').style.display='block';llenarH(g);
- const [n,l,hh]=await Promise.all([sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),sb.rpc('revisar_lista_negra',{p_documento:g.numero_documento,p_nombre:g.nombre_completo}),sb.from('reservas').select('estado').eq('huesped_id',id).in('estado',['cancelada','no_show'])]);
- N.lista=!!l.data?.length;
- $('#na').innerHTML=antec(hh.data||[])+(N.lista?`<div class="al r">⛔ LISTA NEGRA: ${esc(l.data[0].motivo)}</div>`:'')+(n.data||[]).map(x=>`<div class="al ${x.gravedad>1?'r':''}">📝 ${esc(x.nota)} <span class="mu">${x.creado_en.slice(0,10)}</span></div>`).join('');
-}
-async function guardarNueva(){
- const fe=$('#ne').value,fs=$('#ns').value,horaE=$('#nhe')?.value.trim()||'',horaS=$('#nhs')?.value.trim()||'';if(!(fs>fe))return msg('La salida debe ser posterior a la entrada',1);if(horaE&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(horaE))return msg('La hora aproximada de llegada debe usar HH:MM',1);if(horaS&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(horaS))return msg('La hora aproximada de salida debe usar HH:MM',1);const unidad=await elegirUnidad(fe,fs);if(!unidad)return;const parkingDates=parkingSelectedDates();
- if($('#nt').value==='b'){const {error}=await sb.from('reservas').insert({unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'bloqueado',observaciones:$('#nm').value||'Bloqueo'});if(error)return msg(errTxt(error),1);cerrar();return cargar()}
- if($('#nk').checked&&(!$('#nv').value||!$('#np').value))return msg('Indica modelo y patente del vehículo',1);
- const nochesEst=$('#nk').checked?parkingDates.length:0;
- let parkingCupo={permitirSobrecupo:false};
- if($('#nk').checked){
-  if(nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
-  if(!$('#nv').value.trim()||!$('#np').value.trim())return msg('Indica modelo y patente del vehículo',1);
-  const ue=S.unidades.find(u=>u.id===unidad);
-  parkingCupo=await avisoCupoFechas(ue?.edificio_id,parkingDates);
-  if(!parkingCupo)return;
- }
- let hid=N.h;
- if($('#nt').value!=='b'){
-  if(!hid&&N.modoHuesped!=='nuevo')return msg('Selecciona un huésped existente o pulsa «Crear nuevo huésped» y completa sus datos.',1);
-  if(hid){if(N.lista)return msg('⛔ No se puede crear la reserva: el huésped seleccionado está en la lista negra.',1)}
-  else{
-   const nom=$('#hn').value.trim(),doc=$('#hx').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
-   if(doc){const {data:du,error:de}=await sb.from('huespedes').select('id,nombre_completo').eq('numero_documento',doc).limit(1);if(de)return msg(errTxt(de),1);if(du?.length)return msg('Ya existe un huésped con ese documento ('+du[0].nombre_completo+'). Búscalo y selecciónalo para evitar duplicados.',1)}
-   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:doc?$('#hd').value:null,numero_documento:doc||null,telefono:$('#ht').value.trim()||null,correo:$('#hemail')?.value.trim()||null,nacionalidad:$('#hna').value.trim()||null,ciudad_origen:$('#hc').value.trim()||null}).select('id').single();
-   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id
-  }
- }
-const canal=$('#nc').value,ref=$('#nx').value.trim();if((canal==='booking'||canal==='airbnb')&&!ref)return msg(canal==='airbnb'?'El código externo es obligatorio para Airbnb para registrar su pago automáticamente':'El código externo es obligatorio para Booking',1);
- if($('#nk').checked&&nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
- const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nk').checked?$('#nv').value.trim():null,patente_vehiculo:$('#nk').checked?$('#np').value.trim():null,no_mover_unidad:$('#nnm').checked,hora_llegada_aprox:horaE||null,hora_salida_aprox:horaS||null},p_plan:N.plan||[],p_iva:0,p_otro:+$('#notro').value||0});
- if(error)return msg(errTxt(error),1);
- if($('#nk').checked){const pe=await guardarFechasParking(rnew,parkingDates,parkingCupo.permitirSobrecupo);if(pe){await sb.from('reservas').delete().eq('id',rnew);return msg('La reserva se creó pero no se pudieron guardar las fechas de estacionamiento: '+pe.message,1)}}
- if(canal==='airbnb'){
-  let pagoAirbnb=await sb.rpc('registrar_pago_airbnb',{p_reserva_id:rnew});
-  // El RPC es idempotente: el reintento cubre respuestas perdidas sin duplicar el pago.
-  if(pagoAirbnb.error)pagoAirbnb=await sb.rpc('registrar_pago_airbnb',{p_reserva_id:rnew});
-  if(pagoAirbnb.error){
-   cerrar();
-   await cargar();
-   return msg('La reserva se creó, pero no se pudo registrar automáticamente el pago de Airbnb: '+errTxt(pagoAirbnb.error)+'. La reserva quedó guardada; verifica el pago antes de volver a intentar crearla.',1);
-  }
- }
- cerrar();
- await cargar();
- msg(canal==='airbnb'?'Reserva Airbnb guardada con pago anticipado registrado en '+nomU(unidad):'Reserva guardada en '+nomU(unidad));
-
-}
-// ---------- Detalle de reserva ----------
+ const g=(N.c||[]).find(x=>x.id===id);if(!g)return;
+ N.modoHuesped='existente';N.h=id;N.lista=false;document.querySelectorAll('#nl .cand').forEach(c=>c.classList.toggle('sel',c.dataset.h===id));
+ $('#nf').style.display='block';$('#irGuestMode').textContent='Huésped seleccionado';llenarH(g);bloquearDatosHuesped(true);$('#irGuestStatus').textContent='Registro existente seleccionado. Sus datos no se modificarán al guardar.';
+ const [n,l,hh,sum]=await Promise.all([sb.from('notas_huesped').select('nota,gravedad,creado_en').eq('huesped_id',id).order('gravedad',{ascending:false}).order('creado_en',{ascending:false}).limit(5),sb.rpc('revisar_lista_negra',{p_documento:g.numero_documento,p_nombre:g.nombre_completo}),sb.from('reservas').select('estado').eq('huesped_id',id).in('estado',['cancelada','no_show']),sb.from('resumen_huesped').select('*').eq('huesped_id',id).maybeSingle()]);
+ N.lista=!!l.data?.length;const sm=sum.data||{};
+ $('#na').innerHTML='<div class="ir-summary"><b>Ficha del huésped</b><span>Documento: '+esc(g.numero_documento||'No registrado')+'</span><span>Teléfono: '+esc(g.telefono||'No registrado')+'</span><span>Correo: '+esc(g.correo||'No registrado')+'</span><span>Ciudad: '+esc(g.ciudad_origen||'No registrada')+'</span><span>Estadías: '+esc(sm.estadias??0)+'</span></div>'+antec(hh.data||[])+(N.lista?'<div class="al r">⛔ LISTA NEGRA: '+esc(l.data[0].motivo||'Revisar antecedentes')+'</div>':'')+(n.data||[]).map(x=>'<div class="al '+(x.gravedad>1?'r':'')+'">📝 '+esc(x.nota)+' <span class="mu">'+esc((x.creado_en||'').slice(0,10))+'</span></div>').join('');
+}// ---------- Detalle de reserva ----------
 async function obtenerUidReservaReal(r){
   // La grilla ya trae uid_reserva desde Supabase. Reutilizarlo evita un viaje de red
   // en cada apertura; consultar Supabase solo si falta el dato en memoria.
