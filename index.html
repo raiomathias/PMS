@@ -3708,6 +3708,25 @@ function audResumen(a){
   if(I)return{t:`Agregó ${d.tipo==='descuento'?'un descuento':'un cargo'} ${b(tp)} · ${esc(d.cantidad)} × ${clp(d.monto_unitario)} = ${tot}`,s:d.tipo==='descuento'};
   if(D)return{t:`Eliminó el cargo ${tp} de ${tot}`,s:true};
   return{t:`Modificó el cargo ${tp} — cambió: ${lista()}`,s:true}}
+ if(a.tabla==='limpieza'){
+  const u=S.unidades.find(x=>x.id===d.unidad_id),unidad=u?esc((u.edificios?.nombre?u.edificios.nombre+' · ':'')+u.codigo):'unidad '+esc(String(d.unidad_id||'').slice(0,8));
+  const estados={sucia:'sucia',en_proceso:'en proceso',limpia:'limpia',defectuosa:'defectuosa'};
+  const antes=estados[o.estado]||o.estado||'—',despues=estados[n.estado]||n.estado||'—';
+  const obs=esc(String(d.observacion_limpieza||d.observacion_recepcion||'').trim().slice(0,180));
+  if(I)return{t:`Registró limpieza pendiente para ${b(unidad)} · estado ${b(despues)}${obs?' · '+obs:''}`,s:false};
+  if(D)return{t:`Eliminó un registro de limpieza de ${b(unidad)} · último estado: ${b(antes)}`,s:true};
+  if(ch('estado')){
+   let evento;
+   if(n.estado==='en_proceso')evento=o.estado==='defectuosa'?'Reinició la limpieza de':'Inició la limpieza de';
+   else if(n.estado==='limpia')evento='Terminó la limpieza de';
+   else if(n.estado==='defectuosa')evento='Marcó como defectuosa';
+   else if(n.estado==='sucia')evento='Marcó como sucia';
+   else evento='Cambió el estado de limpieza de';
+   return{t:`${evento} ${b(unidad)} · ${b(antes)} → ${b(despues)}${obs?' · '+obs:''}`,s:n.estado==='defectuosa'};
+  }
+  if(ch('iniciado_en')&&!o.iniciado_en&&n.iniciado_en)return{t:`Inició la limpieza de ${b(unidad)}${obs?' · '+obs:''}`,s:false};
+  if(ch('terminado_en')&&!o.terminado_en&&n.terminado_en)return{t:`Terminó la limpieza de ${b(unidad)}${obs?' · '+obs:''}`,s:false};
+  return{t:`Actualizó la limpieza de ${b(unidad)} — cambió: ${lista()}${obs?' · '+obs:''}`,s:false}}
  if(a.tabla==='reservas'){const id=esc(d.uid_reserva||'');
   if(I)return{t:`Creó la reserva ${b(id)} · ${esc(d.fecha_entrada)} → ${esc(d.fecha_salida)}${d.tarifa_noche?' · '+clp(d.tarifa_noche)+' por noche':''}`,s:false};
   if(D)return{t:`Eliminó la reserva ${b(id)}`,s:true};
