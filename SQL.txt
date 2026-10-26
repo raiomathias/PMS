@@ -8911,3 +8911,23 @@ CREATE POLICY "PMS gestion cargos grupales gerencia"
   ));
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cargos_grupales TO authenticated;
 
+
+-- ============================================================
+-- PMS · Auditoría de limpieza
+-- Registra creación, inicio, término, cambio de estado,
+-- marcación de defectuosa y eliminación de registros de limpieza.
+-- Ejecutar una vez en Supabase SQL Editor; es idempotente.
+-- ============================================================
+DO $$
+BEGIN
+  IF to_regclass('public.limpieza') IS NULL THEN
+    RAISE EXCEPTION 'No existe public.limpieza; no se instaló la auditoría de limpieza';
+  END IF;
+  IF to_regprocedure('public.registrar_auditoria()') IS NULL THEN
+    RAISE EXCEPTION 'No existe public.registrar_auditoria(); aplica primero la migración base de auditoría';
+  END IF;
+  EXECUTE 'DROP TRIGGER IF EXISTS trg_limpieza_auditoria ON public.limpieza';
+  EXECUTE 'CREATE TRIGGER trg_limpieza_auditoria AFTER INSERT OR UPDATE OR DELETE ON public.limpieza FOR EACH ROW EXECUTE FUNCTION public.registrar_auditoria()';
+END
+$$;
+
