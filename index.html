@@ -32,6 +32,24 @@ header b{margin-right:auto}
 .bloqueado{background:repeating-linear-gradient(45deg,#374151,#374151 6px,#4b5563 6px,#4b5563 12px)}
 #dr{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--pn);border-left:1px solid var(--bd);box-shadow:-8px 0 24px rgba(0,0,0,.2);padding:16px;overflow:auto;z-index:10;display:none}
 #mo{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;place-items:center;z-index:11}
+
+/* Modal individual v3.0: cabecera y pie fijos, scroll exclusivo a la derecha */
+#mo.individual-reservation{padding:0;overflow:hidden}
+#mo.individual-reservation>.ir-modal{width:1050px;max-width:90vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;padding:0;box-sizing:border-box;background:var(--pn);border-radius:14px}
+#mo .ir-header{position:sticky;top:0;z-index:50;flex:none;background:var(--pn);border-bottom:1px solid var(--bd);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+#mo .ir-body{display:flex;gap:24px;padding:24px;overflow:hidden;flex:1;min-height:0}
+#mo .ir-guest{flex:0 0 40%;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+#mo .ir-booking{flex:1 1 60%;min-width:0;overflow-y:auto;overflow-x:hidden;padding-right:8px;overscroll-behavior:contain}
+#mo .ir-footer{position:sticky;bottom:0;z-index:50;flex:none;background:var(--pn);border-top:1px solid var(--bd);padding:16px 24px;display:flex;justify-content:flex-end;gap:12px}
+#mo .ir-results{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;min-height:0}
+#mo .ir-results .cand{width:100%;text-align:left;background:var(--pn);color:var(--tx);cursor:pointer;box-sizing:border-box}
+#mo .ir-results .cand.sel{border-color:#2563eb;background:#dbeafe;color:#1e3a8a}
+#mo .ir-guest input,#mo .ir-guest select{width:100%;box-sizing:border-box}
+#mo .ir-guest .g2{grid-template-columns:1fr;gap:6px}
+#mo .ir-summary{border:1px solid var(--bd);border-radius:8px;padding:9px;font-size:12px;display:grid;gap:4px}
+#mo .ir-readonly{opacity:.82;background:var(--bg)!important}
+@media(max-width:760px){#mo.individual-reservation>.ir-modal{width:100%;max-width:100%;max-height:94dvh}#mo .ir-body{flex-direction:column;gap:12px;padding:12px;overflow:hidden}#mo .ir-guest{flex:0 0 auto;max-height:42%;overflow:hidden}#mo .ir-booking{flex:1 1 auto;min-height:0}#mo .ir-header,#mo .ir-footer{padding:12px}}
+
 #mo>div{background:var(--pn);border-radius:12px;padding:20px;width:560px;max-width:95vw;max-height:92vh;overflow:auto}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 label{display:grid;gap:2px;font-size:12px;color:var(--mu)}
@@ -1921,18 +1939,17 @@ async function guardarNueva(){
   if(!parkingCupo)return;
  }
  let hid=N.h;
- if(hid){if(N.lista)return msg('⛔ No se puede crear la reserva: el huésped seleccionado está en la lista negra.',1);
-  const g0=N.c.find(x=>x.id===hid)||{},nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
-  const nuevo={nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value.trim()||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null};
-  const cambio=Object.keys(nuevo).some(k=>(nuevo[k]||null)!==(g0[k]||null));
-  if(cambio){
-   if(nuevo.numero_documento&&nuevo.numero_documento!==(g0.numero_documento||null)){const {data:lg2}=await sb.rpc('revisar_lista_negra',{p_documento:nuevo.numero_documento,p_nombre:nom});if(lg2?.length&&!confirm('⛔ El nuevo documento coincide con la lista negra: '+lg2[0].motivo+'\n¿Continuar igualmente?'))return}
-   const {error:eg}=await sb.from('huespedes').update(nuevo).eq('id',hid);
-   if(eg)return msg(eg.code==='23505'?'Ese documento ya pertenece a otro huésped: búscalo arriba':errTxt(eg),1)}}
- else{const nom=$('#hn').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
-  const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:$('#hx').value?$('#hd').value:null,numero_documento:$('#hx').value||null,telefono:$('#ht').value||null,nacionalidad:$('#hna').value||null,ciudad_origen:$('#hc').value||null}).select('id').single();
-  if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id}
- const canal=$('#nc').value,ref=$('#nx').value.trim();if((canal==='booking'||canal==='airbnb')&&!ref)return msg(canal==='airbnb'?'El código externo es obligatorio para Airbnb para registrar su pago automáticamente':'El código externo es obligatorio para Booking',1);
+ if($('#nt').value!=='b'){
+  if(!hid&&N.modoHuesped!=='nuevo')return msg('Selecciona un huésped existente o pulsa «Crear nuevo huésped» y completa sus datos.',1);
+  if(hid){if(N.lista)return msg('⛔ No se puede crear la reserva: el huésped seleccionado está en la lista negra.',1)}
+  else{
+   const nom=$('#hn').value.trim(),doc=$('#hx').value.trim();if(!nom)return msg('Falta el nombre del huésped',1);
+   if(doc){const {data:du,error:de}=await sb.from('huespedes').select('id,nombre_completo').eq('numero_documento',doc).limit(1);if(de)return msg(errTxt(de),1);if(du?.length)return msg('Ya existe un huésped con ese documento ('+du[0].nombre_completo+'). Búscalo y selecciónalo para evitar duplicados.',1)}
+   const {data:g,error:e1}=await sb.from('huespedes').insert({nombre_completo:nom,tipo_documento:doc?$('#hd').value:null,numero_documento:doc||null,telefono:$('#ht').value.trim()||null,correo:$('#hemail')?.value.trim()||null,nacionalidad:$('#hna').value.trim()||null,ciudad_origen:$('#hc').value.trim()||null}).select('id').single();
+   if(e1)return msg(e1.code==='23505'?'Ya existe un huésped con ese documento: búscalo arriba':errTxt(e1),1);hid=g.id
+  }
+ }
+const canal=$('#nc').value,ref=$('#nx').value.trim();if((canal==='booking'||canal==='airbnb')&&!ref)return msg(canal==='airbnb'?'El código externo es obligatorio para Airbnb para registrar su pago automáticamente':'El código externo es obligatorio para Booking',1);
  if($('#nk').checked&&nochesEst<1)return msg('Selecciona al menos una fecha con estacionamiento',1);
  const {data:rnew,error}=await sb.rpc('crear_reserva_con_reacomodacion',{p_reserva:{huesped_id:hid,unidad_id:unidad,fecha_entrada:fe,fecha_salida:fs,estado:'confirmada',canal,referencia_externa:ref||null,adultos:+$('#nad').value||1,menores:+$('#nme').value||0,tarifa_noche:+$('#nta').value||0,usa_estacionamiento:$('#nk').checked,noches_estacionamiento:nochesEst,modelo_vehiculo:$('#nk').checked?$('#nv').value.trim():null,patente_vehiculo:$('#nk').checked?$('#np').value.trim():null,no_mover_unidad:$('#nnm').checked,hora_llegada_aprox:horaE||null,hora_salida_aprox:horaS||null},p_plan:N.plan||[],p_iva:0,p_otro:+$('#notro').value||0});
  if(error)return msg(errTxt(error),1);
