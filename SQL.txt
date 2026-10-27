@@ -9092,3 +9092,18 @@ BEGIN
  END LOOP;
 END
 $$;
+
+
+-- ============================================================
+-- PMS v3.2 · Zona horaria oficial America/Santiago
+-- Configura la zona por defecto para conexiones nuevas de PostgreSQL.
+-- Los timestamptz existentes representan instantes absolutos y NO se
+-- desplazan ni reescriben; la interfaz los presenta en hora de Santiago.
+-- Las fechas DATE de entrada/salida y las horas TIME locales tampoco
+-- deben convertirse como si fueran instantes UTC.
+-- Ejecutar una sola vez en Supabase SQL Editor (idempotente).
+-- ============================================================
+ALTER DATABASE postgres SET timezone TO 'America/Santiago';
+ALTER ROLE authenticator SET timezone TO 'America/Santiago';
+ALTER ROLE authenticated SET timezone TO 'America/Santiago';
+ALTER ROLE anon SET timezone TO 'America/Santiago';
