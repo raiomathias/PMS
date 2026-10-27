@@ -8931,3 +8931,101 @@ BEGIN
 END
 $$;
 
+
+
+-- PMS · Auditoría integral y atribución de actor
+CREATE OR REPLACE FUNCTION public.registrar_auditoria()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE v_viejo jsonb; v_nuevo jsonb; v_id uuid; v_actor uuid; v_actor_text text;
+BEGIN
+  IF TG_OP IN ('UPDATE','DELETE') THEN v_viejo := to_jsonb(OLD); END IF;
+  IF TG_OP IN ('INSERT','UPDATE') THEN v_nuevo := to_jsonb(NEW); END IF;
+  IF TG_OP = 'UPDATE'
+     AND (v_viejo - ARRAY['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por']::text[])
+         = (v_nuevo - ARRAY['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por']::text[]) THEN
+    RETURN NULL;
+  END IF;
+  BEGIN
+    v_id := COALESCE(v_nuevo->>'id', v_viejo->>'id', v_nuevo->>'unidad_id', v_viejo->>'unidad_id', v_nuevo->>'reserva_id', v_viejo->>'reserva_id')::uuid;
+  EXCEPTION WHEN OTHERS THEN v_id := NULL;
+  END;
+  v_actor := auth.uid();
+  IF v_actor IS NULL THEN
+    IF TG_OP = 'INSERT' THEN
+      v_actor_text := COALESCE(v_nuevo->>'creado_por',v_nuevo->>'solicitado_por',v_nuevo->>'revisado_por',v_nuevo->>'remitente_id',v_nuevo->>'usuario_id',v_nuevo->>'actualizado_por');
+    ELSIF TG_OP = 'UPDATE' THEN
+      v_actor_text := COALESCE(v_nuevo->>'actualizado_por',v_nuevo->>'modificado_por',v_nuevo->>'revisado_por',v_nuevo->>'solicitado_por',v_nuevo->>'eliminado_por');
+    ELSE v_actor_text := v_viejo->>'eliminado_por';
+    END IF;
+    BEGIN v_actor := NULLIF(v_actor_text,'')::uuid;
+    EXCEPTION WHEN OTHERS THEN v_actor := NULL;
+    END;
+  END IF;
+  INSERT INTO public.auditoria(tabla,registro_id,accion,datos_anteriores,datos_nuevos,usuario_id,fecha)
+  VALUES(TG_TABLE_NAME,v_id,TG_OP,v_viejo,v_nuevo,v_actor,now());
+  RETURN NULL;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.auditar_cambio()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE v_old jsonb; v_new jsonb; v_row jsonb; v_id uuid; v_actor uuid; v_actor_text text;
+BEGIN
+  v_old := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) END;
+  v_new := CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) END;
+  v_row := COALESCE(v_new,v_old);
+  IF TG_OP = 'UPDATE'
+     AND (v_old - ARRAY['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por']::text[])
+         = (v_new - ARRAY['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por']::text[]) THEN
+    RETURN NEW;
+  END IF;
+  BEGIN v_id := COALESCE(v_row->>'id',v_row->>'unidad_id',v_row->>'reserva_id')::uuid;
+  EXCEPTION WHEN OTHERS THEN v_id := NULL;
+  END;
+  v_actor := auth.uid();
+  IF v_actor IS NULL THEN
+    IF TG_OP = 'INSERT' THEN
+      v_actor_text := COALESCE(v_new->>'creado_por',v_new->>'solicitado_por',v_new->>'revisado_por',v_new->>'remitente_id',v_new->>'usuario_id',v_new->>'actualizado_por');
+    ELSIF TG_OP = 'UPDATE' THEN
+      v_actor_text := COALESCE(v_new->>'actualizado_por',v_new->>'modificado_por',v_new->>'revisado_por',v_new->>'solicitado_por',v_new->>'eliminado_por');
+    ELSE v_actor_text := v_old->>'eliminado_por';
+    END IF;
+    BEGIN v_actor := NULLIF(v_actor_text,'')::uuid;
+    EXCEPTION WHEN OTHERS THEN v_actor := NULL;
+    END;
+  END IF;
+  INSERT INTO public.auditoria(tabla,registro_id,accion,datos_anteriores,datos_nuevos,usuario_id,fecha)
+  VALUES(TG_TABLE_NAME,v_id,TG_OP,v_old,v_new,v_actor,now());
+  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END
+$function$;
+
+DO $$
+DECLARE t text; tablas text[] := ARRAY[
+ 'reserva_grupos','reserva_grupo_miembros','pagos_compartidos','pagos_compartidos_distribucion',
+ 'pagos_motivos','estacionamiento_reserva_fechas','perfiles_edificios','perfiles_permisos_buzon',
+ 'perfiles_permisos_edicion','reclamos_sugerencias','lista_negra_solicitudes',
+ 'categoria_ranking_edificio','buzon_conversaciones'
+];
+BEGIN
+ FOREACH t IN ARRAY tablas LOOP
+  IF to_regclass(format('public.%I',t)) IS NOT NULL THEN
+   EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I','auditoria_auto_'||t,t);
+   EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.auditar_cambio()','auditoria_auto_'||t,t);
+  END IF;
+ END LOOP;
+END
+$$;
+
+UPDATE public.auditoria a
+SET usuario_id = CASE
+ WHEN a.accion='INSERT' THEN NULLIF(COALESCE(a.datos_nuevos->>'creado_por',a.datos_nuevos->>'solicitado_por',a.datos_nuevos->>'revisado_por',a.datos_nuevos->>'remitente_id',a.datos_nuevos->>'usuario_id'),'')::uuid
+ WHEN a.accion='UPDATE' THEN NULLIF(COALESCE(a.datos_nuevos->>'actualizado_por',a.datos_nuevos->>'modificado_por',a.datos_nuevos->>'revisado_por',a.datos_nuevos->>'solicitado_por'),'')::uuid
+ ELSE NULLIF(a.datos_anteriores->>'eliminado_por','')::uuid END
+WHERE a.usuario_id IS NULL AND (
+ (a.accion='INSERT' AND COALESCE(a.datos_nuevos->>'creado_por',a.datos_nuevos->>'solicitado_por',a.datos_nuevos->>'revisado_por',a.datos_nuevos->>'remitente_id',a.datos_nuevos->>'usuario_id') IS NOT NULL)
+ OR (a.accion='UPDATE' AND COALESCE(a.datos_nuevos->>'actualizado_por',a.datos_nuevos->>'modificado_por',a.datos_nuevos->>'revisado_por',a.datos_nuevos->>'solicitado_por') IS NOT NULL)
+ OR (a.accion='DELETE' AND a.datos_anteriores->>'eliminado_por' IS NOT NULL)
+);
