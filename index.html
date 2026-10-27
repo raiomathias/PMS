@@ -3658,14 +3658,14 @@ async function pCan(){
 
 // ---------- Auditoría ----------
 const AUDR=['administracion','gerencia','sysadmin'];
-const AUD_T={reservas:['Reservas','🛏'],pagos:['Pagos','💵'],cargos:['Cargos extra','➕'],huespedes:['Huéspedes','👤'],acompanantes:['Acompañantes','👥'],notas_huesped:['Notas de huésped','📝'],unidades:['Unidades','🚪'],tipos_unidad:['Categorías','🏷'],edificios:['Edificios','🏢'],configuracion:['Configuración','⚙'],perfiles:['Usuarios','🔑'],garantia_fechas:['Garantías por fecha','🛡'],limpieza:['Limpieza','🧹']};
+const AUD_T={reservas:['Reservas','🛏'],pagos:['Pagos','💵'],cargos:['Cargos extra','➕'],huespedes:['Huéspedes','👤'],acompanantes:['Acompañantes','👥'],notas_huesped:['Notas de huésped','📝'],unidades:['Unidades','🚪'],tipos_unidad:['Categorías','🏷'],edificios:['Edificios','🏢'],configuracion:['Configuración','⚙'],perfiles:['Usuarios','🔑'],garantia_fechas:['Garantías por fecha','🛡'],limpieza:['Limpieza','🧹'],reserva_grupos:['Grupos de reservas','👥'],reserva_grupo_miembros:['Reservas de grupo','🧩'],pagos_compartidos:['Pagos grupales','💳'],pagos_compartidos_distribucion:['Distribución de pagos grupales','🧾'],pagos_motivos:['Desglose de pagos','💵'],estacionamiento_reserva_fechas:['Fechas de estacionamiento','🅿️'],perfiles_edificios:['Acceso a edificios','🔐'],perfiles_permisos_buzon:['Permisos del buzón','✉️'],perfiles_permisos_edicion:['Permisos de edición','🛡'],reclamos_sugerencias:['Reclamos y sugerencias','💬'],lista_negra_solicitudes:['Solicitudes de lista negra','🚫'],categoria_ranking_edificio:['Orden de categorías','🏷'],buzon_conversaciones:['Conversaciones del buzón','💬']};
 const audT=t=>AUD_T[t]||[String(t).replace(/_/g,' '),'📄'];
-const AUD_F={monto_clp:'Monto (CLP)',monto_original:'Monto original',metodo:'Método',moneda:'Moneda',tipo_cambio:'Tipo de cambio',motivo:'Motivo',anticipado:'Pago anticipado',id_transaccion:'ID de transacción',pagado_en:'Fecha de pago',tipo:'Tipo',descripcion:'Descripción',cantidad:'Cantidad',monto_unitario:'Monto unitario',total:'Total',estado:'Estado',fecha_entrada:'Entrada',fecha_salida:'Salida',tarifa_noche:'Tarifa por noche',unidad_id:'Unidad',noches:'Noches',canal:'Canal',adultos:'Adultos',menores:'Menores',observaciones:'Observaciones',estado_pago:'Estado de pago',numero_boleta:'N° boleta',referencia_externa:'Código externo',motivo_cancelacion:'Motivo de cancelación',cancelada_en:'Cancelada el',cancelada_por:'Cancelada por',no_show_en:'No-show el',no_show_por:'No-show por',no_show_nota:'Nota de no-show',garantia_omitida:'Garantía omitida',garantia_omitida_motivo:'Motivo omisión de garantía',garantia_omitida_por_nombre:'Garantía omitida por',garantia_omitida_en:'Garantía omitida el',nombre_completo:'Nombre',numero_documento:'Documento',telefono:'Teléfono',rol:'Rol',activo:'Activo',usuario:'Usuario',codigo:'Código',nombre:'Nombre',tarifa_base:'Tarifa base',nota:'Nota',categoria:'Categoría',gravedad:'Gravedad',clave:'Clave',valor:'Valor',creado_por:'Creado por',creado_en:'Creado el',uid_reserva:'ID de reserva',huesped_nombre_copia:'Huésped',entrada_real:'Entrada real',salida_real:'Salida real',usa_estacionamiento:'Usa estacionamiento',fecha:'Fecha'};
-const AUD_IGN=['actualizado_en','updated_at','modificado_en'];
+const AUD_F={monto_clp:'Monto (CLP)',monto_original:'Monto original',metodo:'Método',moneda:'Moneda',tipo_cambio:'Tipo de cambio',motivo:'Motivo',anticipado:'Pago anticipado',id_transaccion:'ID de transacción',pagado_en:'Fecha de pago',tipo:'Tipo',descripcion:'Descripción',cantidad:'Cantidad',monto_unitario:'Monto unitario',total:'Total',estado:'Estado',fecha_entrada:'Entrada',fecha_salida:'Salida',tarifa_noche:'Tarifa por noche',unidad_id:'Unidad',noches:'Noches',canal:'Canal',adultos:'Adultos',menores:'Menores',observaciones:'Observaciones',estado_pago:'Estado de pago',numero_boleta:'N° boleta',referencia_externa:'Código externo',motivo_cancelacion:'Motivo de cancelación',cancelada_en:'Cancelada el',cancelada_por:'Cancelada por',no_show_en:'No-show el',no_show_por:'No-show por',no_show_nota:'Nota de no-show',garantia_omitida:'Garantía omitida',garantia_omitida_motivo:'Motivo omisión de garantía',garantia_omitida_por_nombre:'Garantía omitida por',garantia_omitida_en:'Garantía omitida el',nombre_completo:'Nombre',numero_documento:'Documento',telefono:'Teléfono',rol:'Rol',activo:'Activo',usuario:'Usuario',codigo:'Código',nombre:'Nombre',tarifa_base:'Tarifa base',nota:'Nota',categoria:'Categoría',gravedad:'Gravedad',clave:'Clave',valor:'Valor',creado_por:'Creado por',creado_en:'Creado el',uid_reserva:'ID de reserva',huesped_nombre_copia:'Huésped',entrada_real:'Entrada real',salida_real:'Salida real',usa_estacionamiento:'Usa estacionamiento',fecha:'Fecha',iniciado_en:'Inicio de limpieza',terminado_en:'Término de limpieza',asignado_a:'Responsable de limpieza',actualizado_por:'Actualizado por',modificado_por:'Modificado por',observacion_limpieza:'Observación de limpieza',observacion_recepcion:'Observación de recepción',reserva_id:'Reserva asociada',grupo_id:'Grupo de reservas',pago_compartido_id:'Pago grupal',pago_id:'Pago asociado',remitente_id:'Remitente',receptor_id:'Receptor',conversacion_id:'Conversación',solicitado_por:'Solicitado por',revisado_por:'Revisado por',decision_motivo:'Motivo de decisión',ranking:'Orden',edificio_id:'Edificio',tipo_unidad_id:'Categoría'};
+const AUD_IGN=['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por'];
 const AUD_MONEY=['monto_clp','total','tarifa_noche','tarifa_base','monto_unitario'];
 const AUD_CAMPOS={'Tarifa':['tarifa_noche','tarifa_base'],'Estado':['estado'],'Fechas':['fecha_entrada','fecha_salida'],'Unidad':['unidad_id'],'Monto / total':['monto_clp','monto_original','total','monto_unitario'],'Estado de pago':['estado_pago'],'Rol / activo':['rol','activo'],'Garantía omitida':['garantia_omitida']};
 const AUD_Q=[
- {n:'Todo',f:{}},
+ {n:'Todo',f:{}},{n:'🧹 Limpieza',f:{tablas:['limpieza']}},
  {n:'💵 Pagos registrados',f:{tablas:['pagos'],acc:['INSERT']}},
  {n:'⚠ Pagos modificados o eliminados',f:{tablas:['pagos'],acc:['UPDATE','DELETE']}},
  {n:'➕ Cargos y descuentos',f:{tablas:['cargos']}},
@@ -3715,6 +3715,11 @@ function audResumen(a){
   const obs=esc(String(d.observacion_limpieza||d.observacion_recepcion||'').trim().slice(0,180));
   if(I)return{t:`Registró limpieza pendiente para ${b(unidad)} · estado ${b(despues)}${obs?' · '+obs:''}`,s:false};
   if(D)return{t:`Eliminó un registro de limpieza de ${b(unidad)} · último estado: ${b(antes)}`,s:true};
+  if(ch('iniciado_en')&&n.iniciado_en&&o.iniciado_en!==n.iniciado_en)return{t:`${o.iniciado_en?'Reinició':'Inició'} la limpieza de ${b(unidad)}${obs?' · '+obs:''}`,s:false};
+  if(ch('terminado_en')&&n.terminado_en&&o.terminado_en!==n.terminado_en){
+   if(n.estado==='defectuosa')return{t:`Marcó como defectuosa ${b(unidad)}${obs?' · '+obs:''}`,s:true};
+   return{t:`Terminó la limpieza de ${b(unidad)}${obs?' · '+obs:''}`,s:false};
+  }
   if(ch('estado')){
    let evento;
    if(n.estado==='en_proceso')evento=o.estado==='defectuosa'?'Reinició la limpieza de':'Inició la limpieza de';
@@ -3724,8 +3729,6 @@ function audResumen(a){
    else evento='Cambió el estado de limpieza de';
    return{t:`${evento} ${b(unidad)} · ${b(antes)} → ${b(despues)}${obs?' · '+obs:''}`,s:n.estado==='defectuosa'};
   }
-  if(ch('iniciado_en')&&!o.iniciado_en&&n.iniciado_en)return{t:`Inició la limpieza de ${b(unidad)}${obs?' · '+obs:''}`,s:false};
-  if(ch('terminado_en')&&!o.terminado_en&&n.terminado_en)return{t:`Terminó la limpieza de ${b(unidad)}${obs?' · '+obs:''}`,s:false};
   return{t:`Actualizó la limpieza de ${b(unidad)} — cambió: ${lista()}${obs?' · '+obs:''}`,s:false}}
  if(a.tabla==='reservas'){const id=esc(d.uid_reserva||'');
   if(I)return{t:`Creó la reserva ${b(id)} · ${esc(d.fecha_entrada)} → ${esc(d.fecha_salida)}${d.tarifa_noche?' · '+clp(d.tarifa_noche)+' por noche':''}`,s:false};
