@@ -9029,3 +9029,66 @@ WHERE a.usuario_id IS NULL AND (
  OR (a.accion='UPDATE' AND COALESCE(a.datos_nuevos->>'actualizado_por',a.datos_nuevos->>'modificado_por',a.datos_nuevos->>'revisado_por',a.datos_nuevos->>'solicitado_por') IS NOT NULL)
  OR (a.accion='DELETE' AND a.datos_anteriores->>'eliminado_por' IS NOT NULL)
 );
+
+
+-- PMS · Auditoría de operaciones del buzón sin duplicar el contenido privado de los mensajes.
+CREATE OR REPLACE FUNCTION public.auditar_cambio()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_old jsonb;
+  v_new jsonb;
+  v_row jsonb;
+  v_id uuid;
+  v_actor uuid;
+  v_actor_text text;
+BEGIN
+  v_old := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) END;
+  v_new := CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) END;
+  IF TG_TABLE_NAME = 'buzon_mensajes' THEN
+    IF v_old IS NOT NULL THEN v_old := v_old - 'mensaje'; END IF;
+    IF v_new IS NOT NULL THEN v_new := v_new - 'mensaje'; END IF;
+  END IF;
+  v_row := COALESCE(v_new, v_old);
+  IF TG_OP = 'UPDATE'
+     AND (v_old - ARRAY['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por']::text[])
+         = (v_new - ARRAY['actualizado_en','updated_at','modificado_en','actualizado_por','modificado_por']::text[]) THEN
+    RETURN NEW;
+  END IF;
+  BEGIN v_id := COALESCE(v_row->>'id',v_row->>'unidad_id',v_row->>'reserva_id')::uuid;
+  EXCEPTION WHEN OTHERS THEN v_id := NULL;
+  END;
+  v_actor := auth.uid();
+  IF v_actor IS NULL THEN
+    IF TG_OP = 'INSERT' THEN
+      v_actor_text := COALESCE(v_new->>'creado_por',v_new->>'solicitado_por',v_new->>'revisado_por',v_new->>'remitente_id',v_new->>'usuario_id',v_new->>'actualizado_por');
+    ELSIF TG_OP = 'UPDATE' THEN
+      v_actor_text := COALESCE(v_new->>'actualizado_por',v_new->>'modificado_por',v_new->>'revisado_por',v_new->>'solicitado_por',v_new->>'eliminado_por');
+    ELSE v_actor_text := v_old->>'eliminado_por';
+    END IF;
+    BEGIN v_actor := NULLIF(v_actor_text,'')::uuid;
+    EXCEPTION WHEN OTHERS THEN v_actor := NULL;
+    END;
+  END IF;
+  INSERT INTO public.auditoria(tabla,registro_id,accion,datos_anteriores,datos_nuevos,usuario_id,fecha)
+  VALUES(TG_TABLE_NAME,v_id,TG_OP,v_old,v_new,v_actor,now());
+  IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END
+$function$;
+
+DO $$
+DECLARE t text; tablas text[] := ARRAY[
+ 'buzon_mensajes','buzon_limpiezas_globales','buzon_ocultos','buzon_conversacion_miembros'
+];
+BEGIN
+ FOREACH t IN ARRAY tablas LOOP
+  IF to_regclass(format('public.%I',t)) IS NOT NULL THEN
+   EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I','auditoria_auto_'||t,t);
+   EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.auditar_cambio()','auditoria_auto_'||t,t);
+  END IF;
+ END LOOP;
+END
+$$;
