@@ -4844,6 +4844,7 @@ window.faqSeleccionarCategoria = faqSeleccionarCategoria;
   }
   var lucideScript = document.createElement('script');
   lucideScript.src = 'https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js';
+  lucideScript.async = true;
   lucideScript.onload = function(){ renderIcons(document); };
   lucideScript.onerror = function(){ console.warn('No se pudo cargar Lucide desde CDN.'); };
   document.head.appendChild(lucideScript);
