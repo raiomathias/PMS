@@ -386,18 +386,20 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
  ORDER BY l.unidad_id,l.creado_en;
 $$;
 
-CREATE OR REPLACE FUNCTION public.tablero_limpieza(p_edificio uuid DEFAULT NULL)
-RETURNS TABLE(unidad_id uuid,unidad_codigo text,categoria text,edificio_id uuid,edificio text,fecha_salida date,hora_salida_aprox time,reserva_estado text,hay_ingreso boolean,hora_llegada time,limpieza_id uuid,estado estado_limpieza,observacion_recepcion text,observacion_limpieza text,pendiente_desde timestamptz)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $$
+DROP FUNCTION IF EXISTS public.tablero_limpieza(uuid);
+CREATE FUNCTION public.tablero_limpieza(p_edificio uuid DEFAULT NULL)
+RETURNS TABLE(unidad_id uuid,unidad_codigo text,categoria text,edificio_id uuid,edificio text,fecha_salida date,hora_salida_aprox time,reserva_estado text,hay_ingreso boolean,hora_llegada time,limpieza_id uuid,estado estado_limpieza,observacion_recepcion text,observacion_limpieza text,pendiente_desde timestamptz,adultos integer,menores integer)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public AS $
 WITH hoy AS (SELECT (now() AT TIME ZONE 'America/Santiago')::date d)
-SELECT u.id,u.codigo::text,coalesce(t.nombre,'')::text,e.id,e.nombre::text,s.fecha_salida,s.hora_salida_aprox::time,s.estado::text,(i.unidad_id IS NOT NULL),i.hora_llegada_aprox::time,l.id,l.estado,l.observacion_recepcion,l.observacion_limpieza,CASE WHEN s.unidad_id IS NULL THEN l.creado_en::timestamptz END
+SELECT u.id,u.codigo::text,coalesce(t.nombre,'')::text,e.id,e.nombre::text,s.fecha_salida,s.hora_salida_aprox::time,s.estado::text,(i.unidad_id IS NOT NULL),i.hora_llegada_aprox::time,l.id,l.estado,l.observacion_recepcion,l.observacion_limpieza,CASE WHEN s.unidad_id IS NULL THEN l.creado_en::timestamptz END,s.adultos,s.menores
 FROM unidades u JOIN edificios e ON e.id=u.edificio_id LEFT JOIN tipos_unidad t ON t.id=u.tipo_unidad_id CROSS JOIN hoy
-LEFT JOIN LATERAL(SELECT r.unidad_id,r.fecha_salida,r.hora_salida_aprox,r.estado FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_salida=hoy.d AND r.estado IN ('en_casa','check_out') ORDER BY r.salida_real DESC NULLS LAST LIMIT 1)s ON true
+LEFT JOIN LATERAL(SELECT r.unidad_id,r.fecha_salida,r.hora_salida_aprox,r.estado,r.adultos,r.menores FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_salida=hoy.d AND r.estado IN ('en_casa','check_out') ORDER BY r.salida_real DESC NULLS LAST LIMIT 1)s ON true
 LEFT JOIN LATERAL(SELECT r.unidad_id,r.hora_llegada_aprox FROM reservas r WHERE r.unidad_id=u.id AND r.fecha_entrada=hoy.d AND r.estado IN ('confirmada','en_casa') ORDER BY r.hora_llegada_aprox NULLS LAST LIMIT 1)i ON true
 LEFT JOIN LATERAL(SELECT x.* FROM limpieza x WHERE x.unidad_id=u.id ORDER BY x.creado_en DESC LIMIT 1)l ON true
-WHERE rol_actual() IS NOT NULL AND u.activo AND (p_edificio IS NULL OR u.edificio_id=p_edificio) AND (s.unidad_id IS NOT NULL OR l.estado IN ('sucia','en_proceso','defectuosa'))
+WHERE rol_actual() IS NOT NULL AND u.activo AND public.puede_ver_edificio(e.id) AND (p_edificio IS NULL OR u.edificio_id=p_edificio) AND (s.unidad_id IS NOT NULL OR l.estado IN ('sucia','en_proceso','defectuosa'))
 ORDER BY e.orden,u.codigo;
-$$;
+$;
+GRANT EXECUTE ON FUNCTION public.tablero_limpieza(uuid) TO PUBLIC, anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.buscar_reacomodacion(p_edificio_id uuid,p_tipo_unidad_id uuid,p_entrada date,p_salida date,p_excluir_reserva uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
