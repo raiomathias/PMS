@@ -62,6 +62,16 @@ label{display:grid;gap:2px;font-size:12px;color:var(--mu)}
 .al{padding:8px;border-radius:6px;margin:6px 0;background:#fef3c7;color:#78350f}.al.r{background:#fee2e2;color:#7f1d1d}
 .cand{padding:6px;border:1px solid var(--bd);border-radius:6px;margin:4px 0;cursor:pointer}.cand.sel{border-color:var(--ac);background:rgba(37,99,235,.1)}
 #ms{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:8px;color:#fff;z-index:20;display:none}
+/* Diálogos personalizados: reemplazan confirm/prompt nativos y reutilizan el lenguaje visual de Reclamos/Sugerencias. */
+#pmsNativeDialog{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px;box-sizing:border-box}
+#pmsNativeDialog .pnd-card{width:min(560px,96vw);max-height:min(88vh,760px);overflow:auto;background:var(--pn);color:var(--tx);border:1px solid var(--bd);border-radius:14px;padding:20px;box-sizing:border-box;box-shadow:0 18px 55px rgba(0,0,0,.28)}
+#pmsNativeDialog .pnd-title{margin:0 0 12px;font-size:18px}
+#pmsNativeDialog .pnd-message{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 14px;line-height:1.5}
+#pmsNativeDialog .pnd-field{display:block;width:100%;min-height:110px;box-sizing:border-box;resize:vertical;background:var(--pn);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:10px;margin:0}
+#pmsNativeDialog .pnd-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
+#pmsNativeDialog .pnd-actions button{min-width:92px}
+@media(max-width:560px){#pmsNativeDialog{padding:10px}#pmsNativeDialog .pnd-card{padding:16px}#pmsNativeDialog .pnd-actions button{flex:1}}
+
 .lim{font-size:12px;font-weight:700}
 h4{margin:16px 0 6px}
 .mu{color:var(--mu);font-size:12px}
@@ -599,7 +609,7 @@ button:disabled .button-lucide-icon{opacity:.7}
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button><div style="text-align:center;color:var(--mu);font-size:12px;margin-top:4px">Versión v3.5</div></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><div id="mobileHeaderTools"><button type="button" onclick="mover(-7)" aria-label="Semana anterior">‹</button><button type="button" onclick="mover(0)">Hoy</button><input id="mobileDate" type="date" aria-label="Fecha inicial de la vista móvil" onchange="mobileIrFecha(this.value)"><button type="button" class="mobile-menu-trigger" onclick="toggleMobileMenu()" aria-label="Abrir todos los menús">☰</button></div><button id="btnMoverAtras" onclick="mover(-15)" aria-label="Semana anterior">‹</button><button onclick="mover(0)">Hoy</button><button id="btnMoverAdelante" onclick="mover(15)" aria-label="Semana siguiente">›</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirGestionGrupos()">Gestionar Grupos</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">Catálogo</button><button onclick="cerrarMenus();abrirEst()">Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">Hospedados</button><button onclick="cerrarMenus();abrirHuespedes()">Huéspedes</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAdmin()">Panel Administrativo</button><button onclick="cerrarMenus();abrirReclamos()">Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">Restablecer contraseña</button><button onclick="cerrarMenus();abrirFAQ()">Ayuda</button></div></div><button id="themeButton" onclick="tema()" aria-label="Cambiar tema" title="Cambiar tema">☾</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v3.5</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v3.6</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón"><span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div><nav id="mobileBottomNav" aria-label="Navegación móvil"><button type="button" onclick="mobileIrInicio()"><span>▦</span><span>Grid</span></button><button type="button" onclick="mobileNuevaReserva()"><span>＋</span><span>Reserva</span></button><button type="button" onclick="mobileBuscar()"><span>⌕</span><span>Buscar</span></button><button type="button" onclick="toggleMobileMenu()"><span>☰</span><span>Menú</span></button></nav><div id="mobileMenuSheet" onclick="if(event.target===this)toggleMobileMenu(false)" aria-hidden="true"><section class="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label="Menú principal"><div class="mobile-sheet-grabber"></div><div class="mobile-sheet-head"><div><h3>MMassisT PMS</h3><div id="mobileMenuUser" class="mu"></div></div><button type="button" onclick="toggleMobileMenu(false)" aria-label="Cerrar menú">✕</button></div><div id="mobileMenuContent"></div></section></div>
 <script>
@@ -711,6 +721,37 @@ protegerBotonesMutacion();
 const OBSERVADOR_BOTONES_MUTACION=new MutationObserver(mutations=>{for(const m of mutations)for(const node of m.addedNodes)if(node.nodeType===1)protegerBotonesMutacion(node)});
 OBSERVADOR_BOTONES_MUTACION.observe(document.body,{childList:true,subtree:true});
 function msg(t,err){const m=$('#ms');m.textContent=t;m.style.background=err?'#b91c1c':'#111';m.style.display='block';clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.display='none',4500)}
+// Diálogo reutilizable con el estilo de Reclamos/Sugerencias. Cancelar nunca ejecuta la acción.
+function pmsDialog({title='Confirmar acción',message='',kind='confirm',value='',confirmLabel='Continuar',requiredText=null}){
+ return new Promise(resolve=>{
+  const old=document.getElementById('pmsNativeDialog');if(old)old.remove();
+  const overlay=document.createElement('div');overlay.id='pmsNativeDialog';
+  const card=document.createElement('div');card.className='pnd-card';card.setAttribute('role','dialog');card.setAttribute('aria-modal','true');card.setAttribute('aria-labelledby','pndTitle');
+  const heading=document.createElement('h3');heading.className='pnd-title';heading.id='pndTitle';heading.textContent=title;
+  const box=document.createElement('div');box.className='rec-box';
+  const boxTitle=document.createElement('h4');boxTitle.textContent=kind==='confirm'?'Confirmación':'Información';box.appendChild(boxTitle);
+  const text=document.createElement('p');text.className='pnd-message';text.textContent=String(message||'');box.appendChild(text);
+  let field=null;
+  if(kind==='prompt'){
+   field=document.createElement('textarea');field.className='pnd-field';field.value=String(value??'');field.setAttribute('aria-label',String(message||title));field.placeholder='Escribe aquí…';box.appendChild(field);
+  }
+  const actions=document.createElement('div');actions.className='pnd-actions';
+  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';
+  const accept=document.createElement('button');accept.type='button';accept.className='p';accept.textContent=confirmLabel;
+  actions.append(cancel,accept);card.append(heading,box,actions);overlay.appendChild(card);document.body.appendChild(overlay);
+  let finished=false;
+  const finish=result=>{if(finished)return;finished=true;document.removeEventListener('keydown',onKey,true);overlay.remove();resolve(result)};
+  const onKey=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish(kind==='prompt'?null:false)}else if(e.key==='Enter'&&kind==='confirm'){e.preventDefault();finish(true)}else if(e.key==='Enter'&&kind==='prompt'&&(e.ctrlKey||e.metaKey)){e.preventDefault();finish(field.value)}};
+  cancel.addEventListener('click',()=>finish(kind==='prompt'?null:false));
+  accept.addEventListener('click',()=>{const v=field?field.value:null;if(requiredText!==null&&field&&v.trim()!==requiredText){text.textContent='Para confirmar, escribe exactamente: '+requiredText;field.focus();return}finish(field?v:true)});
+  overlay.addEventListener('click',e=>{if(e.target===overlay)finish(kind==='prompt'?null:false)});
+  document.addEventListener('keydown',onKey,true);
+  (field||accept).focus();
+ });
+}
+function pmsConfirm(message){return pmsDialog({title:'Confirmar acción',message,kind:'confirm',confirmLabel:'Continuar'})}
+function pmsPrompt(message,defaultValue=''){return pmsDialog({title:'Ingresar información',message,kind:'prompt',value:defaultValue,confirmLabel:'Guardar'})}
+
 function cerrarMenus(){document.querySelectorAll('.menu-drop.open').forEach(m=>m.classList.remove('open'))}
 function toggleMenu(id){const m=$('#'+id);if(!m)return;const was=m.classList.contains('open');cerrarMenus();if(!was)m.classList.add('open')}
 document.addEventListener('click',e=>{if(!e.target.closest('.main-menu'))cerrarMenus()});
@@ -1034,8 +1075,8 @@ function bxHora(v){if(!v)return '';const d=new Date(v);return isNaN(d)?'':d.toLo
 function bxIcon(c){const k=c?.clave||'';if(k.includes('egana_huasco'))return '';if(k.includes('limpieza'))return '';if(k.includes('gerencia')||c?.tipo==='privado_gerencia')return '';if(k.includes('egana'))return '';if(k.includes('huasco'))return '';return ''}
 function bxSection(c){return c.tipo==='privado_gerencia'?'Mensajes privados con Gerencia':c.clave==='gerencia_general'?'Administración y Gerencia':'Chats de equipo'}
 function bxPrivacy(c){return c?.tipo==='privado_gerencia'?'Privado: solo tú y Gerencia pueden leer esta conversación.':'Este chat es compartido únicamente con los usuarios autorizados para este canal.'}
-async function bxEliminarMensaje(id){const m=BX.messages.find(x=>x.id===id);if(!m||m.eliminado_en)return;if(!m.mio&&!mailPuedeJefes())return msg('Solo puedes eliminar tus propios mensajes.',1);if(!confirm(m.mio?'¿Eliminar este mensaje? Se conservará el registro de auditoría.':'¿Eliminar el mensaje de otra persona? Se conservará el registro de auditoría.'))return;const {error}=await sb.rpc('buzon_eliminar_mensaje',{p_id:id});if(error)return msg(error.message,1);await bxCargarMensajes(BX.selected,true);await cargarBuzon();msg('Mensaje eliminado.');}
-async function bxLimpiarTodos(){if(!mailPuedeJefes())return msg('Solo Gerencia o SysAdmin puede limpiar todos los buzones.',1);if(!confirm('¿Ocultar todos los mensajes de todos los buzones? No se borrarán del sistema ni de Auditoría.'))return;const {error}=await sb.rpc('buzon_limpiar_todos');if(error)return msg(error.message,1);BX.selected=null;BX.messages=[];await cargarBuzon();msg('Todos los buzones fueron limpiados.');}
+async function bxEliminarMensaje(id){const m=BX.messages.find(x=>x.id===id);if(!m||m.eliminado_en)return;if(!m.mio&&!mailPuedeJefes())return msg('Solo puedes eliminar tus propios mensajes.',1);if(!await pmsConfirm(m.mio?'¿Eliminar este mensaje? Se conservará el registro de auditoría.':'¿Eliminar el mensaje de otra persona? Se conservará el registro de auditoría.'))return;const {error}=await sb.rpc('buzon_eliminar_mensaje',{p_id:id});if(error)return msg(error.message,1);await bxCargarMensajes(BX.selected,true);await cargarBuzon();msg('Mensaje eliminado.');}
+async function bxLimpiarTodos(){if(!mailPuedeJefes())return msg('Solo Gerencia o SysAdmin puede limpiar todos los buzones.',1);if(!await pmsConfirm('¿Ocultar todos los mensajes de todos los buzones? No se borrarán del sistema ni de Auditoría.'))return;const {error}=await sb.rpc('buzon_limpiar_todos');if(error)return msg(error.message,1);BX.selected=null;BX.messages=[];await cargarBuzon();msg('Todos los buzones fueron limpiados.');}
 function actualizarBadge(n){const b=mailBadgeEl();if(!b)return;b.textContent=n>99?'99+':String(n);b.style.display=n?'block':'none'}
 async function cargarBuzon(){
  if(!S.perfil)return;
@@ -1123,7 +1164,7 @@ async function bxEnviar(){
 }
 async function bxLimpiarConversacion(){
  const c=BX.conversations.find(x=>x.conversacion_id===BX.selected);if(!c)return;
- if(!confirm('¿Ocultar de tu vista todos los mensajes de este chat? No se borrarán para los demás participantes ni del registro del sistema.'))return;
+ if(!await pmsConfirm('¿Ocultar de tu vista todos los mensajes de este chat? No se borrarán para los demás participantes ni del registro del sistema.'))return;
  const id=BX.selected;
  const {error}=await sb.rpc('buzon_limpiar_conversacion',{p_conversacion_id:id});
  if(error)return msg('No se pudieron ocultar los mensajes: '+error.message,1);
@@ -1822,12 +1863,12 @@ async function avisoCupoFechas(ed,dates,excl){
  const {data:edif,error:ee}=await sb.from('edificios').select('cupos_estacionamiento').eq('id',ed).maybeSingle();
  if(ee){msg('No se pudo leer la capacidad de estacionamiento: '+ee.message,1);return null}
  const cap=Number(edif?.cupos_estacionamiento)||0;
- if(!cap)return confirm('Este edificio no tiene cupos de estacionamiento definidos. Si continúas, se registrará igualmente el estacionamiento. ¿Continuar?')
+ if(!cap)return await pmsConfirm('Este edificio no tiene cupos de estacionamiento definidos. Si continúas, se registrará igualmente el estacionamiento. ¿Continuar?')
   ?{permitirSobrecupo:true}:null;
  const counts=Object.create(null);
  (fd||[]).forEach(x=>{const d=String(x.fecha).slice(0,10);if(selected.includes(d))counts[d]=(counts[d]||0)+1});
  const full=selected.find(d=>(counts[d]||0)>=cap);
- if(full)return confirm('No quedan cupos de estacionamiento la noche del '+fm(full)+' (hay '+cap+' en total). ¿Confirmas igualmente el sobrecupo?')
+ if(full)return await pmsConfirm('No quedan cupos de estacionamiento la noche del '+fm(full)+' (hay '+cap+' en total). ¿Confirmas igualmente el sobrecupo?')
   ?{permitirSobrecupo:true}:null;
  return {permitirSobrecupo:false};
 }
@@ -1879,7 +1920,7 @@ async function confirmarReacomodacion(plan,targetId,manual=false){
  const aviso=cambios.length
   ? ' El plan requiere '+cambios.length+' cambio'+(cambios.length>1?'s':'')+' de categoría (upgrade). La tarifa de las reservas movidas se mantiene sin cambios.'
   : 'El plan mantiene la categoría de las reservas que se mueven.';
- return confirm((manual?'No hay disponibilidad directa para la unidad seleccionada':'No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value)+'.\n\n'+aviso+'\nNinguna reserva en casa, bloqueo ni reserva marcada como “No mover” puede ser movida automáticamente.\n\nMovimientos que se ejecutarán:\n'+detalle+'\n\nDestino: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación?');
+ return await pmsConfirm((manual?'No hay disponibilidad directa para la unidad seleccionada':'No hay disponibilidad directa de '+targetCat+' para '+$('#ne').value+' → '+$('#ns').value)+'.\n\n'+aviso+'\nNinguna reserva en casa, bloqueo ni reserva marcada como “No mover” puede ser movida automáticamente.\n\nMovimientos que se ejecutarán:\n'+detalle+'\n\nDestino: '+(target?lab(target.id):'—')+'\n\n¿Continuar con la reacomodación?');
 }
 async function elegirUnidad(fe,fs){
  const v=$('#nu').value;if(v){N.plan=[];N.reacomodacion=null;return v}
@@ -1939,9 +1980,9 @@ function barra(){const q=S.sel,B=$('#bar');
  const hoySeleccionado=a<=hoyStr()&&hoyStr()<=z,l=S.lim?.[q.u],puedeMarcarLimpia=hoySeleccionado&&!!l?.limpieza_id&&l.estado!=='limpia';
  B.innerHTML=`<b>${esc(u.edificios.nombre)} · ${esc(u.codigo)}</b><span class="tp">${esc(u.tipos_unidad?.nombre||'')}</span> ${fm(a)} → ${fm(addD(z,1))} · ${n} noche${n>1?'s':''} <button class="p" onclick="desdeSel(0)">＋ Crear reserva</button><button onclick="desdeSel(1)">Bloquear</button><button ${hoySeleccionado?'':'disabled title="Solo se puede marcar sucia una unidad con la casilla de hoy seleccionada"'} onclick="marcarSucia()">Marcar sucia</button><button ${puedeMarcarLimpia?'':'disabled title="Se necesita seleccionar hoy y que exista una limpieza pendiente"'} onclick="marcarLimpiaSeleccionada()">Marcar limpia</button>${obsBox}<button onclick="S.sel=null;dibujar()">✕</button>`;
 }
-async function marcarSucia(){const q=S.sel;if(!q)return;const o=prompt('Mensaje para limpieza (opcional):');if(o===null)return;
+async function marcarSucia(){const q=S.sel;if(!q)return;const o=await pmsPrompt('Mensaje para limpieza (opcional):');if(o===null)return;
  const {error}=await sb.rpc('pedir_limpieza',{p_unidad_id:q.u,p_observacion:o.trim()||null});if(error)return msg(error.message,1);msg('Marcada como sucia: '+nomU(q.u));cargar()}
-async function marcarLimpiaSeleccionada(){const q=S.sel;if(!q)return;const [a,z]=ord(q);if(!(a<=hoyStr()&&hoyStr()<=z))return msg('Selecciona la casilla de hoy para marcar la unidad limpia.',1);const l=S.lim?.[q.u];if(!l?.limpieza_id||l.estado==='limpia')return msg('La unidad no tiene una limpieza pendiente para finalizar.',1);const o=prompt('Observación de limpieza (opcional):');if(o===null)return;const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:l.limpieza_id,p_estado:'limpia',p_observacion:o.trim()||null});if(error)return msg(error.message,1);msg('Unidad marcada como limpia: '+nomU(q.u));try{await refrescarLimpiezaGrid()}catch(e){msg('Se guardó el estado, pero no se pudo actualizar la vista: '+errTxt(e),1)}}
+async function marcarLimpiaSeleccionada(){const q=S.sel;if(!q)return;const [a,z]=ord(q);if(!(a<=hoyStr()&&hoyStr()<=z))return msg('Selecciona la casilla de hoy para marcar la unidad limpia.',1);const l=S.lim?.[q.u];if(!l?.limpieza_id||l.estado==='limpia')return msg('La unidad no tiene una limpieza pendiente para finalizar.',1);const o=await pmsPrompt('Observación de limpieza (opcional):');if(o===null)return;const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:l.limpieza_id,p_estado:'limpia',p_observacion:o.trim()||null});if(error)return msg(error.message,1);msg('Unidad marcada como limpia: '+nomU(q.u));try{await refrescarLimpiezaGrid()}catch(e){msg('Se guardó el estado, pero no se pudo actualizar la vista: '+errTxt(e),1)}}
 function desdeSel(b){const [a,z]=ord(S.sel);abrirNueva({unidad:S.sel.u,entrada:a,salida:addD(z,1),bloqueo:b})}
 function selHtml(id){const q=S.sel;if(!q||q.u!==id)return'';const [a,z]=ord(q),i=Math.max(diff(S.ini,a),0),j=Math.min(diff(S.ini,z)+1,ND);return j>i?`<div class="sl" style="left:${i*W}px;width:${(j-i)*W}px"></div>`:''}
 
@@ -2160,7 +2201,7 @@ async function marcarPagadaHistorica(){
  if(es)return msg(es.message,1);
  const pendiente=Math.max(0,(+s?.total_a_pagar||0)-(+s?.total_pagado||0));
  if(pendiente<=0)return msg('La reserva ya tiene $0 pendiente');
- if(!confirm('Se registrará una regularización histórica por '+clp(pendiente)+' para dejar esta reserva en $0 pendiente. No representa un nuevo cobro; sirve para migrar una reserva cuyo pago ya estaba realizado. ¿Continuar?'))return;
+ if(!await pmsConfirm('Se registrará una regularización histórica por '+clp(pendiente)+' para dejar esta reserva en $0 pendiente. No representa un nuevo cobro; sirve para migrar una reserva cuyo pago ya estaba realizado. ¿Continuar?'))return;
  const {error}=await sb.from('pagos').insert({reserva_id:r.id,metodo:'efectivo',moneda:'CLP',monto_original:pendiente,monto_clp:pendiente,anticipado:false,motivo:'otro',referencia:'Regularización histórica de migración',id_transaccion:'REG-HIST-'+r.id});
  if(error)return msg(errTxt(error),1);
  cerrar();await cargar();await abrirDr(r.id);msg('Reserva regularizada: $0 pendiente');
@@ -2442,7 +2483,7 @@ async function accion(k){
  }
  if(k==='out')return abrirCheckOut();
  if(k==='can'){
-  const m=prompt('Motivo de la cancelación:');
+  const m=await pmsPrompt('Motivo de la cancelación:');
   if(m===null)return;
   motivoCancelacionUsado=m.trim();
   if(!motivoCancelacionUsado)return msg('Indica un motivo para cancelar la reserva.',1);
@@ -2461,7 +2502,7 @@ async function accion(k){
   ({error:e}=await sb.from('reservas').update({estado:'confirmada'}).eq('id',r.id));
  }
  if(k==='ns'){
-  const n=prompt('Nota del no-show (opcional):');if(n===null)return;
+  const n=await pmsPrompt('Nota del no-show (opcional):');if(n===null)return;
   const x=await sb.rpc('marcar_no_show',{p_reserva_id:r.id,p_nota:n});e=x.error;
   if(!e)msg('No-show registrado. Cargo aplicado: '+clp(x.data)+'. Se recomienda cobrarlo, pero no es obligatorio.')
  }
@@ -2772,8 +2813,8 @@ async function guardarG(){const v=i=>$('#'+i).value||null;
  if(error)return error.code==='23505'?msg('Ya existe otro huésped con ese documento',1):msg(errTxt(error),1);
  msg('Huésped guardado');return null}
 async function guardarGSiHayCambios(){const e=await guardarG();return !e}
-async function editarObservacionesReserva(){const r=S.cur;if(!r?.id)return;const texto=prompt('Observaciones de esta reserva (se mostrarán en amarillo junto a las fechas):',String(r.observaciones||''));if(texto===null)return;const valor=texto.trim()||null;const {error}=await sb.from('reservas').update({observaciones:valor}).eq('id',r.id);if(error)return msg('No se pudieron guardar las observaciones: '+errTxt(error),1);r.observaciones=valor;S.res=S.res.map(x=>x.id===r.id?{...x,observaciones:valor}:x);msg('Observaciones de la reserva guardadas');await abrirDr(r.id)}
-async function notaNueva(){const n=prompt('Nota al huésped (nota asociada a su perfil):');if(!n)return;const {error}=await sb.from('notas_huesped').insert({huesped_id:S.cur.huesped_id,reserva_id:S.cur.id,nota:n});er(error,'Nota al huésped guardada');if(!error)abrirDr(S.cur.id)}
+async function editarObservacionesReserva(){const r=S.cur;if(!r?.id)return;const texto=await pmsPrompt('Observaciones de esta reserva (se mostrarán en amarillo junto a las fechas):',String(r.observaciones||''));if(texto===null)return;const valor=texto.trim()||null;const {error}=await sb.from('reservas').update({observaciones:valor}).eq('id',r.id);if(error)return msg('No se pudieron guardar las observaciones: '+errTxt(error),1);r.observaciones=valor;S.res=S.res.map(x=>x.id===r.id?{...x,observaciones:valor}:x);msg('Observaciones de la reserva guardadas');await abrirDr(r.id)}
+async function notaNueva(){const n=await pmsPrompt('Nota al huésped (nota asociada a su perfil):');if(!n)return;const {error}=await sb.from('notas_huesped').insert({huesped_id:S.cur.huesped_id,reserva_id:S.cur.id,nota:n});er(error,'Nota al huésped guardada');if(!error)abrirDr(S.cur.id)}
 async function addAc(){if(!await guardarGSiHayCambios())return;const n=$('#an').value.trim();if(!n)return msg('Falta el nombre',1);const {error}=await sb.from('acompanantes').insert({reserva_id:S.cur.id,nombre_completo:n,numero_documento:$('#ad').value||null,es_menor:$('#am').checked});er(error,'Acompañante agregado');if(!error)abrirDr(S.cur.id)}
 async function delAc(id){if(!await guardarGSiHayCambios())return;await sb.from('acompanantes').delete().eq('id',id);abrirDr(S.cur.id)}
 function defCargo(){const t=$('#ct').value,c=S.cfg,m={check_in_temprano:[c.tarifa_hora_extra,1],check_out_tardio:[c.tarifa_hora_extra,1],estacionamiento:[c.tarifa_estacionamiento_noche,S.cur.noches_estacionamiento||S.cur.noches]}[t]||[0,1];$('#cm').value=m[0];$('#cq').value=m[1]}
@@ -2783,7 +2824,7 @@ async function eliminarDatoFinanciero(tipo,id){
  if(!r?.id||!esGerenciaPlus(S.perfil?.rol))return msg('Solo Gerencia y SysAdmin pueden eliminar cargos o pagos.',1);
  const esPago=tipo==='pago',etiqueta=esPago?'pago':'cargo';
  if(!['pago','cargo'].includes(tipo)||!id)return msg('Registro financiero no válido.',1);
- if(!confirm('¿Eliminar definitivamente este '+etiqueta+'? Esta acción se guardará en Supabase y no se puede deshacer.'))return;
+ if(!await pmsConfirm('¿Eliminar definitivamente este '+etiqueta+'? Esta acción se guardará en Supabase y no se puede deshacer.'))return;
  const {error}=await sb.rpc('eliminar_dato_financiero',{p_tipo:tipo,p_id:id,p_reserva_id:r.id});
  if(error)return msg('No se pudo eliminar el '+etiqueta+': '+errTxt(error),1);
  msg((esPago?'Pago':'Cargo')+' eliminado correctamente.');
@@ -2861,8 +2902,8 @@ async function vistaLimpieza(){
 }
 async function cambiarLimp(id,estado){
  let o=null;
- if(estado==='defectuosa'){o=prompt('¿Qué problema encontraste?');if(!o||!o.trim())return}
- if(estado==='limpia'){o=prompt('Observación (déjala vacía si no hay):');if(o===null)return}
+ if(estado==='defectuosa'){o=await pmsPrompt('¿Qué problema encontraste?');if(!o||!o.trim())return}
+ if(estado==='limpia'){o=await pmsPrompt('Observación (déjala vacía si no hay):');if(o===null)return}
  const {error}=await sb.rpc('actualizar_limpieza',{p_limpieza_id:id,p_estado:estado,p_observacion:o&&o.trim()?o.trim():null});
  if(error)return msg(error.message,1);
  await tareasLimp();
@@ -3243,8 +3284,8 @@ async function guardarPermisos(id){
 
 async function fn(body){const {data,error}=await sb.functions.invoke('smart-service',{body});if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch(e){}throw new Error(m)}return data}
 async function crearU(){const n=$('#un').value.trim();if(!n||$('#uc').value.length<6)return msg('Falta el nombre o la clave es muy corta',1);try{await fn({accion:'crear',nombre_completo:n,rol:$('#ur').value,clave:$('#uc').value});msg('Usuario creado');pUsu()}catch(e){msg(e.message,1)}}
-async function claveU(id){const c=prompt('Nueva clave (mínimo 6 caracteres):');if(!c)return;try{await fn({accion:'cambiar_clave',usuario_id:id,clave:c});msg('Clave cambiada')}catch(e){msg(e.message,1)}}
-async function borrarU(id,nombre){if(id===S.perfil.id)return msg('No puedes borrar tu propio usuario',1);if(!confirm('¿Borrar completamente a '+nombre+'?\n\nSe eliminará su cuenta de acceso y su perfil. Esta acción no se puede deshacer.'))return;try{const {error}=await sb.rpc('eliminar_usuario_completo',{p_usuario_id:id});if(error)throw error;msg('Usuario eliminado completamente');await pUsu()}catch(e){msg(e.message||'No se pudo eliminar el usuario',1)}}
+async function claveU(id){const c=await pmsPrompt('Nueva clave (mínimo 6 caracteres):');if(!c)return;try{await fn({accion:'cambiar_clave',usuario_id:id,clave:c});msg('Clave cambiada')}catch(e){msg(e.message,1)}}
+async function borrarU(id,nombre){if(id===S.perfil.id)return msg('No puedes borrar tu propio usuario',1);if(!await pmsConfirm('¿Borrar completamente a '+nombre+'?\n\nSe eliminará su cuenta de acceso y su perfil. Esta acción no se puede deshacer.'))return;try{const {error}=await sb.rpc('eliminar_usuario_completo',{p_usuario_id:id});if(error)throw error;msg('Usuario eliminado completamente');await pUsu()}catch(e){msg(e.message||'No se pudo eliminar el usuario',1)}}
 // ---------- Antecedentes del huésped ----------
 const antec=l=>{const nc=l.filter(x=>x.estado==='cancelada').length,nn=l.length-nc;return l.length?`<div class="al"> Antecedentes de este huésped: ${[nc?nc+' cancelación'+(nc>1?'es':''):'',nn?nn+' no-show'+(nn>1?'s':''):''].filter(Boolean).join(' y ')}</div>`:''};
 // ---------- Garantía (ficha de reserva) ----------
@@ -3263,7 +3304,7 @@ async function addGarantia(falta){
  const {error}=await sb.from('pagos').insert({reserva_id:S.cur.id,metodo:mt,moneda:'CLP',monto_original:falta,tipo_cambio:null,monto_clp:falta,anticipado:S.cur.fecha_entrada>hoyStr(),motivo:'garantia',id_transaccion:tx||null});
  er(error,'Garantía registrada y descontada del total');if(!error)refrescar()}
 async function omitirGarantia(){
- const m=prompt('Motivo por el que se omite la garantía (obligatorio):');if(m===null)return;
+ const m=await pmsPrompt('Motivo por el que se omite la garantía (obligatorio):');if(m===null)return;
  if(m.trim().length<3)return msg('Debes indicar el motivo',1);
  const {error}=await sb.rpc('omitir_garantia',{p_reserva_id:S.cur.id,p_motivo:m});er(error,'Garantía omitida y registrada a tu nombre');if(!error)refrescar()}
 async function reactivarGarantia(){
@@ -3409,7 +3450,7 @@ async function moverReserva(r,uid,ent,sal){
  const cambiaUnidad=uid!==r.unidad_id;
  const cambiaFechas=ent!==r.fecha_entrada||sal!==r.fecha_salida;
  if(!cambiaUnidad&&!cambiaFechas){dibujar();return}
- if(cambiaUnidad&&r.no_mover_unidad&&!confirm(' Esta reserva está marcada como “No mover de esta unidad”.\\n\\nEl movimiento manual que estás realizando puede moverla igualmente.\\n\\n¿Confirmas que deseas moverla?')){dibujar();return}
+ if(cambiaUnidad&&r.no_mover_unidad&&!await pmsConfirm(' Esta reserva está marcada como “No mover de esta unidad”.\\n\\nEl movimiento manual que estás realizando puede moverla igualmente.\\n\\n¿Confirmas que deseas moverla?')){dibujar();return}
  const tar=null;
  if(cambiaUnidad&&!S.unidades.some(x=>x.id===uid)){
   dibujar();return msg('La unidad de destino ya no está disponible.',1)
@@ -3425,7 +3466,7 @@ async function moverReserva(r,uid,ent,sal){
   msg('La reserva cambió desde que se cargó el calendario. No se aplicó el arrastre; revisa los datos actualizados.',1);
   await cargar();return;
  }
- if(cambiaUnidad&&live.no_mover_unidad&&!r.no_mover_unidad&&!confirm(' Esta reserva fue marcada como “No mover de esta unidad” después de cargar el calendario.\\n\\n¿Confirmas que deseas moverla igualmente?')){
+ if(cambiaUnidad&&live.no_mover_unidad&&!r.no_mover_unidad&&!await pmsConfirm(' Esta reserva fue marcada como “No mover de esta unidad” después de cargar el calendario.\\n\\n¿Confirmas que deseas moverla igualmente?')){
   await cargar();return;
  }
  r={...r,...live};S.res=S.res.map(x=>x.id===r.id?{...x,...live}:x);
@@ -3534,7 +3575,7 @@ async function cambiarUnidad(uid){
   if(!await confirmarReacomodacion(plan,uid,true))return;
  }
 
- if(r.no_mover_unidad&&!confirm(
+ if(r.no_mover_unidad&&!await pmsConfirm(
   ' Esta reserva está marcada como “No mover de esta unidad”.\\n\\n'+
   'El cambio de unidad que estás realizando puede moverla igualmente.\\n\\n'+
   '¿Confirmas que deseas moverla?'
@@ -3623,7 +3664,7 @@ async function pGar(){
 async function gQuitarRango(desde,hasta,unidades){
  if(!Array.isArray(unidades)||!unidades.length)return msg('No se identificaron las unidades del rango.',1);
  const etiqueta=desde===hasta?desde:desde+' a '+hasta;
- if(!confirm('¿Quitar la garantía del '+etiqueta+' en '+unidades.length+' unidad(es)?'))return;
+ if(!await pmsConfirm('¿Quitar la garantía del '+etiqueta+' en '+unidades.length+' unidad(es)?'))return;
  const {error}=await sb.from('garantia_fechas').delete().in('unidad_id',unidades).gte('fecha',desde).lte('fecha',hasta);
  er(error,'Garantía quitada');if(!error)pGar();
 }
@@ -3633,12 +3674,12 @@ async function gAplicar(on){
  const f1=$('#gf1').value,f2=$('#gf2').value,us=[...document.querySelectorAll('.gu:checked')].map(x=>x.value);
  if(!f1||!f2||f2<f1)return msg('Revisa el rango de fechas',1);if(!us.length)return msg('Elige al menos una unidad',1);
  const n=diff(f1,f2)+1;if(n>366)return msg('Máximo 366 días por vez',1);
- if(!confirm(`${on?'Exigir':'Quitar'} garantía en ${us.length} unidad(es) × ${n} día(s)?`))return;
+ if(!await pmsConfirm(`${on?'Exigir':'Quitar'} garantía en ${us.length} unidad(es) × ${n} día(s)?`))return;
  if(on){const rows=[];for(let i=0;i<n;i++)for(const u of us)rows.push({unidad_id:u,fecha:addD(f1,i)});
   for(let i=0;i<rows.length;i+=500){const {error}=await sb.from('garantia_fechas').upsert(rows.slice(i,i+500),{onConflict:'unidad_id,fecha',ignoreDuplicates:true});if(error)return msg(error.message,1)}}
  else{const {error}=await sb.from('garantia_fechas').delete().in('unidad_id',us).gte('fecha',f1).lte('fecha',f2);if(error)return msg(error.message,1)}
  msg(on?'Garantía exigida':'Garantía quitada');pGar()}
-async function gQuitarFecha(f){if(!confirm('¿Quitar la garantía de esta fecha en todas las unidades?'))return;
+async function gQuitarFecha(f){if(!await pmsConfirm('¿Quitar la garantía de esta fecha en todas las unidades?'))return;
  const {error}=await sb.from('garantia_fechas').delete().eq('fecha',f);er(error,'Fecha quitada');if(!error)pGar()}
 
 // ---------- Admin: cancelaciones y no-shows ----------
@@ -4047,7 +4088,7 @@ async function hueConfirmarCombinacion29(){
    if(!chosen||!ids.includes(chosen))return msg('Selecciona un valor válido para cada campo.',1);
    const g=HUE29.guests.find(x=>x.id===chosen);datos[k]=type==='boolean'?!!g?.[k]:(g?.[k]??null);
  }
- if(!confirm('¿Combinar definitivamente '+ids.length+' perfiles? Se conservará el perfil principal elegido, se trasladará todo el historial y se eliminarán los otros '+secundarios.length+' perfiles. Esta acción no se puede deshacer.'))return;
+ if(!await pmsConfirm('¿Combinar definitivamente '+ids.length+' perfiles? Se conservará el perfil principal elegido, se trasladará todo el historial y se eliminarán los otros '+secundarios.length+' perfiles. Esta acción no se puede deshacer.'))return;
  const {error}=await sb.rpc('combinar_huespedes',{p_principal:principal,p_duplicados:secundarios,p_datos:datos});
  if(error)return msg(errTxt(error),1);
  modal.remove();HUE29.selected=[];msg('Se combinaron correctamente '+ids.length+' perfiles y se conservó la información seleccionada.');await abrirHuespedes();await verHuesped29(principal)
@@ -4156,7 +4197,7 @@ async function subirFotos(id){
  msg(subidas+' foto'+(subidas===1?' subida':'s subidas'));pDet(id);
 }
 async function delFoto(id,i){
- if(!confirm('¿Quitar esta foto?'))return;
+ if(!await pmsConfirm('¿Quitar esta foto?'))return;
  const {data:t,error:et}=await sb.from('tipos_unidad').select('fotos').eq('id',id).single();if(et)return msg(et.message,1);
  const n=normalizarFotos(t.fotos),x=n.splice(i,1)[0];
  if(x?.path)await sb.storage.from('fotos_unidades').remove([x.path]);
@@ -4315,8 +4356,8 @@ async function estLleno(edId,fe,fs,excl,fechasSeleccionadas=[]){
  const dia=noches.find(d=>(counts[d]||0)>=cap);
  return dia?{cap,dia}:null}
 const avisoCupo=async(ed,fe,fs,excl)=>{const l=await estLleno(ed,fe,fs,excl);
- if(l?.sin)return confirm('Este edificio no tiene cupos de estacionamiento definidos. ¿Continuar igualmente?');
- if(l?.dia)return confirm('No quedan cupos de estacionamiento la noche del '+fm(l.dia)+' (hay '+l.cap+' en total). ¿Continuar igualmente?');
+ if(l?.sin)return await pmsConfirm('Este edificio no tiene cupos de estacionamiento definidos. ¿Continuar igualmente?');
+ if(l?.dia)return await pmsConfirm('No quedan cupos de estacionamiento la noche del '+fm(l.dia)+' (hay '+l.cap+' en total). ¿Continuar igualmente?');
  return true};
 function abrirCanc(){if(!esAdminPlus(S.perfil?.rol))return msg('Solo Administración puede ver las cancelaciones',1);A.open=true;panel('cancelaciones')}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#est').style.display==='flex'&&$('#dr').style.display!=='block'&&$('#mo').style.display!=='grid')cerrarEst()});
@@ -4339,12 +4380,12 @@ async function bRun(){
  const {data:rs}=BQ.ids.length?await sb.from('reservas').select('id,uid_reserva,huesped_id,unidad_id,fecha_entrada,fecha_salida,estado').in('huesped_id',BQ.ids).order('fecha_entrada',{ascending:false}):{data:[]};
  $('#bbr').innerHTML=BQ.ids.length?`<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0"><span class="mu">${BQ.ids.length} huésped(es)</span><button class="r" onclick="bDelTodos()">Borrar los ${BQ.ids.length} resultados</button></div>`+hs.map(h=>{const L=(rs||[]).filter(x=>x.huesped_id===h.id);
   return `<div class="sec c5"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div><b>${esc(h.nombre_completo)}</b> <span class="mu">${esc(h.uid_huesped)}${h.numero_documento?' · '+esc(h.numero_documento):''}</span></div><button class="r" onclick="bDelH('${h.id}',${L.length})">Huésped</button></div>${L.map(x=>`<div class="rw"><span style="flex:1">${esc(x.uid_reserva)} · ${esc(nomU(x.unidad_id))} · ${fm(x.fecha_entrada)} → ${fm(x.fecha_salida)} · ${x.estado.replace('_',' ')}</span><button onclick="bDelR('${x.id}')"></button></div>`).join('')||'<p class="mu" style="margin:6px 0 0">Sin reservas</p>'}</div>`}).join(''):'<p class="mu">Sin resultados</p>'}
-async function bDelR(id){if(!confirm('¿Borrar esta reserva por completo? No se puede deshacer.'))return;
+async function bDelR(id){if(!await pmsConfirm('¿Borrar esta reserva por completo? No se puede deshacer.'))return;
  const {error}=await sb.rpc('borrar_reserva',{p_reserva_id:id,p_borrar_huesped:false});if(error)return msg(error.message,1);msg('Reserva borrada');bRun();cargar()}
-async function bDelH(id,n){if(!confirm(`¿Borrar al huésped y sus ${n} reserva(s)? No se puede deshacer.`))return;
+async function bDelH(id,n){if(!await pmsConfirm(`¿Borrar al huésped y sus ${n} reserva(s)? No se puede deshacer.`))return;
  const {error}=await sb.rpc('borrar_huesped',{p_huesped_id:id});if(error)return msg(error.message,1);msg('Huésped borrado');bRun();cargar()}
 async function bDelTodos(){const ids=[...BQ.ids];
- if(prompt(`Vas a borrar ${ids.length} huésped(es) con todas sus reservas. Escribe BORRAR para confirmar:`)!=='BORRAR')return;
+ if(await pmsPrompt(`Vas a borrar ${ids.length} huésped(es) con todas sus reservas. Escribe BORRAR para confirmar:`)!=='BORRAR')return;
  let ok=0,mal=null;for(const id of ids){const {error}=await sb.rpc('borrar_huesped',{p_huesped_id:id});if(error){mal=error.message;break}ok++}
  msg(mal?`Se borraron ${ok}; se detuvo con un error: ${mal}`:`Se borraron ${ok} huésped(es) y sus reservas`,!!mal);bRun();cargar()}
 // ---------- Buscador ----------
@@ -4363,7 +4404,7 @@ protegerMutacionesRealtime();
 iniciar();
 
 // Comprueba el HTML publicado en GitHub Pages; no necesita Realtime ni SQL.
-const VERSION_ACTUAL='3.5';
+const VERSION_ACTUAL='3.6';
 function compararVersiones(a,b){const A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const x=A[i]||0,y=B[i]||0;if(x!==y)return x>y?1:-1}return 0}
 async function comprobarVersionPublicada(){const n=document.querySelector('#versionUpdateNotice');if(!n)return;try{const u=new URL('./index.html',location.href);u.searchParams.set('_vcheck',Date.now());const r=await fetch(u.href,{cache:'no-store'});if(!r.ok)return;const h=await r.text();const m=h.match(/id="versionStatus"[^>]*>(?:v)?([0-9]+(?:\.[0-9]+)+)</);const v=m?.[1];if(v&&compararVersiones(v,VERSION_ACTUAL)>0){n.style.display='inline';n.innerHTML=' Actualización v'+v+' disponible · <button onclick="location.reload()" style="padding:3px 8px">Recargar ahora</button>'}else{n.style.display='none';n.textContent=''}}catch(e){}}
 setInterval(comprobarVersionPublicada,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)comprobarVersionPublicada()});setTimeout(comprobarVersionPublicada,8000);
@@ -4445,7 +4486,7 @@ function gmDibujarLista(){
  out.innerHTML=a.map(g=>'<button class="gm-item '+(GM.seleccion===g.id?'active':'')+'" data-id="'+g.id+'" onclick="gmAbrirGrupo(this.dataset.id)"><b>'+esc(g.nombre||'Reserva grupal')+'</b><div class="mu">'+esc(g.estado||'activo')+' · '+esc(g.canal||'directo')+'</div><div class="mu">'+esc(g.codigo_externo||'Sin código externo')+'</div></button>').join('')||'<div class="mu" style="padding:12px">No hay grupos que coincidan.</div>';
 }
 async function gmCrearGrupoVacio(){
- const nombre=prompt('Nombre del nuevo grupo:');if(nombre===null)return;if(!nombre.trim())return msg('El nombre del grupo es obligatorio.',1);
+ const nombre=await pmsPrompt('Nombre del nuevo grupo:');if(nombre===null)return;if(!nombre.trim())return msg('El nombre del grupo es obligatorio.',1);
  const q=await sb.from('reserva_grupos').insert({nombre:nombre.trim(),estado:'activo',canal:'directo'}).select('id').single();
  if(q.error)return msg('No se pudo crear el grupo: '+errTxt(q.error),1);await gmCargarGrupos(q.data.id);msg('Grupo creado. Puedes agregar reservas existentes.');
 }
@@ -4490,15 +4531,15 @@ function gmCargoSeleccionCambio(){const box=$('#gmCargoSelecciones');if(box)box.
 function gmCalcularCargo(){const n=$('#gmCargoTodas')?.checked?GM.miembros.length:document.querySelectorAll('.gmCargoReserva:checked').length,q=Number($('#gmCargoCantidad')?.value)||0,m=Number($('#gmCargoMonto')?.value)||0,total=Math.round(n*q*m),out=$('#gmCargoTotal');if(out)out.textContent='Total calculado: $'+total.toLocaleString('es-CL')+' CLP ('+n+' reservas × '+q+' × $'+m.toLocaleString('es-CL')+')'}
 async function gmCargarCargos(id){const out=$('#gmCargosLista');if(!out)return;const q=await sb.from('cargos_grupales').select('id,tipo,descripcion,cantidad_por_reserva,monto_unitario,cantidad_reservas,total,reservas_ids,creado_en').eq('grupo_id',id).order('creado_en',{ascending:false});if(q.error){out.innerHTML='<p class="mu">No se pudieron cargar cargos grupales. Ejecuta la migración de SQL.txt. '+esc(errTxt(q.error))+'</p>';return}out.innerHTML=(q.data||[]).map(c=>'<div class="cat"><b>'+esc(c.descripcion||c.tipo)+'</b><div class="mu">'+esc(c.tipo)+' · '+c.cantidad_reservas+' reservas × '+c.cantidad_por_reserva+' × $'+Number(c.monto_unitario||0).toLocaleString('es-CL')+' = <b>$'+Number(c.total||0).toLocaleString('es-CL')+' CLP</b></div>'+(gmPuedeGestionarFinanzas()?'<button class="r" data-id="'+c.id+'" data-grupo="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Eliminando...&#39;,()=>gmEliminarCargo(this.dataset.grupo,this.dataset.id))"> Eliminar cargo</button>':'')+'</div>').join('')||'<p class="mu">Sin cargos grupales.</p>'}
 async function gmAgregarCargo(id){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden gestionar cargos grupales.',1);const cantidad=Number($('#gmCargoCantidad')?.value)||0,monto=Number($('#gmCargoMonto')?.value)||0,tipo=$('#gmCargoTipo')?.value,desc=$('#gmCargoDesc')?.value.trim()||null,reservas=$('#gmCargoTodas')?.checked?GM.miembros.map(m=>m.reserva_id):[...document.querySelectorAll('.gmCargoReserva:checked')].map(x=>x.value);if(!reservas.length)return msg('Selecciona al menos una reserva.',1);if(cantidad<=0||monto<=0)return msg('Cantidad y monto unitario deben ser mayores que cero.',1);const total=Math.round(cantidad*monto*reservas.length),head=await sb.from('cargos_grupales').insert({grupo_id:id,tipo,descripcion:desc,cantidad_por_reserva:cantidad,monto_unitario:Math.round(monto),cantidad_reservas:reservas.length,total,reservas_ids:reservas}).select('id').single();if(head.error)return msg('No se pudo crear el cargo grupal: '+errTxt(head.error)+'. Ejecuta la migración SQL.txt.',1);const rows=reservas.map(reserva_id=>({reserva_id,tipo,descripcion:desc||'Cargo grupal',cantidad,monto_unitario:Math.round(monto),cargo_grupal_id:head.data.id})),ins=await sb.from('cargos').insert(rows);if(ins.error){await sb.from('cargos').delete().eq('cargo_grupal_id',head.data.id);await sb.from('cargos_grupales').delete().eq('id',head.data.id);return msg('No se pudo aplicar el cargo a las reservas: '+errTxt(ins.error),1)}await gmCargarCargos(id);msg('Cargo agregado: $'+total.toLocaleString('es-CL')+' CLP en '+reservas.length+' reserva(s).')}
-async function gmEliminarCargo(id,cargoId){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden eliminar cargos.',1);if(!confirm('¿Eliminar este cargo grupal de todas las reservas seleccionadas?'))return;const a=await sb.from('cargos').delete().eq('cargo_grupal_id',cargoId);if(a.error)return msg('No se pudieron eliminar los cargos asociados: '+errTxt(a.error),1);const b=await sb.from('cargos_grupales').delete().eq('id',cargoId);if(b.error)return msg('Se eliminaron los cargos individuales, pero no el registro grupal: '+errTxt(b.error),1);await gmCargarCargos(id);msg('Cargo grupal eliminado.')}
-async function gmEliminarPagoCompartido(id,pagoId){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden eliminar pagos compartidos.',1);if(!confirm('¿Eliminar este pago compartido y los pagos individuales que generó? Esta acción no se puede deshacer.'))return;const d=await sb.from('pagos_compartidos_distribucion').select('pago_id').eq('pago_compartido_id',pagoId);if(d.error)return msg('No se pudieron consultar las asignaciones: '+errTxt(d.error),1);const ids=[...new Set((d.data||[]).map(x=>x.pago_id).filter(Boolean))];if(ids.length){const p=await sb.from('pagos').delete().in('id',ids);if(p.error)return msg('No se pudieron eliminar los pagos individuales: '+errTxt(p.error),1)}const q=await sb.from('pagos_compartidos').delete().eq('id',pagoId);if(q.error)return msg('No se pudo eliminar el pago compartido: '+errTxt(q.error),1);await gmAbrirGrupo(id);msg('Pago compartido y sus asignaciones eliminados.')}
+async function gmEliminarCargo(id,cargoId){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden eliminar cargos.',1);if(!await pmsConfirm('¿Eliminar este cargo grupal de todas las reservas seleccionadas?'))return;const a=await sb.from('cargos').delete().eq('cargo_grupal_id',cargoId);if(a.error)return msg('No se pudieron eliminar los cargos asociados: '+errTxt(a.error),1);const b=await sb.from('cargos_grupales').delete().eq('id',cargoId);if(b.error)return msg('Se eliminaron los cargos individuales, pero no el registro grupal: '+errTxt(b.error),1);await gmCargarCargos(id);msg('Cargo grupal eliminado.')}
+async function gmEliminarPagoCompartido(id,pagoId){if(!gmPuedeGestionarFinanzas())return msg('Solo gerencia y administración pueden eliminar pagos compartidos.',1);if(!await pmsConfirm('¿Eliminar este pago compartido y los pagos individuales que generó? Esta acción no se puede deshacer.'))return;const d=await sb.from('pagos_compartidos_distribucion').select('pago_id').eq('pago_compartido_id',pagoId);if(d.error)return msg('No se pudieron consultar las asignaciones: '+errTxt(d.error),1);const ids=[...new Set((d.data||[]).map(x=>x.pago_id).filter(Boolean))];if(ids.length){const p=await sb.from('pagos').delete().in('id',ids);if(p.error)return msg('No se pudieron eliminar los pagos individuales: '+errTxt(p.error),1)}const q=await sb.from('pagos_compartidos').delete().eq('id',pagoId);if(q.error)return msg('No se pudo eliminar el pago compartido: '+errTxt(q.error),1);await gmAbrirGrupo(id);msg('Pago compartido y sus asignaciones eliminados.')}
 
 function gmCargoUi(id){const checks=GM.miembros.map((m,i)=>'<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" class="gmCargoReserva" value="'+m.reserva_id+'" checked onchange="gmCalcularCargo()"> Reserva '+(i+1)+' · '+esc(m.reserva?.uid_reserva||m.reserva_id)+' · '+esc(m.reserva?.huesped_nombre_copia||'Huésped')+'</label>').join('');return '<div class="sec c3"><h4 class="st">Cargos para el grupo</h4><p class="mu">Selecciona las reservas afectadas. El total se calcula como cantidad por reserva × monto unitario × número de reservas.</p><div class="g2"><label>Tipo de cargo<select id="gmCargoTipo">'+['check_in_temprano','check_out_tardio','estacionamiento','dano_penalizacion','minibar','lavanderia','desayuno','otro','descuento'].map(x=>'<option value="'+x+'">'+x.replace(/_/g,' ')+'</option>').join('')+'</select></label><label>Descripción<input id="gmCargoDesc" placeholder="Ej. Estacionamiento por noche"></label><label>Cantidad por reserva<input id="gmCargoCantidad" type="number" min="0.01" step="0.01" value="1" oninput="gmCalcularCargo()"></label><label>Monto unitario (CLP)<input id="gmCargoMonto" type="number" min="1" step="1" value="0" oninput="gmCalcularCargo()"></label></div><div style="padding:10px;border:1px solid var(--bd);border-radius:9px;margin:10px 0"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gmCargoTodas" checked onchange="gmCargoSeleccionCambio()"> Aplicar a todas las reservas</label><div id="gmCargoSelecciones" style="display:none;margin-top:8px">'+checks+'</div></div><div id="gmCargoTotal" class="al">Total calculado: $0 CLP</div>'+(gmPuedeGestionarFinanzas()?'<button class="p" data-id="'+id+'" onclick="bloquearBotonGuardado(this,&#39;Guardando...&#39;,()=>gmAgregarCargo(this.dataset.id))">＋ Agregar cargo al grupo</button>':'<p class="mu">Solo gerencia y administración pueden agregar o eliminar cargos.</p>')+'<h4 class="st" style="margin-top:14px">Cargos registrados</h4><div id="gmCargosLista">Cargando cargos…</div></div>'}
 async function gmGuardarNotasGrupo(id){
  const miembros=GM.miembros.filter(m=>m.reserva?.id),obs=$('#gmAccionObs')?.value.trim()||'',reclamo=$('#gmAccionReclamo')?.value.trim()||'';
  if(!obs&&!reclamo)return msg('Escribe una observación o reclamo antes de guardar.',1);
  if(!miembros.length)return msg('El grupo no tiene reservas vinculadas.',1);
- if(!confirm('Se guardarán los textos en las '+miembros.length+' reservas vinculadas. ¿Continuar?'))return;
+ if(!await pmsConfirm('Se guardarán los textos en las '+miembros.length+' reservas vinculadas. ¿Continuar?'))return;
  const fallos=[];
  for(const m of miembros){const r=m.reserva;
   if(obs){const anterior=String(r.observaciones||'').trim(),nuevo=anterior?anterior+'\n\n[Observación de grupo · '+new Date().toLocaleString('es-CL',{timeZone:ZONA_HORARIA_PMS,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+'] '+obs:obs;const q=await sb.from('reservas').update({observaciones:nuevo}).eq('id',r.id);if(q.error){fallos.push((r.uid_reserva||r.id)+': '+q.error.message);continue}r.observaciones=nuevo}
@@ -4516,7 +4557,7 @@ async function gmEjecutarAccionGrupo(id){
  const candidatos=GM.miembros.filter(m=>m.reserva&&estados[tipo].includes(m.reserva.estado)&&(tipo!=='ns'||m.reserva.fecha_entrada<=hoy));
  if(!candidatos.length)return msg('No hay reservas compatibles con esta acción.',1);
  const nombres={in:'hacer check-in',out:'hacer check-out',can:'cancelar',ns:'marcar no-show'};
- if(!confirm('Vas a '+nombres[tipo]+' '+candidatos.length+' de '+GM.miembros.length+' reservas. Las demás se omitirán por su estado. ¿Continuar?'))return;
+ if(!await pmsConfirm('Vas a '+nombres[tipo]+' '+candidatos.length+' de '+GM.miembros.length+' reservas. Las demás se omitirán por su estado. ¿Continuar?'))return;
  const fallos=[],ok=[];
  for(const m of candidatos){const r=m.reserva;
   try{
@@ -4555,12 +4596,12 @@ async function gmAgregarReserva(id){
  await gmCargarGrupos(id);msg('Reserva agregada al grupo.');
 }
 async function gmQuitarReserva(id,rid){
- if(!confirm('¿Desvincular esta reserva? No se eliminará la reserva ni sus pagos individuales.'))return;
+ if(!await pmsConfirm('¿Desvincular esta reserva? No se eliminará la reserva ni sus pagos individuales.'))return;
  const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id).eq('reserva_id',rid);
  if(q.error)return msg('No se pudo desvincular: '+errTxt(q.error),1);await gmCargarGrupos(id);msg('Reserva desvinculada.');
 }
 async function gmEliminarGrupo(id){
- if(!confirm('¿Eliminar este grupo? Las reservas individuales se conservarán.'))return;
+ if(!await pmsConfirm('¿Eliminar este grupo? Las reservas individuales se conservarán.'))return;
  const q=await sb.from('reserva_grupo_miembros').delete().eq('grupo_id',id);if(q.error)return msg('No se pudieron desvincular las reservas: '+errTxt(q.error),1);
  const d=await sb.from('reserva_grupos').delete().eq('id',id);if(d.error)return msg('No se pudo eliminar el grupo: '+errTxt(d.error),1);
  GM.seleccion=null;await gmCargarGrupos();msg('Grupo eliminado; las reservas se conservaron.');
@@ -4570,7 +4611,7 @@ function gmMontoFmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CL
 function gmDistribucionPropuesta(){const moneda=$('#gmPagoMoneda')?.value||'CLP',monto=Number($('#gmPagoMonto')?.value)||0,cambio=Number($('#gmPagoCambio')?.value)||0,total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),rows=GM.miembros,saldos=rows.map(m=>Math.max(0,Number(m.saldo)||0)),totales=rows.map(m=>Math.max(0,Number(m.totalEstadia)||0)),sumaSaldo=saldos.reduce((a,b)=>a+b,0),pesos=sumaSaldo>0&&total<=sumaSaldo?saldos:totales,denom=pesos.reduce((a,b)=>a+b,0);let usado=0;return rows.map((m,i)=>{const v=i===rows.length-1?total-usado:(denom?Math.floor(total*pesos[i]/denom):Math.floor(total/Math.max(1,rows.length)));usado+=v;return {reserva_id:m.reserva_id,monto_clp:Math.max(0,v)}})}
 function gmActualizarDistribucion(){const out=$('#gmPagoResumen');if(!out)return;const propuesta=gmDistribucionPropuesta(),prev=[...document.querySelectorAll('.gmPagoAsignacion')],prevExceptions=[...document.querySelectorAll('.gmPagoExcepcion')].map(x=>({reserva:x.dataset.reserva,motivo:x.querySelector('.gmPagoMotivo')?.value||'estacionamiento',monto:x.querySelector('.gmPagoExcepcionMonto')?.value||''}));out.innerHTML='<div style="border:1px solid var(--bd);border-radius:9px;padding:12px"><b>Distribución por reserva y motivo</b><p class="mu">El importe asignado a cada reserva incluye todos sus motivos. Las excepciones se descuentan de estadía; la suma de todos los conceptos debe coincidir con el pago recibido.</p>'+GM.miembros.map((m,i)=>{const prevVal=prev.find(x=>x.dataset.reserva===m.reserva_id)?.value,asignado=prevVal!==undefined?prevVal:propuesta[i].monto_clp,ex=prevExceptions.filter(x=>x.reserva===m.reserva_id);return '<div style="padding:10px 0;border-bottom:1px solid var(--bd)"><div style="display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:10px;align-items:start"><div><b>'+esc(m.reserva.huesped_nombre_copia||'Huésped')+'</b><div class="mu">Estadía y cargos: '+gmMontoFmt(m.totalEstadia)+' · Pagado: '+gmMontoFmt(m.pagado)+' · Saldo: '+gmMontoFmt(m.saldo)+'</div></div><label>Total asignado (CLP)<input class="gmPagoAsignacion" data-reserva="'+m.reserva_id+'" type="number" min="0" step="1" value="'+esc(asignado)+'" oninput="gmPagoTotales()"></label></div><div class="gmPagoExcepciones" data-reserva="'+m.reserva_id+'" style="margin:8px 0 0 8px">'+ex.map(x=>gmPagoExcepcionHtml(m.reserva_id,x.motivo,x.monto)).join('')+'</div><button type="button" style="margin-top:5px" onclick="gmAgregarMotivoGrupo(\''+m.reserva_id+'\')">＋ Excepción de motivo</button><div class="mu" style="margin-top:4px">El monto restante se registra como estadía.</div></div>'}).join('')+'<div id="gmPagoTotales" style="margin-top:10px"></div></div>';gmPagoTotales()}
 function gmPagoExcepcionHtml(reservaId,motivo='estacionamiento',monto=''){return '<div class="gmPagoExcepcion" data-reserva="'+reservaId+'" style="display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:6px;align-items:end;margin:6px 0"><label>Motivo<select class="gmPagoMotivo" onchange="gmPagoTotales()">'+[['estacionamiento','Estacionamiento'],['horario_extra','Horario extra'],['penalizacion','Penalización'],['consumos','Consumos'],['garantia','Garantía'],['otro','Otro']].map(x=>'<option value="'+x[0]+'" '+(motivo===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label><label>Monto (CLP)<input class="gmPagoExcepcionMonto" type="number" min="1" step="1" value="'+esc(monto)+'" oninput="gmPagoTotales()"></label><button type="button" aria-label="Quitar excepción" onclick="gmEliminarMotivoGrupo(this)">✕</button></div>'}function gmAgregarMotivoGrupo(reservaId){const box=[...document.querySelectorAll('.gmPagoExcepciones')].find(x=>x.dataset.reserva===reservaId);if(!box)return;box.insertAdjacentHTML('beforeend',gmPagoExcepcionHtml(reservaId,'estacionamiento',''));gmPagoTotales()}function gmEliminarMotivoGrupo(btn){btn.closest('.gmPagoExcepcion')?.remove();gmPagoTotales()}function gmPagoTotales(){const out=$('#gmPagoTotales');if(!out)return;const moneda=$('#gmPagoMoneda')?.value||'CLP',total=moneda==='USD'?Math.round((Number($('#gmPagoMonto')?.value)||0)*(Number($('#gmPagoCambio')?.value)||0)):Math.round(Number($('#gmPagoMonto')?.value)||0),asignaciones=[...document.querySelectorAll('.gmPagoAsignacion')],asignado=asignaciones.reduce((a,x)=>a+Math.max(0,Math.round(Number(x.value)||0)),0),delta=total-asignado,errores=[];for(const a of asignaciones){const ex=[...document.querySelectorAll('.gmPagoExcepcion')].filter(x=>x.dataset.reserva===a.dataset.reserva),suma=ex.reduce((n,x)=>n+Math.max(0,Math.round(Number(x.querySelector('.gmPagoExcepcionMonto')?.value)||0)),0);if(suma>Math.max(0,Math.round(Number(a.value)||0)))errores.push('Las excepciones superan el total asignado a una reserva.')}out.innerHTML='Distribuido: <b>'+gmMontoFmt(asignado)+'</b> · Por asignar: <b style="color:'+(delta===0?'#16a34a':'#dc2626')+'">'+gmMontoFmt(delta)+'</b>'+(delta===0?' · Distribución completa':' · Ajusta los importes para cuadrar el pago')+(errores.length?'<div style="color:#dc2626;margin-top:6px">'+errores.map(esc).join('<br>')+'</div>':'')}
-async function gmRegistrarPago(id){if(!GM.miembros.length)return msg('Agrega al menos una reserva antes de registrar un pago.',1);const moneda=$('#gmPagoMoneda').value,monto=Number($('#gmPagoMonto').value)||0,cambio=Number($('#gmPagoCambio').value)||0;if(monto<=0)return msg('El monto debe ser mayor que cero.',1);if(moneda==='USD'&&cambio<=0)return msg('Indica un tipo de cambio válido.',1);const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),asignaciones=[...document.querySelectorAll('.gmPagoAsignacion')],asignado=asignaciones.reduce((a,x)=>a+Math.max(0,Math.round(Number(x.value)||0)),0);if(asignado!==total)return msg('La suma asignada ('+gmMontoFmt(asignado)+') debe coincidir con el pago ('+gmMontoFmt(total)+').',1);const distribucion=[];for(const a of asignaciones){const reserva_id=a.dataset.reserva,bruto=Math.max(0,Math.round(Number(a.value)||0)),ex=[...document.querySelectorAll('.gmPagoExcepcion')].filter(x=>x.dataset.reserva===reserva_id).map(x=>({motivo:x.querySelector('.gmPagoMotivo')?.value||'estacionamiento',monto_clp:Math.round(Number(x.querySelector('.gmPagoExcepcionMonto')?.value)||0)}));if(ex.some(x=>!Number.isFinite(x.monto_clp)||x.monto_clp<=0))return msg('Cada excepción debe tener un monto mayor que cero.',1);const excepciones=ex.reduce((n,x)=>n+x.monto_clp,0);if(excepciones>bruto)return msg('Las excepciones de motivo no pueden superar el total asignado a su reserva.',1);const estadia=bruto-excepciones;if(estadia>0)distribucion.push({reserva_id,monto_clp:estadia,motivo:'estadia'});for(const x of ex)if(x.monto_clp>0)distribucion.push({reserva_id,monto_clp:x.monto_clp,motivo:x.motivo})}if(!distribucion.length)return msg('Asigna el pago a por lo menos una reserva.',1);const detalle=GM.miembros.map(m=>{const conceptos=distribucion.filter(x=>x.reserva_id===m.reserva_id).map(x=>({motivo:x.motivo,monto:x.monto_clp}));return (m.reserva?.huesped_nombre_copia||'Huésped')+': '+conceptos.map(x=>(x.motivo==='estadia'?'Estadía':x.motivo==='estacionamiento'?'Estacionamiento':x.motivo.replace(/_/g,' '))+' '+gmMontoFmt(x.monto)).join(', ')}).filter(x=>!x.endsWith(': ')).join('\\n');if(!confirm('Confirma el pago grupal de '+gmMontoFmt(total)+'.\\n\\n'+detalle+'\\n\\n¿Registrar los pagos individuales con estos motivos?'))return;const q=await sb.rpc('registrar_pago_compartido_grupo',{p_grupo_id:id,p_metodo:$('#gmPagoMetodo').value,p_moneda:moneda,p_monto_original:monto,p_tipo_cambio:moneda==='USD'?cambio:null,p_id_transaccion:$('#gmPagoTx').value.trim()||null,p_referencia:$('#gmPagoRef').value.trim()||null,p_distribucion:distribucion});if(q.error)return msg('No se registró el pago: '+errTxt(q.error)+'. Comprueba la migración v3.1 de SQL.txt.',1);await gmAbrirGrupo(id);msg('Pago compartido registrado con sus motivos y distribución confirmados.')}
+async function gmRegistrarPago(id){if(!GM.miembros.length)return msg('Agrega al menos una reserva antes de registrar un pago.',1);const moneda=$('#gmPagoMoneda').value,monto=Number($('#gmPagoMonto').value)||0,cambio=Number($('#gmPagoCambio').value)||0;if(monto<=0)return msg('El monto debe ser mayor que cero.',1);if(moneda==='USD'&&cambio<=0)return msg('Indica un tipo de cambio válido.',1);const total=moneda==='USD'?Math.round(monto*cambio):Math.round(monto),asignaciones=[...document.querySelectorAll('.gmPagoAsignacion')],asignado=asignaciones.reduce((a,x)=>a+Math.max(0,Math.round(Number(x.value)||0)),0);if(asignado!==total)return msg('La suma asignada ('+gmMontoFmt(asignado)+') debe coincidir con el pago ('+gmMontoFmt(total)+').',1);const distribucion=[];for(const a of asignaciones){const reserva_id=a.dataset.reserva,bruto=Math.max(0,Math.round(Number(a.value)||0)),ex=[...document.querySelectorAll('.gmPagoExcepcion')].filter(x=>x.dataset.reserva===reserva_id).map(x=>({motivo:x.querySelector('.gmPagoMotivo')?.value||'estacionamiento',monto_clp:Math.round(Number(x.querySelector('.gmPagoExcepcionMonto')?.value)||0)}));if(ex.some(x=>!Number.isFinite(x.monto_clp)||x.monto_clp<=0))return msg('Cada excepción debe tener un monto mayor que cero.',1);const excepciones=ex.reduce((n,x)=>n+x.monto_clp,0);if(excepciones>bruto)return msg('Las excepciones de motivo no pueden superar el total asignado a su reserva.',1);const estadia=bruto-excepciones;if(estadia>0)distribucion.push({reserva_id,monto_clp:estadia,motivo:'estadia'});for(const x of ex)if(x.monto_clp>0)distribucion.push({reserva_id,monto_clp:x.monto_clp,motivo:x.motivo})}if(!distribucion.length)return msg('Asigna el pago a por lo menos una reserva.',1);const detalle=GM.miembros.map(m=>{const conceptos=distribucion.filter(x=>x.reserva_id===m.reserva_id).map(x=>({motivo:x.motivo,monto:x.monto_clp}));return (m.reserva?.huesped_nombre_copia||'Huésped')+': '+conceptos.map(x=>(x.motivo==='estadia'?'Estadía':x.motivo==='estacionamiento'?'Estacionamiento':x.motivo.replace(/_/g,' '))+' '+gmMontoFmt(x.monto)).join(', ')}).filter(x=>!x.endsWith(': ')).join('\\n');if(!await pmsConfirm('Confirma el pago grupal de '+gmMontoFmt(total)+'.\\n\\n'+detalle+'\\n\\n¿Registrar los pagos individuales con estos motivos?'))return;const q=await sb.rpc('registrar_pago_compartido_grupo',{p_grupo_id:id,p_metodo:$('#gmPagoMetodo').value,p_moneda:moneda,p_monto_original:monto,p_tipo_cambio:moneda==='USD'?cambio:null,p_id_transaccion:$('#gmPagoTx').value.trim()||null,p_referencia:$('#gmPagoRef').value.trim()||null,p_distribucion:distribucion});if(q.error)return msg('No se registró el pago: '+errTxt(q.error)+'. Comprueba la migración v3.1 de SQL.txt.',1);await gmAbrirGrupo(id);msg('Pago compartido registrado con sus motivos y distribución confirmados.')}
 
 /* Exponer explícitamente los handlers usados por onclick en el HTML */
 window.abrirGestionGrupos = abrirGestionGrupos;
