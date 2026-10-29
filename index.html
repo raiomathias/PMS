@@ -4782,119 +4782,86 @@ window.faqSeleccionarCategoria = faqSeleccionarCategoria;
 /* ===== Fin Centro de Ayuda ===== */
 
 
-/* Iconografía de botones con Lucide. Se aplica también a controles renderizados dinámicamente. */
+/* Iconografía Lucide limitada a botones de navegación y acceso a secciones.
+   Importante: no se añaden iconos a Guardar, No-show, confirmar, cancelar ni otras acciones. */
 (function(){
   var iconRules = [
-    [/entrar|iniciar sesi[oó]n|acceder|login/, 'log-in'],
-    [/salir|cerrar sesi[oó]n/, 'log-out'],
-    [/nueva reserva|crear reserva|reserva/, 'calendar-plus'],
-    [/grupo/, 'users'],
-    [/disponibilidad/, 'calendar-check'],
-    [/buscar|b[uú]squeda/, 'search'],
-    [/hoy|fecha|calendario/, 'calendar-days'],
-    [/estacionamiento|parking/, 'car-front'],
-    [/hu[eé]sped/, 'user-round'],
-    [/hospedado|habitaci[oó]n|cat[aá]logo|unidad/, 'bed-double'],
-    [/administraci[oó]n|configuraci[oó]n|ajustes/, 'settings'],
-    [/estad[ií]stica|dashboard|panel|resumen/, 'chart-no-axes-column'],
-    [/auditor[ií]a|historial|registro|movimiento/, 'clipboard-list'],
-    [/reclamo|sugerencia/, 'message-square-warning'],
-    [/perfil|personal|usuario/, 'user-round'],
-    [/contrase[nñ]a|clave|autenticaci[oó]n/, 'key-round'],
-    [/ayuda|faq|soporte/, 'circle-help'],
-    [/guardar|confirmar|aplicar|aceptar/, 'save'],
-    [/cancelar|volver|atr[aá]s/, 'x'],
-    [/eliminar|borrar|limpiar|quitar/, 'trash-2'],
-    [/editar|modificar|cambiar/, 'pencil'],
-    [/cerrar|ocultar/, 'x'],
-    [/recargar|actualizar|refrescar|sincronizar/, 'refresh-cw'],
-    [/enviar|mensaje|buz[oó]n|chat|conversaci[oó]n/, 'message-square'],
-    [/notificaci[oó]n|campana/, 'bell'],
-    [/pago|cobro|abono|dinero|finanzas/, 'wallet'],
-    [/exportar|descargar|csv|pdf|informe|reporte/, 'download'],
-    [/importar|subir|cargar archivo/, 'upload'],
-    [/filtro|filtrar/, 'list-filter'],
-    [/imprimir/, 'printer'],
-    [/bloqueo|bloquear/, 'lock'],
-    [/desbloquear/, 'lock-open'],
-    [/limpieza|sucia|defectuosa/, 'spray-can'],
-    [/asignar|seleccionar/, 'check-square'],
-    [/autom[aá]ticamente|autom[aá]tico/, 'zap'],
-    [/men[uú]/, 'menu'],
-    [/tema|oscuro|claro/, 'moon-star'],
-    [/pago|transferencia|caja/, 'wallet'],
-    [/inicio|inicio/, 'house'],
-    [/siguiente|continuar|avanzar/, 'arrow-right'],
-    [/anterior|retroceder/, 'arrow-left'],
-    [/abrir|ver|detalle|visualizar/, 'eye'],
-    [/revisar|validar|verificar/, 'shield-check'],
-    [/nuevo|agregar|a[nñ]adir|crear|plus/, 'plus'],
-    [/limpio|limpia|listo|terminar|finalizar/, 'check'],
-    [/rechazar|no confirmar|denegar/, 'ban']
+    [/^(reservas|nueva reserva|crear reserva|reserva)$/i, 'calendar-plus'],
+    [/^gestionar grupos$/i, 'users'],
+    [/^(revisar disponibilidad|disponibilidad)$/i, 'calendar-check'],
+    [/^in-house$/i, 'building-2'],
+    [/^cat[aá]logo$/i, 'layout-grid'],
+    [/^estacionamiento$/i, 'car-front'],
+    [/^hospedados$/i, 'bed-double'],
+    [/^hu[eé]spedes$/i, 'users-round'],
+    [/^(administraci[oó]n|panel administrativo)$/i, 'settings'],
+    [/^reclamos y sugerencias$/i, 'message-square-warning'],
+    [/^estad[ií]sticas$/i, 'chart-no-axes-column'],
+    [/^(mi perfil|ver mi perfil)$/i, 'user-round'],
+    [/^(ayuda|ayuda y faq)$/i, 'circle-help'],
+    [/^buscar$/i, 'search'],
+    [/^grid$/i, 'layout-grid'],
+    [/^men[uú]$/i, 'menu']
   ];
-  function buttonIcon(btn){
-    var source = [
-      btn.getAttribute('aria-label') || '',
-      btn.getAttribute('title') || '',
-      btn.getAttribute('onclick') || '',
-      btn.getAttribute('data-action') || '',
-      btn.textContent || ''
-    ].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    if (/tema\(\)/.test(source)) return 'moon-star';
-    if (/salir\(\)/.test(source)) return 'log-out';
-    if (/togglebuzon|mailbell|abrir o cerrar buzon/.test(source)) return 'bell';
-    if (/cerrar\(\)|bxcerrar|togglemobilemenu\(false\)/.test(source) && !/buscar|sesion/.test(source)) return 'x';
-    if (/mover\(-|mover\(0\)/.test(source)) return /mover\(0\)/.test(source) ? 'calendar-days' : (/mover\(-/.test(source) ? 'chevron-left' : 'chevron-right');
-    for (var i=0;i<iconRules.length;i++) if(iconRules[i][0].test(source)) return iconRules[i][1];
-    return 'circle';
+  function normalizedLabel(btn){
+    return (btn.getAttribute('aria-label') || btn.textContent || '')
+      .replace(/[‹›◀▶↻✕×←→＋▦⌕☰▾⌫]/g, ' ')
+      .replace(/\s+/g, ' ').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
-  function addIcon(btn){
-    if (!(btn instanceof Element) || btn.tagName !== 'BUTTON') return;
-    var oldIcon = btn.querySelector('.button-lucide-icon');
-    if (oldIcon) return;
-    var spans = Array.from(btn.children);
-    spans.forEach(function(el){
-      if (el.tagName === 'SPAN' && /^[\s‹›◀▶↻✕×←→＋▦⌕☰▾⌫]+$/.test(el.textContent || '') && !el.querySelector('span,svg')) el.remove();
-    });
-    var txt = (btn.textContent || '').replace(/[\s‹›◀▶↻✕×←→＋▦⌕☰▾⌫]+/g,'').trim();
-    if (!txt) {
-      var label = (btn.getAttribute('aria-label') || btn.getAttribute('title') || '').trim();
-      if (!label && !btn.getAttribute('onclick')) return;
-      Array.from(btn.childNodes).forEach(function(node){ if(node.nodeType===Node.TEXT_NODE) node.remove(); });
+  function iconFor(btn){
+    var label = normalizedLabel(btn);
+    for(var i=0;i<iconRules.length;i++){
+      var pattern = iconRules[i][0];
+      if(pattern.test(label)) return iconRules[i][1];
     }
-    var icon = document.createElement('i');
-    icon.className = 'button-lucide-icon';
-    icon.setAttribute('data-lucide', buttonIcon(btn));
-    icon.setAttribute('aria-hidden','true');
-    btn.insertBefore(icon, btn.firstChild);
+    return null;
   }
-  function scan(root){
-    if (!root) return;
-    if (root.matches && root.matches('button')) addIcon(root);
-    if (root.querySelectorAll) root.querySelectorAll('button').forEach(addIcon);
-    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons({attrs:{'class':'button-lucide-icon'}});
+  function addEligibleIcons(root){
+    if(!root) return false;
+    var buttons = [];
+    if(root.nodeType === 1 && root.matches && root.matches('button')) buttons.push(root);
+    if(root.querySelectorAll) root.querySelectorAll('button').forEach(function(b){buttons.push(b);});
+    var added = false;
+    buttons.forEach(function(btn){
+      if(btn.querySelector('.button-lucide-icon')) return;
+      var iconName = iconFor(btn);
+      if(!iconName) return;
+      var icon = document.createElement('i');
+      icon.className = 'button-lucide-icon';
+      icon.setAttribute('data-lucide', iconName);
+      icon.setAttribute('aria-hidden', 'true');
+      btn.insertBefore(icon, btn.firstChild);
+      added = true;
+    });
+    return added;
+  }
+  function renderIcons(root){
+    if(addEligibleIcons(root) && window.lucide && typeof window.lucide.createIcons === 'function'){
+      /* createIcons reemplaza las etiquetas i por SVG. El observer ignora esos SVG,
+         evitando ciclos de mutaciones y bloqueos del navegador. */
+      window.lucide.createIcons();
+    }
   }
   function start(){
-    scan(document);
+    renderIcons(document);
     var observer = new MutationObserver(function(records){
-      var changed = false;
       records.forEach(function(record){
-        if (record.type === 'childList') {
-          record.addedNodes.forEach(function(node){
-            if (node.nodeType === Node.ELEMENT_NODE) { scan(node); changed = true; }
-          });
-        }
+        record.addedNodes.forEach(function(node){
+          if(node.nodeType === Node.ELEMENT_NODE) renderIcons(node);
+        });
       });
-      if (changed && window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons({attrs:{'class':'button-lucide-icon'}});
     });
-    observer.observe(document.body, {childList:true,subtree:true});
+    observer.observe(document.body, {childList:true, subtree:true});
   }
   var lucideScript = document.createElement('script');
   lucideScript.src = 'https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js';
-  lucideScript.onload = function(){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){scan(document)}); else scan(document); };
+  lucideScript.onload = function(){
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){renderIcons(document);});
+    else renderIcons(document);
+  };
   lucideScript.onerror = function(){ console.warn('No se pudo cargar Lucide desde CDN.'); };
   document.head.appendChild(lucideScript);
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })();
-
 </script></body></html>
