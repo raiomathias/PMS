@@ -2793,6 +2793,31 @@ DROP POLICY IF EXISTS "pms_scope_unidades" ON public.unidades;
 CREATE POLICY "pms_scope_unidades" ON public.unidades AS RESTRICTIVE FOR SELECT TO authenticated
 USING (((pms_rol() IS NOT NULL) AND puede_ver_edificio(edificio_id)));
 
+-- Financial data integrity: restrict deletes to finance managers and disallow direct amount edits.
+DROP POLICY IF EXISTS cargos_sin_borrado ON public.cargos;
+CREATE POLICY cargos_sin_borrado ON public.cargos AS RESTRICTIVE FOR DELETE TO authenticated
+USING (public.pms_rol() IN ('administracion','gerencia','sysadmin') AND EXISTS (SELECT 1 FROM public.reservas r JOIN public.unidades u ON u.id=r.unidad_id WHERE r.id=cargos.reserva_id AND public.puede_ver_edificio(u.edificio_id)));
+DROP POLICY IF EXISTS pagos_sin_borrado ON public.pagos;
+CREATE POLICY pagos_sin_borrado ON public.pagos AS RESTRICTIVE FOR DELETE TO authenticated
+USING (public.pms_rol() IN ('administracion','gerencia','sysadmin') AND EXISTS (SELECT 1 FROM public.reservas r JOIN public.unidades u ON u.id=r.unidad_id WHERE r.id=pagos.reserva_id AND public.puede_ver_edificio(u.edificio_id)));
+DROP POLICY IF EXISTS pms_delete_pagos_compartidos ON public.pagos_compartidos;
+CREATE POLICY pms_delete_pagos_compartidos ON public.pagos_compartidos AS RESTRICTIVE FOR DELETE TO authenticated
+USING (public.pms_rol() IN ('administracion','gerencia','sysadmin') AND public.pms_puede_ver_grupo(grupo_id));
+DROP POLICY IF EXISTS pms_delete_pagos_compartidos_distribucion ON public.pagos_compartidos_distribucion;
+CREATE POLICY pms_delete_pagos_compartidos_distribucion ON public.pagos_compartidos_distribucion AS RESTRICTIVE FOR DELETE TO authenticated
+USING (public.pms_rol() IN ('administracion','gerencia','sysadmin') AND EXISTS (
+ SELECT 1 FROM public.pagos_compartidos pc
+ JOIN public.reserva_grupo_miembros gm ON gm.grupo_id=pc.grupo_id AND gm.reserva_id=pagos_compartidos_distribucion.reserva_id
+ JOIN public.reservas r ON r.id=gm.reserva_id JOIN public.unidades u ON u.id=r.unidad_id
+ WHERE pc.id=pagos_compartidos_distribucion.pago_compartido_id
+ AND public.pms_puede_ver_grupo(pc.grupo_id) AND public.puede_ver_edificio(u.edificio_id)
+));
+REVOKE UPDATE ON TABLE public.pagos FROM PUBLIC,anon,authenticated;
+REVOKE UPDATE ON TABLE public.cargos FROM PUBLIC,anon,authenticated;
+REVOKE UPDATE ON TABLE public.pagos_compartidos_distribucion FROM PUBLIC,anon,authenticated;
+REVOKE UPDATE ON TABLE public.pagos_compartidos FROM PUBLIC,anon,authenticated;
+GRANT UPDATE (grupo_id) ON TABLE public.pagos_compartidos TO authenticated;
+
 UPDATE storage.buckets
  SET file_size_limit=10485760,
      allowed_mime_types=ARRAY['image/jpeg','image/png','image/webp','image/avif']::text[]
