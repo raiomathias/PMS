@@ -3182,7 +3182,7 @@ function sanitizarPoliticasHTML(html){
    if(c.nodeType!==Node.ELEMENT_NODE)return;
    if(!POL_TAGS.has(c.tagName)){
     if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON','VIDEO','AUDIO'].includes(c.tagName)){c.remove();return}
-    const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
+    limpiar(c);const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
    }
    [...c.attributes].forEach(a=>{
     if(a.name==='class'){
