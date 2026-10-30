@@ -3213,9 +3213,9 @@ async function pPol(){
    <button type="button" title="Negrita" onmousedown="event.preventDefault()" onclick="politicasFormato('bold')"><b>B</b></button>
    <button type="button" title="Cursiva" onmousedown="event.preventDefault()" onclick="politicasFormato('italic')"><i>I</i></button>
    <button type="button" title="Subrayado" onmousedown="event.preventDefault()" onclick="politicasFormato('underline')"><u>U</u></button>
-   <i></i><button type="button" onclick="politicasFormato('formatBlock','<h2>')">Título</button>
-   <button type="button" onclick="politicasFormato('formatBlock','<h3>')">Subtítulo</button>
-   <button type="button" onclick="politicasFormato('formatBlock','<p>')">Párrafo</button>
+   <i></i><button type="button" onmousedown="event.preventDefault()" onclick="politicasFormato('formatBlock','<h2>')">Título</button>
+   <button type="button" onmousedown="event.preventDefault()" onclick="politicasFormato('formatBlock','<h3>')">Subtítulo</button>
+   <button type="button" onmousedown="event.preventDefault()" onclick="politicasFormato('formatBlock','<p>')">Párrafo</button>
    <i></i><button type="button" title="Lista con viñetas" onclick="politicasFormato('insertUnorderedList')">• Lista</button>
    <button type="button" title="Lista numerada" onclick="politicasFormato('insertOrderedList')">1. Lista</button>
    <button type="button" title="Deshacer" onclick="politicasFormato('undo')">↶</button>
@@ -3242,7 +3242,7 @@ async function guardarPoliticas(){
  if(!es.trim()||!en.trim())return msg('El documento en español e inglés no puede quedar vacío.',1);
  b.disabled=true;b.textContent='Guardando…';if(status)status.textContent='Publicando cambios…';
  try{
-  const {data:{session},error:se}=await sb.auth.getSession();if(se||!session)return msg('Tu sesión expiró. Vuelve a iniciar sesión.',1);
+  const {data:{session},error:se}=await sb.auth.getSession();if(se||!session){if(status)status.textContent='Sesión expirada. Inicia sesión nuevamente.';return msg('Tu sesión expiró. Vuelve a iniciar sesión.',1)}
   const {error}=await sb.from('politicas_documento').update({contenido_es:es,contenido_en:en,actualizado_en:new Date().toISOString(),actualizado_por:session.user.id}).eq('id',true);
   if(error)throw error;
   POL_DOC={contenido_es:es,contenido_en:en};
