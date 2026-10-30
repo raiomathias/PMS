@@ -2498,7 +2498,7 @@ BEGIN
     FROM public.unidades u
     JOIN public.edificios e ON e.id = u.edificio_id AND e.activo = true
     JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
-    WHERE u.activo = true AND (v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') OR EXISTS (SELECT 1 FROM public.perfiles_edificios pe WHERE pe.perfil_id=v_user AND pe.edificio_id=u.edificio_id))
+    WHERE u.activo = true AND (v_rol IN ('administracion','gerencia','sysadmin') OR EXISTS (SELECT 1 FROM public.perfiles_edificios pe WHERE pe.perfil_id=v_user AND pe.edificio_id=u.edificio_id))
       AND NOT EXISTS (
         SELECT 1 FROM public.reservas r
          WHERE r.unidad_id = u.id
@@ -2535,7 +2535,7 @@ BEGIN
       FROM public.unidades u
       JOIN public.edificios e ON e.id = u.edificio_id AND e.activo = true
       JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
-     WHERE u.activo = true AND (v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') OR EXISTS (SELECT 1 FROM public.perfiles_edificios pe WHERE pe.perfil_id=v_user AND pe.edificio_id=u.edificio_id))
+     WHERE u.activo = true AND (v_rol IN ('administracion','gerencia','sysadmin') OR EXISTS (SELECT 1 FROM public.perfiles_edificios pe WHERE pe.perfil_id=v_user AND pe.edificio_id=u.edificio_id))
        AND NOT EXISTS (
          SELECT 1
            FROM public.unidades libre
