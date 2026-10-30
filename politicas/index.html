@@ -311,6 +311,44 @@ strong{color:#263d36}
 </article>
 </main>
 <div class="footer">INVERSIONES MADAN SpA · Puerto Montt, Chile · Este documento es informativo y no limita los derechos establecidos por la legislación vigente.</div>
+
+<script>
+(async function cargarPoliticasPublicadas(){
+ const SUPABASE_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co';
+ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkwNzMwNzE4LCJleHAiOjIxMDYzMDY3MTh9.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
+ const permitido=new Set(['P','H1','H2','H3','H4','UL','OL','LI','STRONG','B','EM','I','U','A','DIV','SPAN','BR','BLOCKQUOTE']);
+ const clases=new Set(['kicker','rule','meta','intro','section-tag','building','contact']);
+ function limpiar(html){
+  const t=document.createElement('template');t.innerHTML=String(html||'');
+  const recorrer=n=>[...n.childNodes].forEach(c=>{
+   if(c.nodeType===Node.COMMENT_NODE){c.remove();return}
+   if(c.nodeType!==Node.ELEMENT_NODE)return;
+   if(!permitido.has(c.tagName)){
+    if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON','VIDEO','AUDIO'].includes(c.tagName)){c.remove();return}
+    const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
+   }
+   [...c.attributes].forEach(a=>{
+    if(a.name==='class'){const ok=a.value.split(/\\s+/).filter(x=>clases.has(x));if(ok.length)c.setAttribute('class',ok.join(' '));else c.removeAttribute('class')}
+    else if(c.tagName==='A'&&a.name==='href'){if(!/^(https?:|mailto:|tel:)/i.test(a.value.trim()))c.removeAttribute('href')}
+    else if(c.tagName==='A'&&a.name==='target'){if(a.value!=='_blank')c.removeAttribute('target')}
+    else if(!(c.tagName==='A'&&a.name==='rel'))c.removeAttribute(a.name);
+   });
+   if(c.tagName==='A'&&c.getAttribute('target')==='_blank')c.setAttribute('rel','noopener noreferrer');
+   recorrer(c);
+  });
+  recorrer(t.content);return t.innerHTML;
+ }
+ try{
+  const url=SUPABASE_URL+'/rest/v1/politicas_documento?id=eq.true&select=contenido_es,contenido_en';
+  const res=await fetch(url,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY},cache:'no-store'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const rows=await res.json(),doc=rows&&rows[0];if(!doc)return;
+  const es=document.getElementById('spanish'),en=document.getElementById('english');
+  if(es&&typeof doc.contenido_es==='string')es.innerHTML=limpiar(doc.contenido_es);
+  if(en&&typeof doc.contenido_en==='string')en.innerHTML=limpiar(doc.contenido_en);
+ }catch(e){console.warn('No se pudo cargar la última versión de las políticas; se mantiene la copia incluida en la página.',e)}
+})();
+</script>
 <script>
 (function(){
  const es=document.getElementById('spanish'),en=document.getElementById('english');
