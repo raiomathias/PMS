@@ -2104,7 +2104,7 @@ async function abrirDr(id){
  const u=S.unidades.find(x=>x.id===r.unidad_id);
  if(!u||!puedeVerEdificio(u.edificio_id)){msg('No tienes permiso para ver este edificio',1);return cerrarDr()}
  S.cur=r;const uidReservaPromise=obtenerUidReservaReal(r);const D=$('#dr');D.style.display='block';
- const topConUid=uid=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>${esc(uid)} · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</b><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">${AUDR.includes(S.perfil?.rol)?'<button class="hue29-audit" onclick="audHistReservaActual()">◷ Ver historial de auditoría</button>':''}<button type="button" onclick="abrirModalPoliticasLink(S.cur.id)">✍ Políticas y firma</button><button onclick="cerrarDr()">✕</button></div></div>`;
+ const topConUid=uid=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>${esc(uid)} · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</b><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">${AUDR.includes(S.perfil?.rol)?'<button class="hue29-audit" onclick="audHistReservaActual()">◷ Ver historial de auditoría</button>':''}<button type="button" onclick="abrirModalPoliticasLink(S.cur.id)">Políticas y firma</button><button onclick="cerrarDr()">✕</button></div></div>`;
  if(r.estado==='bloqueado'){
   const uidReservaReal=await uidReservaPromise;r.uid_reserva=uidReservaReal;
   D.innerHTML=topConUid(uidReservaReal)+`<p> ${esc(r.observaciones)}</p><p>${r.fecha_entrada} → ${r.fecha_salida}</p><button class="r" onclick="accion('del')">Quitar bloqueo</button>`;
@@ -4944,6 +4944,7 @@ window.faqSeleccionarCategoria = faqSeleccionarCategoria;
     [/^men[uú]$/i, 'menu'],
     [/^semana anterior$/i, 'chevron-left'],
     [/^semana siguiente$/i, 'chevron-right'],
+    [/^políticas y firma$/i, 'file-check'],
     [/^cambiar tema$/i, document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon']
   ];
   function normalizedLabel(btn){
