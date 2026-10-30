@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#183b35">
 <meta name="description" content="Reglamento y condiciones de alojamiento de Departamentos Madan, Puerto Montt.">
 <title>Reglamento de alojamiento | Departamentos Madan</title>
-<script>if(/^\/politicas\/[A-Z]{4}\/?$/i.test(location.pathname)||new URLSearchParams(location.search).has('c'))document.documentElement.classList.add('validating-policy-link');</script>
+<script>if(/^\/politicas\/[0-9A-F]{32}\/?$/i.test(location.pathname)||new URLSearchParams(location.search).has('c'))document.documentElement.classList.add('validating-policy-link');</script>
 <style>
 :root{color-scheme:light;--ink:#202a28;--muted:#66716e;--line:#d9dfdc;--paper:#fff;--canvas:#f1f3f1;--green:#244c43;--green2:#eaf0ed;--gold:#a27c43}
 *{box-sizing:border-box}
@@ -399,7 +399,7 @@ html.validating-policy-link main,html.validating-policy-link .footer,html.valida
 (async function(){
  const SUPABASE_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co';
  const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWt6YnVuY3hzZ3htYnRqd3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzA3MTgsImV4cCI6MjEwNjMwNjcxOH0.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
- const pathMatch=location.pathname.match(/^\/politicas\/([A-Z]{4})\/?$/i);
+ const pathMatch=location.pathname.match(/^\/politicas\/([0-9A-F]{32})\/?$/i);
  const code=(new URLSearchParams(location.search).get('c')||(pathMatch&&pathMatch[1])||'').toUpperCase();
  if(!code)return;
  if(pathMatch||location.pathname==='/politicas/')history.replaceState(null,'','/politicas/'+code+'/');
@@ -407,6 +407,7 @@ html.validating-policy-link main,html.validating-policy-link .footer,html.valida
  box.style.display='block';
  const status=document.createElement('div');status.id='linkValidationStatus';status.style.cssText='background:#fff;border:1px solid #d9dfdc;padding:28px;border-radius:6px;text-align:center;font:15px/1.6 Arial,sans-serif;color:#244c43';status.textContent='Verificando código de confirmación…';box.prepend(status);
  const invalidCode=()=>{status.innerHTML='<h2 style="margin:0 0 8px">Código de confirmación incorrecto</h2><p>El código ingresado no corresponde a un enlace válido o ya no está disponible.</p><p style="color:#66716e;font-size:13px">Serás redirigido a la página de políticas en unos segundos…</p>';setTimeout(()=>location.replace('/politicas/'),3000)};
+ if(!/^[0-9A-F]{32}$/.test(code)){invalidCode();return}
  const call=async(name,args)=>{const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.message||j.details||'No se pudo completar la operación');return j};
  try{
   const d=await call('politicas_publica_obtener',{p_codigo:code});
