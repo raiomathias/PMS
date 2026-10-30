@@ -1,2 +1,11 @@
-self.addEventListener("push",e=>{let d={};try{d=e.data?e.data.json():{}}catch(_){d={body:e.data?.text()||""}}e.waitUntil(self.registration.showNotification(d.title||"Aviso de limpieza",{body:d.body||"Una unidad quedó disponible para limpieza.",tag:d.tag||"pms-limpieza",renotify:true,data:{url:d.url||"./"}}))});
-self.addEventListener("notificationclick",e=>{e.notification.close();const u=new URL(e.notification.data?.url||"./",self.location.origin).href;e.waitUntil((async()=>{const w=await clients.matchAll({type:"window",includeUncontrolled:true});for(const c of w)if(new URL(c.url).origin===self.location.origin){await c.focus();if("navigate"in c)await c.navigate(u);return}await clients.openWindow(u)})())});
+// Retira el antiguo service worker de alcance raíz tras trasladar el PMS a /PMS/.
+self.addEventListener("install", event => self.skipWaiting());
+self.addEventListener("activate", event => {
+  event.waitUntil((async () => {
+    await self.registration.unregister();
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("navigate" in client) await client.navigate(client.url);
+    }
+  })());
+});
