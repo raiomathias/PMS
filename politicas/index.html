@@ -316,7 +316,7 @@ strong{color:#263d36}
 <script>
 (async function cargarPoliticasPublicadas(){
  const SUPABASE_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co';
- const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkwNzMwNzE4LCJleHAiOjIxMDYzMDY3MTh9.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
+ const SUPABASE_ANON_KEY='sb_publishable_XNZT0YF4-3z3FUywRB4yjQ_TYwdgWPj';
  const permitido=new Set(['P','H1','H2','H3','H4','UL','OL','LI','STRONG','B','EM','I','U','A','DIV','SPAN','BR','BLOCKQUOTE']);
  const clases=new Set(['kicker','rule','meta','intro','section-tag','building','contact']);
  function limpiar(html){
@@ -398,7 +398,7 @@ strong{color:#263d36}
 <script>
 (async function(){
  const SUPABASE_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co';
- const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkwNzMwNzE4LCJleHAiOjIxMDYzMDY3MTh9.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
+ const SUPABASE_ANON_KEY='sb_publishable_XNZT0YF4-3z3FUywRB4yjQ_TYwdgWPj';
  const pathMatch=location.pathname.match(/^\/politicas\/([A-Z]{4})\/?$/i);
  const code=(new URLSearchParams(location.search).get('c')||(pathMatch&&pathMatch[1])||'').toUpperCase();
  if(!code)return;
