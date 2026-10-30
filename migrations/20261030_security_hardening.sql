@@ -2352,6 +2352,245 @@ AS $function$
      );
 $function$;
 
+CREATE OR REPLACE FUNCTION public.huespedes_panel()
+ RETURNS TABLE(huesped_id uuid, uid_huesped text, nombre_completo text, tipo_documento text, numero_documento text, telefono text, correo text, nacionalidad text, ciudad_origen text, fecha_nacimiento date, es_vip boolean, creado_en timestamp with time zone, creado_por uuid, edificio_id uuid, edificio text, reservas_edificio bigint, en_casa boolean, estadias bigint, cancelaciones bigint, no_shows bigint, ultima_estadia date, lista_negra_activa boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  with rv as (
+    select distinct
+      r.huesped_id,
+      u.edificio_id,
+      e.nombre as edificio
+    from public.reservas r
+    join public.unidades u on u.id=r.unidad_id
+    join public.edificios e on e.id=u.edificio_id
+    where r.estado in ('check_out','en_casa') AND EXISTS (SELECT 1 FROM public.perfiles p0 WHERE p0.id=auth.uid() AND p0.activo AND p0.rol::text IN ('recepcion','administracion','gerencia','sysadmin','system_admin','systemadmin'))
+      and (
+        exists (
+          select 1 from public.perfiles p
+          where p.id=auth.uid()
+            and p.activo
+            and p.rol in ('administracion','gerencia','sysadmin')
+        )
+        or exists (
+          select 1 from public.perfiles_edificios pe
+          where pe.perfil_id=auth.uid()
+            and pe.edificio_id=u.edificio_id
+        )
+      )
+  )
+  select
+    h.id,
+    h.uid_huesped,
+    h.nombre_completo,
+    h.tipo_documento,
+    h.numero_documento,
+    h.telefono,
+    h.correo,
+    h.nacionalidad,
+    h.ciudad_origen,
+    h.fecha_nacimiento,
+    h.es_vip,
+    h.creado_en,
+    h.creado_por,
+    rv.edificio_id,
+    rv.edificio,
+    (
+      select count(*)
+      from public.reservas r2
+      join public.unidades u2 on u2.id=r2.unidad_id
+      where r2.huesped_id=h.id
+        and u2.edificio_id=rv.edificio_id
+        and r2.estado in ('check_out','en_casa')
+    ) as reservas_edificio,
+    exists (
+      select 1
+      from public.reservas rc
+      join public.unidades uc on uc.id=rc.unidad_id
+      where rc.huesped_id=h.id
+        and uc.edificio_id=rv.edificio_id
+        and rc.estado='en_casa'
+    ) as en_casa,
+    coalesce(s.estadias,0),
+    coalesce(s.cancelaciones,0),
+    coalesce(s.no_shows,0),
+    s.ultima_estadia,
+    exists (
+      select 1
+      from public.lista_negra l
+      where l.activo
+        and (
+          (
+            nullif(trim(h.documento_normalizado),'') is not null
+            and nullif(trim(l.documento_normalizado),'') is not null
+            and h.documento_normalizado=l.documento_normalizado
+          )
+          or (
+            nullif(trim(h.numero_documento),'') is not null
+            and nullif(trim(l.numero_documento),'') is not null
+            and lower(trim(h.numero_documento))=lower(trim(l.numero_documento))
+          )
+          or (
+            nullif(trim(h.documento_normalizado),'') is null
+            and nullif(trim(h.numero_documento),'') is null
+            and public.normalizar_nombre_lista_negra(h.nombre_completo)
+                = public.normalizar_nombre_lista_negra(l.nombre_completo)
+          )
+        )
+    ) as lista_negra_activa
+  from rv
+  join public.huespedes h on h.id=rv.huesped_id
+  left join public.resumen_huesped s on s.huesped_id=h.id
+  order by rv.edificio, h.nombre_completo;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.buscar_disponibilidad_global(p_entrada date, p_salida date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'auth'
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_rol text;
+  v_item record;
+  v_plan jsonb;
+  v_target_id uuid;
+  v_target record;
+  v_result jsonb := '[]'::jsonb;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Sesión no válida';
+  END IF;
+
+  SELECT lower(trim(p.rol::text))
+    INTO v_rol
+    FROM public.perfiles p
+   WHERE p.id = v_user
+     AND p.activo = true;
+
+  IF v_rol IS NULL OR v_rol NOT IN ('recepcion','administracion','gerencia','sysadmin','system_admin','systemadmin') THEN
+    RAISE EXCEPTION 'Usuario sin perfil de personal activo';
+  END IF;
+
+  IF p_entrada IS NULL OR p_salida IS NULL OR p_salida <= p_entrada THEN
+    RAISE EXCEPTION 'La fecha de salida debe ser posterior a la fecha de entrada';
+  END IF;
+
+  FOR v_item IN
+    SELECT
+      u.id AS unidad_id,
+      u.codigo::text AS unidad,
+      u.edificio_id,
+      e.nombre AS edificio,
+      e.orden AS edificio_orden,
+      tu.id AS categoria_id,
+      tu.nombre::text AS categoria,
+      (
+        v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+        OR EXISTS (
+          SELECT 1 FROM public.perfiles_edificios pe
+           WHERE pe.perfil_id = v_user AND pe.edificio_id = u.edificio_id
+        )
+      ) AS acceso
+    FROM public.unidades u
+    JOIN public.edificios e ON e.id = u.edificio_id AND e.activo = true
+    JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
+    WHERE u.activo = true AND (v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') OR EXISTS (SELECT 1 FROM public.perfiles_edificios pe WHERE pe.perfil_id=v_user AND pe.edificio_id=u.edificio_id))
+      AND NOT EXISTS (
+        SELECT 1 FROM public.reservas r
+         WHERE r.unidad_id = u.id
+           AND r.fecha_entrada < p_salida
+           AND r.fecha_salida > p_entrada
+           AND r.estado NOT IN ('cancelada','no_show')
+      )
+    ORDER BY acceso DESC, e.orden NULLS LAST, e.nombre, tu.nombre, u.orden NULLS LAST, u.codigo
+  LOOP
+    v_result := v_result || jsonb_build_array(jsonb_build_object(
+      'edificio_id', v_item.edificio_id,
+      'edificio', v_item.edificio,
+      'edificio_orden', v_item.edificio_orden,
+      'categoria_id', v_item.categoria_id,
+      'categoria', v_item.categoria,
+      'unidad_id', v_item.unidad_id,
+      'unidad', v_item.unidad,
+      'tipo', 'directa',
+      'plan', '[]'::jsonb,
+      'acceso', v_item.acceso
+    ));
+  END LOOP;
+
+  FOR v_item IN
+    SELECT DISTINCT u.edificio_id, e.nombre AS edificio, e.orden AS edificio_orden,
+           u.tipo_unidad_id AS categoria_id, tu.nombre AS categoria,
+           (
+             v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin')
+             OR EXISTS (
+               SELECT 1 FROM public.perfiles_edificios pe
+                WHERE pe.perfil_id = v_user AND pe.edificio_id = u.edificio_id
+             )
+           ) AS acceso
+      FROM public.unidades u
+      JOIN public.edificios e ON e.id = u.edificio_id AND e.activo = true
+      JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
+     WHERE u.activo = true AND (v_rol IN ('administracion','gerencia','sysadmin','system_admin','systemadmin') OR EXISTS (SELECT 1 FROM public.perfiles_edificios pe WHERE pe.perfil_id=v_user AND pe.edificio_id=u.edificio_id))
+       AND NOT EXISTS (
+         SELECT 1
+           FROM public.unidades libre
+          WHERE libre.activo = true
+            AND libre.edificio_id = u.edificio_id
+            AND libre.tipo_unidad_id = u.tipo_unidad_id
+            AND NOT EXISTS (
+              SELECT 1 FROM public.reservas r
+               WHERE r.unidad_id = libre.id
+                 AND r.fecha_entrada < p_salida
+                 AND r.fecha_salida > p_entrada
+                 AND r.estado NOT IN ('cancelada','no_show')
+            )
+       )
+     ORDER BY acceso DESC, e.orden NULLS LAST, e.nombre, tu.nombre
+  LOOP
+    v_plan := public.buscar_reacomodacion(
+      p_edificio_id => v_item.edificio_id,
+      p_tipo_unidad_id => v_item.categoria_id,
+      p_entrada => p_entrada,
+      p_salida => p_salida
+    );
+
+    v_target_id := NULLIF(v_plan->>'unidad_id','')::uuid;
+    IF v_target_id IS NULL THEN CONTINUE; END IF;
+
+    SELECT u.id AS unidad_id, u.codigo::text AS unidad,
+           u.edificio_id, e.nombre AS edificio, e.orden AS edificio_orden,
+           tu.id AS categoria_id, tu.nombre::text AS categoria
+      INTO v_target
+      FROM public.unidades u
+      JOIN public.edificios e ON e.id = u.edificio_id
+      JOIN public.tipos_unidad tu ON tu.id = u.tipo_unidad_id
+     WHERE u.id = v_target_id AND u.activo = true;
+
+    IF NOT FOUND THEN CONTINUE; END IF;
+
+    v_result := v_result || jsonb_build_array(jsonb_build_object(
+      'edificio_id', v_target.edificio_id,
+      'edificio', v_target.edificio,
+      'edificio_orden', v_target.edificio_orden,
+      'categoria_id', v_target.categoria_id,
+      'categoria', v_target.categoria,
+      'unidad_id', v_target.unidad_id,
+      'unidad', v_target.unidad,
+      'tipo', 'reacomodacion',
+      'plan', COALESCE(v_plan->'plan','[]'::jsonb),
+      'acceso', v_item.acceso
+    ));
+  END LOOP;
+
+  RETURN v_result;
+END;
+$function$;
+
 -- Revoke public execution from privileged RPCs and preserve authenticated use.
 DO $$
 DECLARE f record;
@@ -2389,6 +2628,14 @@ REVOKE EXECUTE ON FUNCTION public.auditar_cambio() FROM PUBLIC,anon,authenticate
 REVOKE EXECUTE ON FUNCTION public.registrar_auditoria() FROM PUBLIC,anon,authenticated;
 REVOKE EXECUTE ON FUNCTION public.crear_tarea_limpieza() FROM PUBLIC,anon,authenticated;
 REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.pms_buscar_reacomodacion(uuid,uuid,date,date,uuid) FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.mis_tareas_limpieza() FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.buzon_enviar(text,text,uuid) FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.buzon_guardar_permisos(uuid,boolean,boolean) FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.buzon_listar() FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.buzon_marcar_leido(uuid) FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.buzon_limpiar_bandeja() FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.tiene_permiso_edicion(uuid,text) FROM PUBLIC,anon,authenticated;
 
 DROP POLICY IF EXISTS "pms_scope_acompanantes" ON public.acompanantes;
 CREATE POLICY "pms_scope_acompanantes" ON public.acompanantes AS RESTRICTIVE FOR ALL TO authenticated
