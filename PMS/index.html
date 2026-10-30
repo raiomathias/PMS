@@ -605,11 +605,14 @@ h4{font-size:16px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid v
 button .button-lucide-icon{width:15px;height:15px;min-width:15px;display:inline-block;vertical-align:middle;margin-right:6px;stroke-width:1.9;flex-shrink:0;pointer-events:none}
 button .button-lucide-icon *{pointer-events:none}
 button:disabled .button-lucide-icon{opacity:.7}
+
+/* Editor de políticas de alojamiento */
+.pol-admin{display:grid;gap:12px}.pol-admin-intro{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:10px}.pol-admin-intro b{font-size:14px}.pol-admin-intro p{margin:4px 0 0;color:var(--mu);font-size:12px}.pol-admin-intro a{font-size:12px;white-space:nowrap;color:var(--ac)}.pol-editor-tabs{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--bd);padding-bottom:8px}.pol-editor-tabs button,.pol-toolbar button{border:1px solid var(--bd);background:var(--pn);border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer}.pol-editor-tabs button.active{background:var(--ac);border-color:var(--ac);color:#fff}.pol-editor-hint{margin-left:auto;color:var(--mu);font-size:11px}.pol-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--bd);border-radius:9px}.pol-toolbar button{min-width:32px;padding:6px 9px}.pol-toolbar button:hover,.pol-editor-tabs button:hover{border-color:var(--ac)}.pol-toolbar i{height:22px;border-left:1px solid var(--bd);margin:0 3px}.pol-editor-page{min-height:540px;max-height:68vh;overflow:auto;padding:clamp(22px,4vw,54px);background:#fff;color:#202a28;border:1px solid #d9dfdc;border-radius:4px;box-shadow:0 8px 24px #1d30230a;font:15px/1.72 Georgia,"Times New Roman",serif;outline:none}.pol-editor-page:focus{border-color:#9aafa5;box-shadow:0 0 0 2px #244c4312}.pol-editor-page h1,.pol-editor-page h2,.pol-editor-page h3{font-family:Georgia,"Times New Roman",serif;color:#203b34}.pol-editor-page h1{text-align:center;font-size:32px;font-weight:normal;line-height:1.2}.pol-editor-page h2{font-size:21px;font-weight:normal;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid #d9dfdc}.pol-editor-page h3{font-size:17px;margin:22px 0 7px}.pol-editor-page p{margin:9px 0}.pol-editor-page ul,.pol-editor-page ol{padding-left:23px}.pol-editor-page li{margin:5px 0}.pol-editor-page .kicker,.pol-editor-page .section-tag{color:#a27c43;font:600 11px Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase}.pol-editor-page .rule{height:1px;background:#d9dfdc;margin:26px auto;width:90px}.pol-editor-page .meta{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;color:#66716e;font:12px Arial,sans-serif}.pol-editor-page .intro{margin:26px 0;padding:18px 22px;background:#f7f8f6;border-left:3px solid #a27c43}.pol-editor-page .building{margin:20px 0 0;padding:22px 25px;background:#f8faf8;border:1px solid #d9dfdc}.pol-editor-page .contact{margin-top:30px;padding-top:18px;border-top:1px solid #d9dfdc;text-align:center;color:#66716e}.pol-editor-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:0;background:var(--pn);padding:10px 0;border-top:1px solid var(--bd)}.pol-editor-footer span{font-size:11px;color:var(--mu)}.pol-editor-footer button:disabled{opacity:.6;cursor:wait}.pol-editor-note{margin:0}@media(max-width:650px){.pol-admin-intro{flex-direction:column}.pol-editor-page{min-height:420px;padding:22px 18px}.pol-editor-footer{align-items:flex-start;flex-direction:column}.pol-editor-footer button{width:100%}.pol-editor-hint{display:none}}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button><div style="text-align:center;color:var(--mu);font-size:12px;margin-top:4px">Versión v3.5</div></div>
 <div id="app" style="display:none">
 <header><b id="hu">PMS</b><div id="mobileHeaderTools"><button type="button" onclick="mover(-7)" aria-label="Semana anterior">‹</button><button type="button" onclick="mover(0)">Hoy</button><input id="mobileDate" type="date" aria-label="Fecha inicial de la vista móvil" onchange="mobileIrFecha(this.value)"><button type="button" class="mobile-menu-trigger" onclick="toggleMobileMenu()" aria-label="Abrir todos los menús">☰</button></div><button id="btnMoverAtras" onclick="mover(-15)" aria-label="Semana anterior">‹</button><button onclick="mover(0)">Hoy</button><button id="btnMoverAdelante" onclick="mover(15)" aria-label="Semana siguiente">›</button><input type="date" id="hf" onchange="cambiarFechaGrid(this.value)"><div class="main-menu"><button class="p big" onclick="toggleMenu('mreservas')">＋ Reservas ▾</button><div id="mreservas" class="menu-drop"><button onclick="cerrarMenus();abrirNueva()">＋ Nueva Reserva</button><button onclick="cerrarMenus();abrirGestionGrupos()">Gestionar Grupos</button><button onclick="cerrarMenus();abrirRevisarDisponibilidad()">Revisar Disponibilidad</button></div></div><button class="big" onclick="abrirBuscar()">Buscar</button><div class="main-menu"><button class="big" onclick="toggleMenu('mih')">In-House ▾</button><div id="mih" class="menu-drop"><button onclick="cerrarMenus();abrirCatalogo()">Catálogo</button><button onclick="cerrarMenus();abrirEst()">Estacionamiento</button><button onclick="cerrarMenus();abrirHospedados()">Hospedados</button><button onclick="cerrarMenus();abrirHuespedes()">Huéspedes</button></div></div><div id="madm" class="main-menu" style="display:none"><button class="big" onclick="toggleMenu('madmin')">Administración ▾</button><div id="madmin" class="menu-drop"><button onclick="cerrarMenus();abrirAdmin()">Panel Administrativo</button><button onclick="cerrarMenus();abrirReclamos()">Reclamos y Sugerencias</button><button onclick="cerrarMenus();abrirEstadisticas()">Estadísticas</button></div></div><div class="main-menu"><button class="big" onclick="toggleMenu('miperfil')">Mi perfil ▾</button><div id="miperfil" class="menu-drop"><button onclick="cerrarMenus();abrirMiPerfil()">Ver mi perfil</button><button onclick="cerrarMenus();abrirCambiarClave()">Restablecer contraseña</button><button onclick="cerrarMenus();abrirFAQ()">Ayuda</button></div></div><button id="themeButton" onclick="tema()" aria-label="Cambiar tema" title="Cambiar tema">☾</button><button onclick="salir()">Salir</button></header>
-<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v3.7</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
+<div class="mu" style="padding:6px 16px;display:flex;align-items:center;gap:4px"><span><span style="color:#2563eb">■</span> Confirmada · <span style="color:#16a34a">■</span> En casa · <span style="color:#6b7280">■</span> Check-out · <span style="color:#f59e0b">■</span> Tentativa · <span style="color:#4b5563">■</span> Bloqueo · <span style="color:#dc2626">■</span> Garantía pendiente &nbsp;|&nbsp; Limpieza (ayer y hoy): <span style="color:#16a34a">■</span> limpia · <span style="color:#2563eb">■</span> en proceso · <span style="color:#dc2626">■</span> sucia · <span style="color:#eab308">■</span> defectuosa</span><span id="versionStatus" style="margin-left:auto;font-weight:700;white-space:nowrap">v3.8</span><span id="versionUpdateNotice" style="display:none;color:#b45309;font-weight:700;white-space:nowrap"></span></div>
 <div id="bar"></div><div id="gw"></div></div>
 <div id="dr"></div><div id="mo"></div><div id="cat"></div><div id="aud"></div><div id="hue"></div><div id="hosp"></div><div id="est"></div><div id="gal"></div><div id="ms"></div><button id="mailBell" class="mail-bell" type="button" onclick="toggleBuzon()" title="Abrir o cerrar buzón" aria-label="Abrir o cerrar buzón"><span id="mailBadge" class="mail-badge" style="display:none">0</span></button><div id="mailBox" class="mail-box" style="display:none"></div><nav id="mobileBottomNav" aria-label="Navegación móvil"><button type="button" onclick="mobileIrInicio()"><span>▦</span><span>Grid</span></button><button type="button" onclick="mobileNuevaReserva()"><span>＋</span><span>Reserva</span></button><button type="button" onclick="mobileBuscar()"><span>⌕</span><span>Buscar</span></button><button type="button" onclick="toggleMobileMenu()"><span>☰</span><span>Menú</span></button></nav><div id="mobileMenuSheet" onclick="if(event.target===this)toggleMobileMenu(false)" aria-hidden="true"><section class="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label="Menú principal"><div class="mobile-sheet-grabber"></div><div class="mobile-sheet-head"><div><h3>MMassisT PMS</h3><div id="mobileMenuUser" class="mu"></div></div><button type="button" onclick="toggleMobileMenu(false)" aria-label="Cerrar menú">✕</button></div><div id="mobileMenuContent"></div></section></div>
 <script>
@@ -3052,7 +3055,7 @@ async function panel(t){
   {titulo:'Operación y políticas',ayuda:'Ajusta reglas que afectan la estadía y sus cobros.',items:[
    ['config','Horarios, cargos y cancelación','Configurar horarios y reglas operativas o de cobro.'],
    ['garantias','Garantías','Consultar y configurar el comportamiento de garantías.'],
-   ['cancelaciones','Cancelaciones y no-shows','Revisar y administrar cancelaciones y ausencias.']
+   ['cancelaciones','Cancelaciones y no-shows','Revisar y administrar cancelaciones y ausencias.'],\n   ...(esGerenciaPlus(S.perfil.rol)?[['politicas','Políticas de alojamiento','Editar el documento público en español e inglés.']]:[])
   ]},
   {titulo:'Accesos y mantenimiento',ayuda:'Gestiona usuarios o tareas administrativas delicadas.',items:[
    ...(esGerenciaPlus(S.perfil.rol)?[['usuarios','Usuarios','Crear usuarios y administrar roles y permisos.']]:[]),
@@ -3061,7 +3064,7 @@ async function panel(t){
  ];
  const T=grupos.flatMap(g=>g.items).filter(x=>x[0]!=='auditoria'),actual=T.find(x=>x[0]===A.t)||T[0];A.t=actual[0];
  $('#mo').innerHTML=`<div class="admin-shell"><div class="admin-top"><div><h3> Administración del sistema</h3><p>Encuentra cada herramienta por objetivo. Selecciona una sección para ver sus opciones y explicación.</p></div><button onclick="cerrar()" aria-label="Cerrar administración">Cerrar</button></div><div class="admin-layout"><nav class="admin-nav" aria-label="Categorías de administración">${grupos.map(g=>`<section class="admin-nav-group"><h4>${g.titulo}</h4><p>${g.ayuda}</p>${g.items.map(x=>`<button type="button" class="admin-nav-btn ${x[0]===A.t?'active':''}" ${x[0]===A.t?'aria-current="page"':''} onclick="panel('${x[0]}')"><span><b>${x[1]}</b><small>${x[2]}</small></span><span class="arrow" aria-hidden="true">›</span></button>`).join('')}</section>`).join('')}</nav><section class="admin-work"><div class="admin-work-head"><span class="eyebrow">Sección seleccionada</span><h3>${actual[1]}</h3><p>${actual[2]}</p></div><div id="pc">Cargando opciones…</div></section></div></div>`;
- $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,catalogofotos:pFotosCatalogo,ranking:pRanking,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,borrar:pBor,usuarios:pUsu}[A.t])();
+ $('#mo').style.display='grid';await ({unidades:pUni,tipos:pTip,catalogofotos:pFotosCatalogo,ranking:pRanking,edificios:pEdi,config:pCfg,garantias:pGar,cancelaciones:pCan,politicas:pPol,borrar:pBor,usuarios:pUsu}[A.t])();
 }
 async function pUni(){
  const [u,e,t]=await Promise.all([sb.from('unidades').select('*,edificios(nombre,orden)'),sb.from('edificios').select('id,nombre').eq('activo',true).order('orden'),sb.from('tipos_unidad').select('id,nombre,edificio_id').order('nombre')]);
@@ -3167,6 +3170,87 @@ async function pEdi(){
  const campo=(label,html)=>`<label class="admin-field"><span>${label}</span>${html}</label>`;
  $('#pc').innerHTML=`<p class="mu" style="margin-top:0">Cada dato se muestra con su nombre. Los cupos indican la capacidad de estacionamiento y el orden define la posición del edificio en la grilla.</p><h4>Nuevo edificio</h4><div class="rw admin-fields-row">${campo('Nombre',NI('nombre','','Nombre'))}${campo('Orden en la grilla',NI('orden',(data||[]).length+1,'Número','number'))}<div class="admin-field admin-field-action"><span>Acciones</span><button class="p" onclick="nw('edificios',this,'nombre')">Crear</button></div></div><h4>Edificios (${(data||[]).length})</h4><div class="rw admin-list-header"><span>Nombre</span><span>Dirección</span><span>Cupos estacionamiento</span><span>Orden</span><span>Acceso remoto</span><span>Documento obligatorio</span><span>Estado</span><span>Acciones</span></div>${(data||[]).map(x=>`<div class="rw admin-fields-row">${campo('Nombre',NI('nombre',x.nombre,'Nombre'))}${campo('Dirección',NI('direccion',x.direccion,'Dirección'))}${campo('Cupos estacionamiento',NI('cupos_estacionamiento',x.cupos_estacionamiento,'Cantidad','number'))}${campo('Orden',NI('orden',x.orden,'Posición','number'))}<div class="admin-field"><span>Acceso remoto</span>${CK('acceso_remoto',x.acceso_remoto,'Habilitado')}</div><div class="admin-field"><span>Documento obligatorio</span>${CK('requiere_documento',x.requiere_documento,'Requerir')}</div><div class="admin-field"><span>Estado</span>${CK('activo',x.activo,'Activo')}</div><div class="admin-field admin-field-action"><span>Acciones</span><button onclick="gd('edificios','${x.id}',this)">Guardar</button></div></div>`).join('')}`;
 }
+
+const POL_TAGS=new Set(['P','H1','H2','H3','H4','UL','OL','LI','STRONG','B','EM','I','U','A','DIV','SPAN','BR','BLOCKQUOTE']);
+const POL_CLASSES=new Set(['kicker','rule','meta','intro','section-tag','building','contact']);
+function sanitizarPoliticasHTML(html){
+ const t=document.createElement('template');t.innerHTML=String(html||'');
+ const limpiar=n=>{
+  [...n.childNodes].forEach(c=>{
+   if(c.nodeType===Node.COMMENT_NODE){c.remove();return}
+   if(c.nodeType!==Node.ELEMENT_NODE)return;
+   if(!POL_TAGS.has(c.tagName)){
+    if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON','VIDEO','AUDIO'].includes(c.tagName)){c.remove();return}
+    const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
+   }
+   [...c.attributes].forEach(a=>{
+    if(a.name==='class'){
+     const ok=a.value.split(/\\s+/).filter(x=>POL_CLASSES.has(x));if(ok.length)c.setAttribute('class',ok.join(' '));else c.removeAttribute('class');
+    }else if(c.tagName==='A'&&a.name==='href'){
+     const v=a.value.trim();if(!/^(https?:|mailto:|tel:)/i.test(v))c.removeAttribute('href');
+    }else if(c.tagName==='A'&&a.name==='target'){
+     if(a.value!=='_blank')c.removeAttribute('target');
+    }else if(!(c.tagName==='A'&&a.name==='rel'))c.removeAttribute(a.name);
+   });
+   if(c.tagName==='A'&&c.getAttribute('target')==='_blank')c.setAttribute('rel','noopener noreferrer');
+   limpiar(c);
+  });
+ };
+ limpiar(t.content);return t.innerHTML;
+}
+let POL_DOC={contenido_es:'',contenido_en:''},POL_LANG='es';
+async function pPol(){
+ const {data,error}=await sb.from('politicas_documento').select('contenido_es,contenido_en,actualizado_en').eq('id',true).maybeSingle();
+ if(error)return msg('No se pudo cargar el documento de políticas: '+error.message,1);
+ if(!data)return msg('No se encontró el documento inicial de políticas.',1);
+ POL_DOC={contenido_es:sanitizarPoliticasHTML(data.contenido_es),contenido_en:sanitizarPoliticasHTML(data.contenido_en)};
+ POL_LANG='es';
+ $('#pc').innerHTML=`<div class="pol-admin">
+  <div class="pol-admin-intro"><div><b>Documento público de alojamiento</b><p>Edita el texto directamente, como en un procesador de documentos. Los cambios se publican en /politicas/ al guardar.</p></div><a href="/politicas/" target="_blank" rel="noopener">Abrir página pública ↗</a></div>
+  <div class="pol-editor-tabs"><button type="button" class="active" id="pol-tab-es" onclick="politicasSetLang('es')">Español</button><button type="button" id="pol-tab-en" onclick="politicasSetLang('en')">English</button><span class="pol-editor-hint">Edita ambos idiomas por separado</span></div>
+  <div class="pol-toolbar" role="toolbar" aria-label="Formato del documento">
+   <button type="button" title="Negrita" onmousedown="event.preventDefault()" onclick="politicasFormato('bold')"><b>B</b></button>
+   <button type="button" title="Cursiva" onmousedown="event.preventDefault()" onclick="politicasFormato('italic')"><i>I</i></button>
+   <button type="button" title="Subrayado" onmousedown="event.preventDefault()" onclick="politicasFormato('underline')"><u>U</u></button>
+   <i></i><button type="button" onclick="politicasFormato('formatBlock','<h2>')">Título</button>
+   <button type="button" onclick="politicasFormato('formatBlock','<h3>')">Subtítulo</button>
+   <button type="button" onclick="politicasFormato('formatBlock','<p>')">Párrafo</button>
+   <i></i><button type="button" title="Lista con viñetas" onclick="politicasFormato('insertUnorderedList')">• Lista</button>
+   <button type="button" title="Lista numerada" onclick="politicasFormato('insertOrderedList')">1. Lista</button>
+   <button type="button" title="Deshacer" onclick="politicasFormato('undo')">↶</button>
+   <button type="button" title="Rehacer" onclick="politicasFormato('redo')">↷</button>
+  </div>
+  <div id="pol-editor-es" class="pol-editor-page" contenteditable="true" spellcheck="true" aria-label="Documento de políticas en español">${POL_DOC.contenido_es}</div>
+  <div id="pol-editor-en" class="pol-editor-page" contenteditable="true" spellcheck="true" aria-label="Accommodation policies in English" style="display:none">${POL_DOC.contenido_en}</div>
+  <div class="pol-editor-footer"><span id="pol-save-status">Última versión guardada: ${data.actualizado_en?new Date(data.actualizado_en).toLocaleString('es-CL',{timeZone:'America/Santiago'}):'—'}</span><button type="button" class="p" id="pol-save-btn" onclick="guardarPoliticas()">Guardar y publicar cambios</button></div>
+  <p class="mu pol-editor-note">El documento público conserva su diseño y selector de idioma. El contenido se actualiza desde Supabase sin necesidad de modificar archivos ni volver a desplegar GitHub Pages.</p>
+ </div>`;
+}
+function politicasSetLang(lang){
+ POL_LANG=lang;
+ $('#pol-tab-es')?.classList.toggle('active',lang==='es');$('#pol-tab-en')?.classList.toggle('active',lang==='en');
+ $('#pol-editor-es').style.display=lang==='es'?'block':'none';$('#pol-editor-en').style.display=lang==='en'?'block':'none';
+}
+function politicasFormato(cmd,value=null){
+ const el=$('#pol-editor-'+POL_LANG);if(!el)return;el.focus();
+ try{document.execCommand(cmd,false,value||null)}catch(e){console.warn('Formato no disponible',e)}
+}
+async function guardarPoliticas(){
+ const b=$('#pol-save-btn'),status=$('#pol-save-status');if(!b||b.disabled)return;
+ const es=sanitizarPoliticasHTML($('#pol-editor-es').innerHTML),en=sanitizarPoliticasHTML($('#pol-editor-en').innerHTML);
+ if(!es.trim()||!en.trim())return msg('El documento en español e inglés no puede quedar vacío.',1);
+ b.disabled=true;b.textContent='Guardando…';if(status)status.textContent='Publicando cambios…';
+ try{
+  const {data:{session},error:se}=await sb.auth.getSession();if(se||!session)return msg('Tu sesión expiró. Vuelve a iniciar sesión.',1);
+  const {error}=await sb.from('politicas_documento').update({contenido_es:es,contenido_en:en,actualizado_en:new Date().toISOString(),actualizado_por:session.user.id}).eq('id',true);
+  if(error)throw error;
+  POL_DOC={contenido_es:es,contenido_en:en};
+  if(status)status.textContent='Publicado correctamente · '+new Date().toLocaleString('es-CL',{timeZone:'America/Santiago'});
+  msg('Políticas guardadas y publicadas correctamente.');
+ }catch(e){console.error(e);if(status)status.textContent='No se pudieron publicar los cambios.';msg('Error al guardar las políticas: '+(e.message||e),1)}
+ finally{b.disabled=false;b.textContent='Guardar y publicar cambios'}
+}
+
 async function pCfg(){
  const {data}=await sb.from('configuracion').select('*').order('clave');
  $('#pc').innerHTML=(data||[]).map(x=>`<div class="rw"><span style="flex:1 1 60%">${esc(x.descripcion||x.clave)}</span><input value="${esc(x.valor)}" style="flex:0 0 110px"><button onclick="gCfg('${x.clave}',this)">Guardar</button></div>`).join('')+'<p class="mu">Horas en formato HH:MM; montos y horas de cancelación en números enteros.</p>';
