@@ -2716,16 +2716,19 @@ CREATE POLICY "pms_scope_lista_negra" ON public.lista_negra AS RESTRICTIVE FOR S
 USING ((pms_rol() = ANY (ARRAY['recepcion'::text, 'administracion'::text, 'gerencia'::text, 'sysadmin'::text, 'system_admin'::text, 'systemadmin'::text])));
 
 DROP POLICY IF EXISTS "pms_scope_notas_huesped" ON public.notas_huesped;
-CREATE POLICY "pms_scope_notas_huesped" ON public.notas_huesped AS RESTRICTIVE FOR ALL TO authenticated
-USING (((pms_rol() = ANY (ARRAY['recepcion'::text, 'administracion'::text, 'gerencia'::text, 'sysadmin'::text, 'system_admin'::text, 'systemadmin'::text])) AND ((reserva_id IS NULL) OR (EXISTS ( SELECT 1
+CREATE POLICY "pms_scope_notas_huesped" ON public.notas_huesped AS RESTRICTIVE FOR ALL TO "authenticated"
+USING (((pms_rol() = ANY (ARRAY['recepcion'::text, 'administracion'::text, 'gerencia'::text, 'sysadmin'::text, 'system_admin'::text, 'systemadmin'::text])) AND (((reserva_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM (reservas r
      JOIN unidades u ON ((u.id = r.unidad_id)))
-  WHERE ((r.id = notas_huesped.reserva_id) AND puede_ver_edificio(u.edificio_id)))))))
-WITH CHECK (((pms_rol() = ANY (ARRAY['recepcion'::text, 'administracion'::text, 'gerencia'::text, 'sysadmin'::text, 'system_admin'::text, 'systemadmin'::text])) AND ((reserva_id IS NULL) OR (EXISTS ( SELECT 1
+  WHERE ((r.id = notas_huesped.reserva_id) AND puede_ver_edificio(u.edificio_id))))) OR ((reserva_id IS NULL) AND (EXISTS ( SELECT 1
+   FROM huespedes h
+  WHERE (h.id = notas_huesped.huesped_id)))))))
+WITH CHECK (((pms_rol() = ANY (ARRAY['recepcion'::text, 'administracion'::text, 'gerencia'::text, 'sysadmin'::text, 'system_admin'::text, 'systemadmin'::text])) AND (((reserva_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM (reservas r
      JOIN unidades u ON ((u.id = r.unidad_id)))
-  WHERE ((r.id = notas_huesped.reserva_id) AND puede_ver_edificio(u.edificio_id)))))));
-
+  WHERE ((r.id = notas_huesped.reserva_id) AND puede_ver_edificio(u.edificio_id))))) OR ((reserva_id IS NULL) AND (EXISTS ( SELECT 1
+   FROM huespedes h
+  WHERE (h.id = notas_huesped.huesped_id)))))));
 DROP POLICY IF EXISTS "pms_scope_pagos" ON public.pagos;
 CREATE POLICY "pms_scope_pagos" ON public.pagos AS RESTRICTIVE FOR ALL TO authenticated
 USING (((pms_rol() = ANY (ARRAY['recepcion'::text, 'administracion'::text, 'gerencia'::text, 'sysadmin'::text, 'system_admin'::text, 'systemadmin'::text])) AND (EXISTS ( SELECT 1
