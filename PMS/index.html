@@ -3055,7 +3055,7 @@ async function panel(t){
   {titulo:'Operación y políticas',ayuda:'Ajusta reglas que afectan la estadía y sus cobros.',items:[
    ['config','Horarios, cargos y cancelación','Configurar horarios y reglas operativas o de cobro.'],
    ['garantias','Garantías','Consultar y configurar el comportamiento de garantías.'],
-   ['cancelaciones','Cancelaciones y no-shows','Revisar y administrar cancelaciones y ausencias.'],\n   ...(esGerenciaPlus(S.perfil.rol)?[['politicas','Políticas de alojamiento','Editar el documento público en español e inglés.']]:[])
+   ['cancelaciones','Cancelaciones y no-shows','Revisar y administrar cancelaciones y ausencias.'],\n   ...(['administracion','gerencia','sysadmin','system_admin','systemadmin'].includes(rolNormalizado(S.perfil.rol).replace(/[\\s-]+/g,'_'))?[['politicas','Políticas de alojamiento','Editar el documento público en español e inglés.']]:[])
   ]},
   {titulo:'Accesos y mantenimiento',ayuda:'Gestiona usuarios o tareas administrativas delicadas.',items:[
    ...(esGerenciaPlus(S.perfil.rol)?[['usuarios','Usuarios','Crear usuarios y administrar roles y permisos.']]:[]),
