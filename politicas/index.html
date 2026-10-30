@@ -325,7 +325,7 @@ strong{color:#263d36}
    if(c.nodeType!==Node.ELEMENT_NODE)return;
    if(!permitido.has(c.tagName)){
     if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON','VIDEO','AUDIO'].includes(c.tagName)){c.remove();return}
-    const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
+    recorrer(c);const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
    }
    [...c.attributes].forEach(a=>{
     if(a.name==='class'){const ok=a.value.split(/\s+/).filter(x=>clases.has(x));if(ok.length)c.setAttribute('class',ok.join(' '));else c.removeAttribute('class')}
