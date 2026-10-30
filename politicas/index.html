@@ -328,7 +328,7 @@ strong{color:#263d36}
     const f=document.createDocumentFragment();while(c.firstChild)f.appendChild(c.firstChild);c.replaceWith(f);return;
    }
    [...c.attributes].forEach(a=>{
-    if(a.name==='class'){const ok=a.value.split(/\\s+/).filter(x=>clases.has(x));if(ok.length)c.setAttribute('class',ok.join(' '));else c.removeAttribute('class')}
+    if(a.name==='class'){const ok=a.value.split(/\s+/).filter(x=>clases.has(x));if(ok.length)c.setAttribute('class',ok.join(' '));else c.removeAttribute('class')}
     else if(c.tagName==='A'&&a.name==='href'){if(!/^(https?:|mailto:|tel:)/i.test(a.value.trim()))c.removeAttribute('href')}
     else if(c.tagName==='A'&&a.name==='target'){if(a.value!=='_blank')c.removeAttribute('target')}
     else if(!(c.tagName==='A'&&a.name==='rel'))c.removeAttribute(a.name);
