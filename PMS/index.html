@@ -609,14 +609,6 @@ button:disabled .button-lucide-icon{opacity:.7}
 /* Editor de políticas de alojamiento */
 .pol-admin{display:grid;gap:12px}.pol-admin-intro{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:10px}.pol-admin-intro b{font-size:14px}.pol-admin-intro p{margin:4px 0 0;color:var(--mu);font-size:12px}.pol-admin-intro a{font-size:12px;white-space:nowrap;color:var(--ac)}.pol-editor-tabs{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--bd);padding-bottom:8px}.pol-editor-tabs button,.pol-toolbar button{border:1px solid var(--bd);background:var(--pn);border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer}.pol-editor-tabs button.active{background:var(--ac);border-color:var(--ac);color:#fff}.pol-editor-hint{margin-left:auto;color:var(--mu);font-size:11px}.pol-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--bd);border-radius:9px}.pol-toolbar button{min-width:32px;padding:6px 9px}.pol-toolbar button:hover,.pol-editor-tabs button:hover{border-color:var(--ac)}.pol-toolbar i{height:22px;border-left:1px solid var(--bd);margin:0 3px}.pol-editor-page{min-height:540px;max-height:68vh;overflow:auto;padding:clamp(22px,4vw,54px);background:#fff;color:#202a28;border:1px solid #d9dfdc;border-radius:4px;box-shadow:0 8px 24px #1d30230a;font:15px/1.72 Georgia,"Times New Roman",serif;outline:none}.pol-editor-page:focus{border-color:#9aafa5;box-shadow:0 0 0 2px #244c4312}.pol-editor-page h1,.pol-editor-page h2,.pol-editor-page h3{font-family:Georgia,"Times New Roman",serif;color:#203b34}.pol-editor-page h1{text-align:center;font-size:32px;font-weight:normal;line-height:1.2}.pol-editor-page h2{font-size:21px;font-weight:normal;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid #d9dfdc}.pol-editor-page h3{font-size:17px;margin:22px 0 7px}.pol-editor-page p{margin:9px 0}.pol-editor-page ul,.pol-editor-page ol{padding-left:23px}.pol-editor-page li{margin:5px 0}.pol-editor-page .kicker,.pol-editor-page .section-tag{color:#a27c43;font:600 11px Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase}.pol-editor-page .rule{height:1px;background:#d9dfdc;margin:26px auto;width:90px}.pol-editor-page .meta{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;color:#66716e;font:12px Arial,sans-serif}.pol-editor-page .intro{margin:26px 0;padding:18px 22px;background:#f7f8f6;border-left:3px solid #a27c43}.pol-editor-page .building{margin:20px 0 0;padding:22px 25px;background:#f8faf8;border:1px solid #d9dfdc}.pol-editor-page .contact{margin-top:30px;padding-top:18px;border-top:1px solid #d9dfdc;text-align:center;color:#66716e}.pol-editor-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:0;background:var(--pn);padding:10px 0;border-top:1px solid var(--bd)}.pol-editor-footer span{font-size:11px;color:var(--mu)}.pol-editor-footer button:disabled{opacity:.6;cursor:wait}.pol-editor-note{margin:0}@media(max-width:650px){.pol-admin-intro{flex-direction:column}.pol-editor-page{min-height:420px;padding:22px 18px}.pol-editor-footer{align-items:flex-start;flex-direction:column}.pol-editor-footer button{width:100%}.pol-editor-hint{display:none}}
 
-#politicasLinkOverlay{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:3vh 3vw;background:rgba(12,18,20,.42);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-#politicasLinkModal{width:70vw;height:70vh;max-width:1200px;min-width:min(94vw,520px);background:var(--pn);color:var(--tx);border:1px solid var(--bd);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.32);display:flex;flex-direction:column;overflow:hidden}
-#politicasLinkModal .pl-head{padding:18px 22px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px}#politicasLinkModal .pl-head h2{font-size:20px;margin:0 auto 0 0;border:0;padding:0}
-#politicasLinkModal .pl-body{padding:22px;overflow:auto;flex:1;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-content:start}
-#politicasLinkModal .pl-card{border:1px solid var(--bd);border-radius:12px;padding:16px;background:var(--bg);min-width:0}#politicasLinkModal .pl-wide{grid-column:1/-1}
-#politicasLinkModal .pl-status{font-size:15px;font-weight:700}#politicasLinkModal .pl-sign{max-width:100%;max-height:140px;object-fit:contain;background:#fff;border:1px solid var(--bd);border-radius:8px;padding:8px}
-#politicasLinkModal .pl-foot{padding:14px 22px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-@media(max-width:760px){#politicasLinkOverlay{padding:0}#politicasLinkModal{width:100vw;height:88dvh;max-width:none;min-width:0;border-radius:16px 16px 0 0;margin-top:auto}#politicasLinkModal .pl-body{grid-template-columns:1fr;padding:14px}#politicasLinkModal .pl-wide{grid-column:auto}#politicasLinkModal .pl-head,#politicasLinkModal .pl-foot{padding:13px 15px}}
 </style></head><body>
 <div id="login"><h2>PMS</h2><input id="lu" placeholder="Nombre Apellido"><input id="lp" type="password" placeholder="Clave" autocomplete="current-password" onkeydown="if(event.key==='Enter')window.entrar()"><button class="p" onclick="window.entrar()">Entrar</button><div style="text-align:center;color:var(--mu);font-size:12px;margin-top:4px">Versión v3.5</div></div>
 <div id="app" style="display:none">
@@ -2099,7 +2091,7 @@ async function abrirDr(id){
  const u=S.unidades.find(x=>x.id===r.unidad_id);
  if(!u||!puedeVerEdificio(u.edificio_id)){msg('No tienes permiso para ver este edificio',1);return cerrarDr()}
  S.cur=r;const uidReservaPromise=obtenerUidReservaReal(r);const D=$('#dr');D.style.display='block';
- const topConUid=uid=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>${esc(uid)} · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</b><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">${AUDR.includes(S.perfil?.rol)?'<button class="hue29-audit" onclick="audHistReservaActual()">◷ Ver historial de auditoría</button>':''}${r.estado!=='bloqueado'?'<button class="p" onclick="abrirModalPoliticas(&quot;'+r.id+'&quot;)"">✍ Políticas y aceptación</button>':''}<button onclick="cerrarDr()">✕</button></div></div>`;
+ const topConUid=uid=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>${esc(uid)} · ${esc(u.edificios.nombre)} ${esc(u.codigo)}</b><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">${AUDR.includes(S.perfil?.rol)?'<button class="hue29-audit" onclick="audHistReservaActual()">◷ Ver historial de auditoría</button>':''}<button onclick="cerrarDr()">✕</button></div></div>`;
  if(r.estado==='bloqueado'){
   const uidReservaReal=await uidReservaPromise;r.uid_reserva=uidReservaReal;
   D.innerHTML=topConUid(uidReservaReal)+`<p> ${esc(r.observaciones)}</p><p>${r.fecha_entrada} → ${r.fecha_salida}</p><button class="r" onclick="accion('del')">Quitar bloqueo</button>`;
@@ -4989,31 +4981,5 @@ window.faqSeleccionarCategoria = faqSeleccionarCategoria;
   document.head.appendChild(lucideScript);
 })();
 
-async function abrirModalPoliticas(reservaId){
- let ov=document.getElementById('politicasLinkOverlay');
- if(!ov){ov=document.createElement('div');ov.id='politicasLinkOverlay';ov.innerHTML='<section id="politicasLinkModal" role="dialog" aria-modal="true"><header class="pl-head"><h2>Políticas y aceptación</h2><button onclick="cerrarModalPoliticas()">✕</button></header><div class="pl-body" id="plBody">Cargando…</div><footer class="pl-foot"><span class="mu">Enlace individual · un solo uso</span><div id="plActions"></div></footer></section>';document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target===ov)cerrarModalPoliticas()})}
- ov.dataset.reservaId=reservaId;ov.style.display='flex';await cargarEstadoPoliticas(reservaId);
-}
-function cerrarModalPoliticas(){const x=document.getElementById('politicasLinkOverlay');if(x)x.style.display='none'}
-function plFecha(v){return v?fmtFechaHoraSantiago(v):'—'}
-async function cargarEstadoPoliticas(reservaId){
- const body=document.getElementById('plBody'),actions=document.getElementById('plActions');if(!body||!actions)return;
- body.innerHTML='<p class="mu">Consultando estado del enlace…</p>';actions.innerHTML='';
- const {data,error}=await sb.rpc('politicas_estado_link',{p_reserva_id:reservaId});
- if(error){body.innerHTML='<div class="al r">No se pudo consultar: '+esc(errTxt(error))+'</div>';return}
- const x=data||{},estado=!x.generado?'Sin enlace generado':x.aceptado_en?'Aceptación registrada':x.activo?'Enlace activo':'Enlace desactivado';
- const color=x.aceptado_en?'#16a34a':x.activo?'#2563eb':'#64748b';
- body.innerHTML='<div class="pl-card"><div class="mu">Estado actual</div><div class="pl-status" style="color:'+color+';margin-top:5px">'+esc(estado)+'</div><p class="mu">Código: '+(x.codigo?'<b>'+esc(x.codigo)+'</b>':'—')+'</p></div><div class="pl-card"><div class="mu">Actividad del enlace</div><p><b>'+Number(x.visitas||0)+'</b> visitas</p><p class="mu">Último acceso: '+esc(plFecha(x.ultima_visita))+'</p></div><div class="pl-card pl-wide"><div class="mu">Aceptación del huésped</div>'+(x.aceptado_en?'<p><b>Nombre firmado:</b> '+esc(x.nombre_firmante||'—')+'</p><p><b>Fecha y hora:</b> '+esc(plFecha(x.aceptado_en))+'</p>'+(x.firma_data?'<img class="pl-sign" alt="Firma del huésped" src="'+x.firma_data+'">':''):'<p class="mu">El huésped todavía no ha aceptado las condiciones.</p>')+'</div><div class="pl-card pl-wide"><div class="mu">Privacidad</div><p class="mu">El enlace muestra únicamente las condiciones y los datos mínimos de la estadía. Al aceptar, queda inutilizable.</p></div>';
- if(x.aceptado_en){actions.innerHTML='<span class="mu">Aceptación registrada; enlace desactivado.</span>';return}
- if(x.activo){const url=location.origin+'/politicas/'+x.codigo+'/';actions.innerHTML='<button onclick="copiarLinkPoliticas('+JSON.stringify(url)+')">Copiar enlace</button>';return}
- actions.innerHTML='<button class="p" onclick="generarLinkPoliticas('+JSON.stringify(reservaId)+')">＋ Generar enlace personalizado</button>';
-}
-async function generarLinkPoliticas(reservaId){
- const a=document.getElementById('plActions');if(a)a.innerHTML='Generando…';
- const {data,error}=await sb.rpc('politicas_generar_link',{p_reserva_id:reservaId});
- if(error){msg('No se pudo generar: '+errTxt(error),1);await cargarEstadoPoliticas(reservaId);return}
- await cargarEstadoPoliticas(reservaId);msg('Enlace generado: '+location.origin+'/politicas/'+data.codigo+'/');
-}
-async function copiarLinkPoliticas(url){try{await navigator.clipboard.writeText(url);msg('Enlace copiado. Pégalo en WhatsApp.')}catch(e){pmsPrompt('Copia el enlace:',url)}}
 
 </script></body></html>
