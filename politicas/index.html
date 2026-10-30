@@ -365,5 +365,67 @@ strong{color:#263d36}
  enBtn.addEventListener('click',()=>setLang('en'));
 })();
 </script>
+
+<style>
+#acceptBox{max-width:960px;margin:0 auto 48px;padding:0 20px}
+#acceptCard{background:#fff;border:1px solid #d9dfdc;box-shadow:0 12px 40px #1d30230c;padding:clamp(22px,5vw,42px)}
+#acceptCard h2{margin-top:0}#acceptCard input[type=text]{width:100%;padding:12px;border:1px solid #cbd5d1;border-radius:6px;font:16px Arial,sans-serif}
+#signatureCanvas{width:100%;height:190px;border:1px dashed #9aa9a2;border-radius:6px;background:#fff;touch-action:none;display:block}
+#acceptCard .accept-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}#acceptCard button{padding:10px 16px;border:1px solid #244c43;border-radius:5px;background:#244c43;color:#fff;cursor:pointer;font:600 13px Arial,sans-serif}
+#acceptCard button.secondary{background:#fff;color:#244c43}#acceptMessage{margin-top:14px;padding:12px;border-radius:6px;background:#eaf0ed;color:#244c43;display:none}
+#staySummary{padding:13px 16px;background:#f7f8f6;border-left:3px solid #a27c43;margin:16px 0;font:13px/1.7 Arial,sans-serif}
+#consentLine{display:flex;gap:9px;align-items:flex-start;margin-top:16px;font:13px/1.5 Arial,sans-serif}
+@media(max-width:600px){#acceptBox{padding:0 10px}#acceptCard{padding:22px 17px}}
+</style>
+<section id="acceptBox" style="display:none">
+ <div id="acceptCard">
+  <p class="kicker">Confirmación de condiciones</p>
+  <h2>Constancia de aceptación</h2>
+  <p>Revisa las condiciones de alojamiento completas que aparecen arriba. Para dejar constancia de tu aceptación, ingresa tu nombre completo y firma en el recuadro.</p>
+  <div id="staySummary"></div>
+  <label style="display:block;font:600 12px Arial,sans-serif;margin:16px 0 6px;color:#66716e" for="guestSignName">Nombre completo</label>
+  <input id="guestSignName" type="text" maxlength="140" autocomplete="name" placeholder="Escribe tu nombre y apellido">
+  <p style="font:600 12px Arial,sans-serif;color:#66716e;margin:18px 0 7px">Firma manuscrita</p>
+  <canvas id="signatureCanvas" aria-label="Área para dibujar la firma"></canvas>
+  <div class="accept-actions"><button class="secondary" id="clearSignature" type="button">Borrar firma</button></div>
+  <label id="consentLine"><input id="acceptTerms" type="checkbox"><span>Declaro que he leído y acepto las condiciones de alojamiento mostradas en este documento.</span></label>
+  <div class="accept-actions"><button id="submitAcceptance" type="button">Firmar y aceptar condiciones</button></div>
+  <div id="acceptMessage" role="status"></div>
+ </div>
+</section>
+<script>
+(async function(){
+ const SUPABASE_URL='https://pnakzbuncxsgxmbtjwuf.supabase.co';
+ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkwNzMwNzE4LCJleHAiOjIxMDYzMDY3MTh9.ppQrMVI79xNEhHC1-llQ7hzq4JOwPHEJisEnRJ1nFZU';
+ const pathMatch=location.pathname.match(/^\/politicas\/([A-Z]{4})\/?$/i);
+ const code=(new URLSearchParams(location.search).get('c')||(pathMatch&&pathMatch[1])||'').toUpperCase();
+ if(!code)return;
+ if(pathMatch)history.replaceState(null,'','/politicas/?c='+code);
+ const box=document.getElementById('acceptBox'),msg=document.getElementById('acceptMessage'),submit=document.getElementById('submitAcceptance');
+ box.style.display='block';
+ const call=async(name,args)=>{const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.message||j.details||'No se pudo completar la operación');return j};
+ try{
+  const d=await call('politicas_publica_obtener',{p_codigo:code});
+  if(!d.ok){box.innerHTML='<div id="acceptCard"><h2>Enlace no disponible</h2><p>'+d.mensaje+'</p></div>';return}
+  const clean=(html)=>{const t=document.createElement('template');t.innerHTML=html||'';t.content.querySelectorAll('script,style,iframe,object,embed,svg,form,input,button').forEach(x=>x.remove());t.content.querySelectorAll('*').forEach(x=>[...x.attributes].forEach(a=>{if(a.name!=='class'&&!(x.tagName==='A'&&['href','target','rel'].includes(a.name)))x.removeAttribute(a.name)}));return t.innerHTML};
+  const es=document.getElementById('spanish'),en=document.getElementById('english');
+  es.innerHTML=clean(d.contenido_es);en.innerHTML=clean(d.contenido_en);
+  document.getElementById('staySummary').innerHTML='<b>Resumen de estadía</b><br>'+String(d.edificio||'')+' · Unidad '+String(d.unidad||'')+'<br>Entrada: '+String(d.fecha_entrada||'')+' · Salida: '+String(d.fecha_salida||'')+'<br>Ocupantes: '+Number(d.adultos||0)+' adultos'+(Number(d.menores||0)?' · '+Number(d.menores)+' menores':'');
+  const canvas=document.getElementById('signatureCanvas'),ctx=canvas.getContext('2d');let drawing=false,hasInk=false;
+  function resize(){const rect=canvas.getBoundingClientRect(),ratio=Math.max(1,window.devicePixelRatio||1);const old=hasInk?canvas.toDataURL():null;canvas.width=Math.round(rect.width*ratio);canvas.height=Math.round(190*ratio);ctx.setTransform(ratio,0,0,ratio,0,0);ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#182b25';if(old){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,rect.width,190);img.src=old}}
+  resize();window.addEventListener('resize',resize);
+  const pos=e=>{const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
+  canvas.addEventListener('pointerdown',e=>{drawing=true;hasInk=true;canvas.setPointerCapture(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});
+  canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke()});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>canvas.addEventListener(ev,()=>drawing=false));
+  document.getElementById('clearSignature').onclick=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);hasInk=false};
+  submit.onclick=async()=>{const name=document.getElementById('guestSignName').value.trim();if(name.length<3){msg.style.display='block';msg.textContent='Ingresa tu nombre completo.';return}if(!hasInk){msg.style.display='block';msg.textContent='Debes dibujar tu firma.';return}if(!document.getElementById('acceptTerms').checked){msg.style.display='block';msg.textContent='Debes marcar que aceptas las condiciones.';return}
+   submit.disabled=true;submit.textContent='Registrando aceptación…';
+   try{const result=await call('politicas_publica_aceptar',{p_codigo:code,p_nombre:name,p_firma:canvas.toDataURL('image/png')});if(!result.ok)throw new Error(result.mensaje||'El enlace ya no está disponible');document.getElementById('acceptCard').innerHTML='<p class="kicker">Aceptación registrada</p><h2>Gracias, '+name.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</h2><p>Tu aceptación de las condiciones de alojamiento quedó registrada correctamente. Este enlace ha sido desactivado y ya no puede volver a utilizarse.</p>';document.querySelector('.controls').style.display='none'}
+   catch(e){msg.style.display='block';msg.textContent=e.message;submit.disabled=false;submit.textContent='Firmar y aceptar condiciones'}
+  };
+ }catch(e){box.innerHTML='<div id="acceptCard"><h2>No se pudo cargar el enlace</h2><p>'+String(e.message||e)+'</p></div>'}
+})();
+</script>
 </body>
 </html>
