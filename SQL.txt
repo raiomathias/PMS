@@ -399,7 +399,7 @@ LEFT JOIN LATERAL(SELECT x.* FROM limpieza x WHERE x.unidad_id=u.id ORDER BY x.c
 WHERE rol_actual() IS NOT NULL AND u.activo AND public.puede_ver_edificio(e.id) AND (p_edificio IS NULL OR u.edificio_id=p_edificio) AND (s.unidad_id IS NOT NULL OR l.estado IN ('sucia','en_proceso','defectuosa'))
 ORDER BY e.orden,u.codigo;
 $;
-GRANT EXECUTE ON FUNCTION public.tablero_limpieza(uuid) TO PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.tablero_limpieza(uuid) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.buscar_reacomodacion(p_edificio_id uuid,p_tipo_unidad_id uuid,p_entrada date,p_salida date,p_excluir_reserva uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public AS $$
