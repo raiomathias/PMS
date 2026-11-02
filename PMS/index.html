@@ -5079,7 +5079,7 @@ async function pmsBookingNotifSave(){const b=document.getElementById('pbn-save')
  window.generarLinkPoliticas=async function(){
   const d=plEstadoActual||{};
   if(d.generado){
-   const ok=await pmsConfirm('Se generará un enlace nuevo de 4 caracteres. El enlace anterior dejará de funcionar y, si ya estaba firmado, esa firma dejará de contar como aceptación vigente. ¿Deseas continuar?');
+   const ok=window.confirm('Se generará un enlace nuevo de 4 caracteres. El enlace anterior dejará de funcionar y, si ya estaba firmado, esa firma dejará de contar como aceptación vigente. ¿Deseas continuar?');
    if(!ok)return;
   }
   const b=document.getElementById('plGenerate');if(b){b.disabled=true;b.textContent='Generando…'}
