@@ -152,6 +152,7 @@ revoke execute on function public.pms_booking_notif_config(boolean,text,text) fr
 revoke execute on function public.pms_booking_notif_audit_action(uuid,text) from public,anon;
 revoke execute on function public.pms_booking_no_show_trigger() from public,anon,authenticated;
 grant execute on function private.pms_booking_notif_access(uuid) to authenticated;
+drop policy if exists notif_booking_no_show_select_access on public.notificaciones_booking_no_show;
 drop function if exists public.pms_booking_notif_access(uuid);
 grant execute on function public.pms_booking_notif_list() to authenticated;
 grant execute on function public.pms_booking_notif_mark(uuid) to authenticated;
