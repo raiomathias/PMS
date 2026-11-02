@@ -38,10 +38,10 @@ h3{font-size:17px;font-weight:bold;margin:24px 0 7px}
 .policy-toc-mark{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:9px;background:#244c43;color:#fff;font:600 15px Arial,sans-serif}
 .policy-toc-title{margin:0;color:#203b34;font:600 14px Arial,sans-serif;letter-spacing:.02em}
 .policy-toc-subtitle{margin:3px 0 0;color:#74817b;font:12px Arial,sans-serif}
-.policy-toc-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 18px;margin:0;padding:0;list-style:none;counter-reset:toc}
-.policy-toc-list li{margin:0;padding:0;counter-increment:toc}
+.policy-toc-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 18px;margin:0;padding:0;list-style:none;counter-reset:none}
+.policy-toc-list li{margin:0;padding:0;list-style:none}
 .policy-toc-list a{display:flex;align-items:flex-start;gap:10px;padding:7px 8px;border-radius:6px;color:#344b42;text-decoration:none;font:13px/1.45 Arial,sans-serif;transition:background .15s,color .15s}
-.policy-toc-list a:before{content:counter(toc,decimal-leading-zero);flex:0 0 23px;color:#a27c43;font:600 10px/1.8 Arial,sans-serif;letter-spacing:.04em}
+.policy-toc-number{flex:0 0 23px;color:#a27c43;font:600 10px/1.8 Arial,sans-serif;letter-spacing:.04em}
 .policy-toc-list a:hover,.policy-toc-list a:focus-visible{background:#fff;color:#183b35;outline:1px solid #d8e2dc}
 .policy-section{scroll-margin-top:22px}
 @media(max-width:600px){.policy-toc{padding:19px 16px;margin:24px 0 28px}.policy-toc-list{grid-template-columns:1fr;gap:3px}.policy-toc-list a{padding:8px 6px}}
@@ -346,8 +346,16 @@ strong{color:#263d36}
    copy.append(title,subtitle);head.append(mark,copy);
    const list=document.createElement('ol');list.className='policy-toc-list';
    headings.forEach(function(h,i){
-    const id=sectionId+'-section-'+(i+1);h.id=id;h.classList.add('policy-section');
-    const li=document.createElement('li'),a=document.createElement('a');a.href='#'+id;a.textContent=h.textContent.trim().replace(/^\d+\.\s*/,'');li.append(a);list.append(li);
+    const headingText=h.textContent.trim();
+    const match=headingText.match(/^(\\d+)\\.\\s*(.*)$/);
+    const number=match?match[1]:String(i+1);
+    const label=match?match[2]:headingText;
+    const id=sectionId+'-section-'+number;h.id=id;h.classList.add('policy-section');
+    const li=document.createElement('li'),a=document.createElement('a');
+    a.href='#'+id;
+    const numberLabel=document.createElement('span');numberLabel.className='policy-toc-number';numberLabel.textContent=number.padStart(2,'0');
+    const titleLabel=document.createElement('span');titleLabel.textContent=label;
+    a.append(numberLabel,titleLabel);li.append(a);list.append(li);
    });
    nav.append(head,list);
    const intro=section.querySelector('.intro');
