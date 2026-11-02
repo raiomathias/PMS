@@ -334,7 +334,7 @@ strong{color:#263d36}
   ['spanish','english'].forEach(function(sectionId){
    const section=document.getElementById(sectionId);if(!section)return;
    const old=section.querySelector('.policy-toc');if(old)old.remove();
-   const headings=Array.from(section.querySelectorAll('h2'));
+   const headings=Array.from(section.querySelectorAll('h2')).filter(function(h){return h.textContent.replace(/\\u00a0/g,' ').trim().length>0;});
    if(!headings.length)return;
    const isEnglish=sectionId==='english';
    const nav=document.createElement('nav');nav.className='policy-toc';nav.setAttribute('aria-label',isEnglish?'Table of contents':'Índice de contenidos');
@@ -392,7 +392,7 @@ strong{color:#263d36}
    if(c.tagName==='A'&&c.getAttribute('target')==='_blank')c.setAttribute('rel','noopener noreferrer');
    recorrer(c);
   });
-  recorrer(t.content);return t.innerHTML;
+  recorrer(t.content);t.content.querySelectorAll('h2').forEach(h=>{if(!h.textContent.replace(/\\u00a0/g,' ').trim())h.remove()});return t.innerHTML;
  }
  try{
   const url=SUPABASE_URL+'/rest/v1/politicas_documento?id=eq.true&select=contenido_es,contenido_en';
@@ -469,7 +469,7 @@ html.validating-policy-link main,html.validating-policy-link .footer,html.valida
   const d=await call('politicas_publica_obtener',{p_codigo:code});
   if(!d.ok){invalidCode();return}
   document.documentElement.classList.remove('validating-policy-link');status.remove();
-  const clean=(html)=>{const t=document.createElement('template');t.innerHTML=html||'';t.content.querySelectorAll('script,style,iframe,object,embed,svg,form,input,button').forEach(x=>x.remove());t.content.querySelectorAll('*').forEach(x=>[...x.attributes].forEach(a=>{if(a.name!=='class'&&!(x.tagName==='A'&&['href','target','rel'].includes(a.name)))x.removeAttribute(a.name)}));return t.innerHTML};
+  const clean=(html)=>{const t=document.createElement('template');t.innerHTML=html||'';t.content.querySelectorAll('script,style,iframe,object,embed,svg,form,input,button').forEach(x=>x.remove());t.content.querySelectorAll('h2').forEach(h=>{if(!h.textContent.replace(/\\u00a0/g,' ').trim())h.remove()});t.content.querySelectorAll('*').forEach(x=>[...x.attributes].forEach(a=>{if(a.name!=='class'&&!(x.tagName==='A'&&['href','target','rel'].includes(a.name)))x.removeAttribute(a.name)}));return t.innerHTML};
   const es=document.getElementById('spanish'),en=document.getElementById('english');
   es.innerHTML=clean(d.contenido_es);en.innerHTML=clean(d.contenido_en);
   if(window.generarIndicePoliticas)window.generarIndicePoliticas();
