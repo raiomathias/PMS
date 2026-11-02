@@ -2,7 +2,9 @@
 -- Mantiene el historial completo en el Buzón, limita los datos por edificio
 -- y registra cada acción con el usuario autenticado.
 
-create or replace function public.pms_booking_notif_access(p_edificio uuid)
+create schema if not exists private;
+
+create or replace function private.pms_booking_notif_access(p_edificio uuid)
 returns boolean
 language sql stable security definer
 set search_path=pg_catalog,public,auth,pg_temp
@@ -73,7 +75,7 @@ begin
  from public.notificaciones_booking_no_show n
  join public.edificios e on e.id=n.edificio_id
  left join public.perfiles p on p.id=n.marcado_por
- where public.pms_booking_notif_access(n.edificio_id)
+ where private.pms_booking_notif_access(n.edificio_id)
  order by n.fecha_entrada desc,n.creada_en desc;
 end $$;
 
@@ -86,7 +88,7 @@ begin
  v_user:=auth.uid();if v_user is null then raise exception 'Sesión no válida';end if;
  select * into n from public.notificaciones_booking_no_show where id=p_id for update;
  if not found then raise exception 'Notificación no encontrada';end if;
- if not public.pms_booking_notif_access(n.edificio_id) then raise exception 'Sin acceso a este edificio';end if;
+ if not private.pms_booking_notif_access(n.edificio_id) then raise exception 'Sin acceso a este edificio';end if;
  if n.estado='marcado_booking' then return;end if;
  select nombre_completo into v_name from public.perfiles where id=v_user;
  update public.notificaciones_booking_no_show
@@ -109,7 +111,7 @@ begin
  if p_accion not in('popup_visto','popup_cerrado','chat_abierto') then raise exception 'Acción no permitida';end if;
  select * into n from public.notificaciones_booking_no_show where id=p_id;
  if not found then raise exception 'Notificación no encontrada';end if;
- if not public.pms_booking_notif_access(n.edificio_id) then raise exception 'Sin acceso a este edificio';end if;
+ if not private.pms_booking_notif_access(n.edificio_id) then raise exception 'Sin acceso a este edificio';end if;
  select nombre_completo into v_name from public.perfiles where id=v_user;
  insert into public.auditoria(tabla,registro_id,accion,datos_anteriores,datos_nuevos,usuario_id,fecha)
  values('notificaciones_booking_no_show',p_id,'UPDATE',jsonb_build_object('estado',n.estado),
@@ -141,13 +143,16 @@ begin
   jsonb_build_object('activo',p_activo,'hora',p_hora,'mensaje',p_mensaje),v_user,now());
 end $$;
 
-revoke execute on function public.pms_booking_notif_access(uuid) from public,anon;
+revoke all on schema private from public,anon;
+grant usage on schema private to authenticated;
+revoke execute on function private.pms_booking_notif_access(uuid) from public,anon;
 revoke execute on function public.pms_booking_notif_list() from public,anon;
 revoke execute on function public.pms_booking_notif_mark(uuid) from public,anon;
 revoke execute on function public.pms_booking_notif_config(boolean,text,text) from public,anon;
 revoke execute on function public.pms_booking_notif_audit_action(uuid,text) from public,anon;
 revoke execute on function public.pms_booking_no_show_trigger() from public,anon,authenticated;
-grant execute on function public.pms_booking_notif_access(uuid) to authenticated;
+grant execute on function private.pms_booking_notif_access(uuid) to authenticated;
+drop function if exists public.pms_booking_notif_access(uuid);
 grant execute on function public.pms_booking_notif_list() to authenticated;
 grant execute on function public.pms_booking_notif_mark(uuid) to authenticated;
 grant execute on function public.pms_booking_notif_config(boolean,text,text) to authenticated;
@@ -155,4 +160,4 @@ grant execute on function public.pms_booking_notif_audit_action(uuid,text) to au
 grant select on public.notificaciones_booking_no_show to authenticated;
 drop policy if exists notif_booking_no_show_select_access on public.notificaciones_booking_no_show;
 create policy notif_booking_no_show_select_access on public.notificaciones_booking_no_show
- for select to authenticated using (public.pms_booking_notif_access(edificio_id));
+ for select to authenticated using (private.pms_booking_notif_access(edificio_id));
