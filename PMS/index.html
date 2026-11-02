@@ -3296,20 +3296,40 @@ function politicasFormato(cmd,value=null){
  try{document.execCommand(cmd,false,value||null)}catch(e){console.warn('Formato no disponible',e)}
 }
 async function guardarPoliticas(){
- const b=$('#pol-save-btn'),status=$('#pol-save-status');if(!b||b.disabled)return;
- const es=sanitizarPoliticasHTML($('#pol-editor-es').innerHTML),en=sanitizarPoliticasHTML($('#pol-editor-en').innerHTML);
- if(!es.trim()||!en.trim())return msg('El documento en español e inglés no puede quedar vacío.',1);
- b.disabled=true;b.textContent='Guardando…';if(status)status.textContent='Publicando cambios…';
+ const b=$('#pol-save-btn'),status=$('#pol-save-status');
+ if(!b||b.disabled)return;
+ b.disabled=true;b.textContent='Guardando…';
+ if(status)status.textContent='Validando y publicando cambios…';
  try{
-  const {data:{session},error:se}=await sb.auth.getSession();if(se||!session){if(status)status.textContent='Sesión expirada. Inicia sesión nuevamente.';return msg('Tu sesión expiró. Vuelve a iniciar sesión.',1)}
-  const {error}=await sb.from('politicas_documento').update({contenido_es:es,contenido_en:en,actualizado_en:new Date().toISOString(),actualizado_por:session.user.id}).eq('id',true);
+  const editorEs=$('#pol-editor-es'),editorEn=$('#pol-editor-en');
+  if(!editorEs||!editorEn)throw new Error('No se encontraron los dos editores. Cierra y vuelve a abrir la sección de políticas.');
+  const es=sanitizarPoliticasHTML(editorEs.innerHTML),en=sanitizarPoliticasHTML(editorEn.innerHTML);
+  if(!es.trim()||!en.trim())throw new Error('El documento en español e inglés no puede quedar vacío.');
+  const {data:authData,error:se}=await sb.auth.getSession();
+  if(se)throw se;
+  const session=authData&&authData.session;
+  if(!session)throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
+  const payload={contenido_es:es,contenido_en:en,actualizado_en:new Date().toISOString(),actualizado_por:session.user.id};
+  const {data:updated,error}=await sb.from('politicas_documento')
+   .update(payload).eq('id',true)
+   .select('id,contenido_es,contenido_en,actualizado_en').single();
   if(error)throw error;
-  POL_DOC={contenido_es:es,contenido_en:en};
-  if(status)status.textContent='Publicado correctamente · '+new Date().toLocaleString('es-CL',{timeZone:'America/Santiago'});
-  msg('Políticas guardadas y publicadas correctamente.');
- }catch(e){console.error(e);if(status)status.textContent='No se pudieron publicar los cambios.';msg('Error al guardar las políticas: '+(e.message||e),1)}
- finally{b.disabled=false;b.textContent='Guardar y publicar cambios'}
+  if(!updated||updated.id!==true)throw new Error('Supabase no confirmó la actualización del documento.');
+  if(updated.contenido_es!==es||updated.contenido_en!==en)throw new Error('La verificación posterior detectó diferencias entre el contenido enviado y el guardado.');
+  POL_DOC={contenido_es:updated.contenido_es,contenido_en:updated.contenido_en};
+  const fecha=new Date(updated.actualizado_en||payload.actualizado_en).toLocaleString('es-CL',{timeZone:'America/Santiago'});
+  if(status)status.textContent='Publicado y verificado correctamente · '+fecha;
+  msg('Políticas guardadas, verificadas y publicadas correctamente.');
+ }catch(e){
+  console.error('Error al guardar/publicar políticas:',e);
+  const detalle=String(e&&e.message||e||'Error desconocido');
+  if(status)status.textContent='No se guardaron los cambios: '+detalle;
+  msg('No se pudieron guardar las políticas: '+detalle,1);
+ }finally{
+  if(b){b.disabled=false;b.textContent='Guardar y publicar cambios'}
+ }
 }
+window.guardarPoliticas=guardarPoliticas;
 
 async function pCfg(){
  const {data}=await sb.from('configuracion').select('*').order('clave');
