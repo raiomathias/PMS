@@ -961,8 +961,8 @@ async function refrescarSaldosGrid(){
  const rids=S.res.map(r=>r.id);
  if(!rids.length){S.saldo={};S.gar={};dibujar();return}
  const [sv,gp]=await Promise.all([
-  pmsInChunks(ids=>pmsInChunks(batch=>sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',batch),ids),rids),
-  pmsInChunks(ids=>pmsInChunks(batch=>sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',batch),ids),rids)
+  pmsInChunks(batch=>sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',batch),rids),
+  pmsInChunks(batch=>sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',batch),rids)
  ]);
  if(sv.error||gp.error)throw(sv.error||gp.error);
  S.saldo=Object.fromEntries((sv.data||[]).map(x=>[x.reserva_id,{total:+x.total_a_pagar||0,pagado:+x.total_pagado||0}]));
@@ -1374,8 +1374,8 @@ async function cargar(op={}){
   const ids=(rr.data||[]).map(x=>x.id);
   if(!ids.length)return {sv:{data:[],error:null},gp:{data:[],error:null}};
   const [sv,gp]=await Promise.all([
-   sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',ids),
-   sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',ids)
+   pmsInChunks(batch=>sb.from('saldo_reserva').select('reserva_id,total_a_pagar,total_pagado').in('reserva_id',batch),ids),
+   pmsInChunks(batch=>sb.from('garantia_reserva').select('reserva_id,monto,pagado').eq('requiere',true).eq('omitida',false).in('estado',['tentativa','confirmada','en_casa']).in('reserva_id',batch),ids)
   ]);
   return {sv,gp};
  });
