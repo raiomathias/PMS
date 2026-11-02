@@ -1155,6 +1155,7 @@ function abrirBuzon(auto=false,rows=null){
 }
 function bxRender(){
  const b=mailBoxEl();if(!b||!MAIL.open)return;
+ if(BX.selected===PMS_BOOKING_NOTIF_KEY)PMS_BOOKING_CHAT_SIGNATURE='';
  const focusEl=document.activeElement,keepCompose=focusEl?.id==='bx-compose-text',keepSearch=focusEl?.classList?.contains('bx-search'),caret=keepCompose||keepSearch?focusEl.selectionStart:null,caretEnd=keepCompose||keepSearch?focusEl.selectionEnd:null;
  const convs=BX.conversations.filter(c=>(c.nombre+' '+(c.descripcion||'')+' '+(c.ultimo_mensaje||'')).toLocaleLowerCase().includes(BX.search.toLocaleLowerCase()));
  const active=BX.selected==='__booking_system__'?{conversacion_id:'__booking_system__',clave:'__booking_system__',nombre:'Notificaciones del Sistema',descripcion:'Recordatorios automáticos Booking.com · pendientes y resueltos',tipo:'booking_system'}:BX.selected==='__all__'?{conversacion_id:'__all__',clave:'__all__',nombre:'Todos los mensajes',descripcion:'Vista conjunta de los mensajes de todas las conversaciones a las que tienes acceso.',tipo:'global'}:BX.conversations.find(c=>c.conversacion_id===BX.selected);
@@ -5012,7 +5013,7 @@ window.faqSeleccionarCategoria = faqSeleccionarCategoria;
 })();
 
 
-const PMS_BOOKING_NOTIF_KEY='__booking_system__';let PMS_BOOKING_NOTIF_ROWS=[],PMS_BOOKING_POPUP_ID=null,PMS_BOOKING_NOTIF_TIMER=null;const PMS_BOOKING_CHAT_AUDITED=new Set();function pmsBookingFecha(v){const s=String(v??'');if(s.length===10&&s[4]==='-'&&s[7]==='-'){const [y,m,d]=s.split('-');return d+'/'+m+'/'+y}return fmtFechaSantiago(v)}
+const PMS_BOOKING_NOTIF_KEY='__booking_system__';let PMS_BOOKING_NOTIF_ROWS=[],PMS_BOOKING_POPUP_ID=null,PMS_BOOKING_NOTIF_TIMER=null,PMS_BOOKING_CHAT_SIGNATURE='';const PMS_BOOKING_CHAT_AUDITED=new Set();function pmsBookingFecha(v){const s=String(v??'');if(s.length===10&&s[4]==='-'&&s[7]==='-'){const [y,m,d]=s.split('-');return d+'/'+m+'/'+y}return fmtFechaSantiago(v)}
 async function pmsBookingNotifFetch(){if(!S.perfil)return[];const {data,error}=await sb.rpc('pms_booking_notif_list');if(error){console.warn('Booking notifications:',error.message);return[]}PMS_BOOKING_NOTIF_ROWS=data||[];return PMS_BOOKING_NOTIF_ROWS}
 async function pmsBookingNotifAudit(id,accion){const {error}=await sb.rpc('pms_booking_notif_audit_action',{p_id:id,p_accion:accion});if(error)console.warn('Auditoría de notificación:',error.message)}
 function pmsBookingNotifClose(){document.getElementById('pmsBookingNotifPopup')?.remove();PMS_BOOKING_POPUP_ID=null}
@@ -5025,6 +5026,7 @@ async function pmsBookingNotifRenderChat(rows=null){
  const oldScroll=pane.scrollTop,wasNearBottom=pane.scrollHeight-pane.scrollTop-pane.clientHeight<70;
  rows=rows||await pmsBookingNotifFetch();if(!MAIL.open||BX.selected!==PMS_BOOKING_NOTIF_KEY)return;
  rows.forEach(r=>{const key=S.perfil.id+':'+r.id;if(!PMS_BOOKING_CHAT_AUDITED.has(key)){PMS_BOOKING_CHAT_AUDITED.add(key);pmsBookingNotifAudit(r.id,'chat_abierto')}});
+ const signature=JSON.stringify(rows.map(r=>[r.id,r.estado,r.mensaje,r.marcado_en,r.marcado_por_nombre]));if(signature===PMS_BOOKING_CHAT_SIGNATURE)return;PMS_BOOKING_CHAT_SIGNATURE=signature;
  if(!rows.length)pane.innerHTML='<div class="bx-empty"><div class="bx-empty-icon">🔔</div><b>Notificaciones del Sistema</b>No hay recordatorios para la fecha actual. Las pendientes seguirán visibles hasta que se marquen en Booking.com.</div>';
  else pane.innerHTML='<div class="pms-booking-chat-intro"><b>Notificaciones del Sistema</b><p>Las pendientes permanecen visibles para usuarios autorizados. Cerrar el popup no las resuelve.</p></div>'+rows.map(r=>'<article class="pms-booking-chat-card '+(r.estado==='marcado_booking'?'resolved':'pending')+'"><div class="pms-booking-chat-status">'+(r.estado==='marcado_booking'?'✓ MARCADO EN BOOKING':'● PENDIENTE')+'</div><div class="pms-booking-chat-message">'+esc(r.mensaje)+'</div><div class="pms-booking-details"><div><small>Huésped</small><b>'+esc(r.huesped)+'</b></div><div><small>Edificio</small><b>'+esc(r.edificio)+'</b></div><div><small>Unidad</small><b>'+esc(r.unidad)+'</b></div><div><small>Check-in original</small><b>'+esc(pmsBookingFecha(r.fecha_entrada))+'</b></div></div>'+(r.estado==='marcado_booking'?'<div class="pms-booking-marked">Marcado por <b>'+esc(r.marcado_por_nombre||'Usuario')+'</b> · '+esc(fmtFechaHoraSantiago(r.marcado_en))+'</div>':'<div class="pms-booking-chat-actions"><button class="p" type="button" onclick="pmsBookingNotifMark(this.dataset.id)" data-id="'+r.id+'">Marcado en Booking</button></div>')+'</article>').join('');
  pane.scrollTop=wasNearBottom?pane.scrollHeight:Math.min(oldScroll,Math.max(0,pane.scrollHeight-pane.clientHeight));
