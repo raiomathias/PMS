@@ -8,12 +8,12 @@ create or replace function private.pms_booking_notif_access(p_edificio uuid)
 returns boolean
 language sql stable security definer
 set search_path=pg_catalog,public,auth,pg_temp
-as $
+as $$
  select exists(
    select 1 from public.perfiles p
    where p.id=auth.uid() and p.activo and p.rol::text<>'limpieza'
  ) and public.puede_ver_edificio(p_edificio)
-$;
+$$;
 
 create or replace function public.pms_booking_no_show_trigger()
 returns trigger language plpgsql security definer
