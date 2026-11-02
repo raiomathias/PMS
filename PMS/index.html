@@ -648,10 +648,13 @@ async function pmsInChunks(buildQuery,values,chunkSize=80){
  if(!unique.length)return {data:[],error:null};
  const batches=[];
  for(let i=0;i<unique.length;i+=chunkSize)batches.push(unique.slice(i,i+chunkSize));
- const results=await Promise.all(batches.map(ids=>buildQuery(ids)));
- const failed=results.find(x=>x?.error);
- if(failed)return {data:null,error:failed.error};
- return {data:results.flatMap(x=>x?.data||[]),error:null};
+ const rows=[];
+ for(const ids of batches){
+  const result=await buildQuery(ids);
+  if(result?.error)return {data:null,error:result.error};
+  rows.push(...(result?.data||[]));
+ }
+ return {data:rows,error:null};
 }
 async function pmsFetchAllPages(buildQuery,pageSize=500){
  const all=[];
