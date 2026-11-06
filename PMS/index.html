@@ -767,7 +767,7 @@ function protegerBotonesMutacion(raiz=document){
 /* Formato global de fechas visibles: ISO yyyy-mm-dd -> dd/mm/yyyy.
    Opera sobre texto presentado al usuario, no sobre valores internos ni inputs date. */
 (function(){
- const isoDate=/\\b(\\d{4})-(\\d{2})-(\\d{2})\\b/g;
+ const isoDate=/\b(\d{4})-(\d{2})-(\d{2})\b/g;
  function formatText(value){return String(value).replace(isoDate,'$3/$2/$1')}
  function normalizeNode(node){
   if(!node)return;
