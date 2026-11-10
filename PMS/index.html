@@ -2082,10 +2082,7 @@ function buscarH(){
  bt=setTimeout(async()=>{
   try{
    const qd=q.replace(/[^0-9A-Za-z]/g,'').toUpperCase();
-   const qNombre=q.replace(/[\\%_(),]/g,' ');
-   let filtro='nombre_completo.ilike.%'+qNombre+'%';
-   if(qd.length>=4)filtro+=',documento_normalizado.ilike.%'+qd+'%';
-   const {data,error}=await sb.from('huespedes').select('id,uid_huesped,nombre_completo,tipo_documento,numero_documento,telefono,correo,nacionalidad,ciudad_origen').or(filtro).limit(6);
+   const {data,error}=await sb.rpc('buscar_huespedes_reserva',{p_query:q,p_documento:qd,p_limite:6});
    if(seq!==irGuestSearchSeq||$('#nq').value.trim()!==q)return;
    if(error){out.innerHTML='<div class="al r">No se pudo buscar huéspedes: '+esc(errTxt(error))+'</div>';$('#irGuestStatus').textContent='La búsqueda no pudo completarse.';return}
    N.c=data||[];
